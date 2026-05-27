@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const ExcelJS = require('exceljs');
 const supabase = require('../utils/supabase');
+const { normalizeMobile } = require('../utils/phone');
 
 router.get('/me', (req, res) => {
   res.json({ ok: true, isAdmin: true, loggedAt: req.session.loggedAt });
@@ -201,8 +202,8 @@ router.post('/applications', async (req, res) => {
       grade: Number(grade) || null,
       class_no: Number(class_no) || null,
       guardian_name: guardian_name ? String(guardian_name).trim() : null,
-      guardian_phone: guardian_phone ? String(guardian_phone).trim() : null,
-      student_phone: student_phone ? String(student_phone).trim() : null,
+      guardian_phone: guardian_phone ? normalizeMobile(guardian_phone) : null,
+      student_phone: student_phone ? normalizeMobile(student_phone) : null,
       motivation: motivation ? String(motivation).trim() : null,
       privacy_agreed: true,
       status: status || 'applied',
@@ -240,6 +241,8 @@ router.put('/applications/:id', async (req, res) => {
     if ('sibling_group_id' in patch) {
       patch.sibling_group_id = patch.sibling_group_id ? String(patch.sibling_group_id) : null;
     }
+    if ('guardian_phone' in patch) patch.guardian_phone = patch.guardian_phone ? normalizeMobile(patch.guardian_phone) : null;
+    if ('student_phone' in patch) patch.student_phone = patch.student_phone ? normalizeMobile(patch.student_phone) : null;
 
     const { data, error } = await supabase
       .from('saessak_applications')

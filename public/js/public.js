@@ -1,4 +1,37 @@
 (() => {
+  // === 운영 문구: 보유기간 등 바뀔 수 있는 부분은 여기서만 수정하면 됨 ===
+  const PRIVACY_TEXT = {
+    intro: '다음 개인정보 수집·이용 및 초상권에 동의하십니까?',
+    items: [
+      '수집·이용 목적: 출석부 작성, 학생 관리, 결과보고서 제출',
+      '수집 항목: 학년, 반, 번호, 학생 성명, 보호자 성명, 보호자 휴대폰 번호, 학생과의 관계',
+      '이용·보유 기간 및 처리 방법: 2026. 9. 1. ~ 2026. 12. 31. (이용 기간 후 파기)',
+      '교육 활동 과정 및 결과에 참여 학생 얼굴이 나올 수 있습니다.',
+    ],
+  };
+
+  // === 휴대폰 포맷팅/검증 ===
+  function formatPhone(raw) {
+    const digits = String(raw || '').replace(/\D/g, '').slice(0, 11);
+    if (digits.length < 4) return digits;
+    if (digits.length < 8) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  }
+  function isValidPhone(s) {
+    return /^010-\d{4}-\d{4}$/.test(String(s || ''));
+  }
+  function attachPhoneFormatter(input) {
+    if (!input || input.dataset.phoneFormatter === '1') return;
+    input.dataset.phoneFormatter = '1';
+    input.setAttribute('inputmode', 'numeric');
+    input.setAttribute('maxlength', '13');
+    input.setAttribute('placeholder', '010-XXXX-XXXX');
+    input.addEventListener('input', () => {
+      const formatted = formatPhone(input.value);
+      if (input.value !== formatted) input.value = formatted;
+    });
+  }
+
   let programs = [];
   // students[i] = { id, selected:Set<programId>, cache:{name,grade,class_no,student_phone,motivation,is_multicultural}, same_as_prev:bool }
   const students = [];
@@ -31,6 +64,17 @@
     if (t === 'multicultural') return '<span class="badge tag-multicultural">다문화 우대</span>';
     if (t === 'sibling') return '<span class="badge tag-sibling">형제 우대</span>';
     return '';
+  }
+
+  function renderPrivacyText() {
+    const el = document.getElementById('privacy-text');
+    if (!el) return;
+    const itemsHtml = PRIVACY_TEXT.items
+      .map((s, i) => `<li><b>${i + 1}.</b> ${esc(s)}</li>`).join('');
+    el.innerHTML = `
+      <div style="margin-bottom:6px;">${esc(PRIVACY_TEXT.intro)}</div>
+      <ol style="padding-left:18px; list-style:none;">${itemsHtml}</ol>
+    `;
   }
 
   async function loadPrograms() {
@@ -183,6 +227,7 @@
         s.cache.class_no = classInput.value;
         propagateGradeClassDown(i);
       });
+      attachPhoneFormatter(node.querySelector('.f-sphone'));
       node.querySelector('.f-sphone').addEventListener('input', (e) => { s.cache.student_phone = e.target.value.trim(); });
       node.querySelector('.f-motivation').addEventListener('input', (e) => { s.cache.motivation = e.target.value.trim(); });
       node.querySelector('.f-multicultural').addEventListener('change', (e) => { s.cache.is_multicultural = e.target.checked; });
@@ -349,6 +394,7 @@
       if (!grade || grade < 1 || grade > 6) { validationErr = `${name}의 학년을 1~6 사이로 입력해 주세요.`; return; }
       if (!cls || cls < 1 || cls > 30) { validationErr = `${name}의 반을 1~30 사이로 입력해 주세요.`; return; }
       if (program_ids.length === 0) { validationErr = `${name}이(가) 신청할 프로그램을 1개 이상 선택해 주세요.`; return; }
+      if (sphone && !isValidPhone(sphone)) { validationErr = `${name}의 학생 연락처가 올바르지 않습니다(010-XXXX-XXXX).`; return; }
 
       for (const pid of program_ids) {
         const p = programs.find(x => x.id === pid);
@@ -372,11 +418,24 @@
     if (validationErr) { alert(validationErr); return; }
     if (studentsPayload.length === 0) { alert('학생 정보가 없습니다.'); return; }
 
+    const guardianName = document.getElementById('guardian_name').value.trim();
+    const guardianPhone = document.getElementById('guardian_phone').value.trim();
+    if (!guardianName) { alert('보호자 이름을 입력해 주세요.'); return; }
+    if (!isValidPhone(guardianPhone)) {
+      alert('올바른 휴대폰 번호를 입력해 주세요(010-XXXX-XXXX).');
+      document.getElementById('guardian_phone').focus();
+      return;
+    }
+    if (!document.getElementById('privacy_agreed').checked) {
+      alert('개인정보 수집·이용 동의가 필요합니다.');
+      return;
+    }
+
     const payload = {
       students: studentsPayload,
-      guardian_name: document.getElementById('guardian_name').value.trim(),
-      guardian_phone: document.getElementById('guardian_phone').value.trim(),
-      privacy_agreed: document.getElementById('privacy_agreed').checked,
+      guardian_name: guardianName,
+      guardian_phone: guardianPhone,
+      privacy_agreed: true,
     };
 
     submitBtn.disabled = true;
@@ -440,5 +499,7 @@
     form.style.display = 'none';
   }
 
+  renderPrivacyText();
+  attachPhoneFormatter(document.getElementById('guardian_phone'));
   loadPrograms();
 })();

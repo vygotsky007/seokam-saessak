@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const router = express.Router();
 const supabase = require('../utils/supabase');
+const { normalizeMobile, isValidMobile } = require('../utils/phone');
 
 router.get('/programs', async (req, res) => {
   try {
@@ -68,15 +69,15 @@ router.post('/apply', async (req, res) => {
     if (!guardian_name || !String(guardian_name).trim()) {
       return res.status(400).json({ ok: false, error: '보호자 이름을 입력해 주세요.' });
     }
-    if (!guardian_phone || !/^[0-9\-\s+]{8,20}$/.test(String(guardian_phone).trim())) {
-      return res.status(400).json({ ok: false, error: '보호자 연락처를 정확히 입력해 주세요.' });
+    const guardianPhone = normalizeMobile(guardian_phone);
+    if (!isValidMobile(guardianPhone)) {
+      return res.status(400).json({ ok: false, error: '올바른 휴대폰 번호를 입력해 주세요(010-XXXX-XXXX).' });
     }
     if (privacy_agreed !== true && privacy_agreed !== 'true' && privacy_agreed !== 1 && privacy_agreed !== '1') {
       return res.status(400).json({ ok: false, error: '개인정보 수집·이용 동의가 필요합니다.' });
     }
 
     const guardianName = String(guardian_name).trim();
-    const guardianPhone = String(guardian_phone).trim();
 
     const students = normalizeStudents(body);
     if (!Array.isArray(students) || students.length === 0) {
@@ -107,12 +108,20 @@ router.post('/apply', async (req, res) => {
       if (programIds.length === 0) {
         return res.status(400).json({ ok: false, error: `${name} 학생이 신청할 프로그램을 1개 이상 선택해 주세요.` });
       }
+      // 학생 연락처는 선택 — 비어있으면 통과, 입력했으면 형식 검증
+      let studentPhoneNorm = null;
+      if (s.student_phone !== null && s.student_phone !== undefined && String(s.student_phone).trim() !== '') {
+        studentPhoneNorm = normalizeMobile(s.student_phone);
+        if (!isValidMobile(studentPhoneNorm)) {
+          return res.status(400).json({ ok: false, error: `${name}의 학생 연락처가 올바르지 않습니다(010-XXXX-XXXX).` });
+        }
+      }
       totalPrograms += programIds.length;
       normalized.push({
         student_name: name,
         grade,
         class_no: classNo,
-        student_phone: s.student_phone ? String(s.student_phone).trim() : null,
+        student_phone: studentPhoneNorm,
         motivation: s.motivation ? String(s.motivation).trim() : null,
         is_multicultural: s.is_multicultural === true || s.is_multicultural === 'true',
         program_ids: programIds,
