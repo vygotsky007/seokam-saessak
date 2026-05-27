@@ -1,8 +1,10 @@
 (() => {
   let programs = [];
-  const students = []; // [{ id, selected:Set<programId> }]
+  // students[i] = { id, selected:Set<programId>, cache:{name,grade,class_no,student_phone,motivation,is_multicultural}, same_as_prev:bool }
+  const students = [];
   let counter = 0;
 
+  const detailListEl = document.getElementById('program-detail-list');
   const studentsArea = document.getElementById('students-area');
   const cartEl = document.getElementById('cart');
   const form = document.getElementById('apply-form');
@@ -37,17 +39,50 @@
       const j = await res.json();
       if (!j.ok) throw new Error(j.error || '불러오기 실패');
       programs = j.data || [];
+      renderDetailList();
       if (students.length === 0) addStudent();
       renderAllStudents();
       renderCart();
     } catch (err) {
-      studentsArea.innerHTML = `<div class="empty-state">프로그램을 불러올 수 없습니다: ${esc(err.message)}</div>`;
+      detailListEl.innerHTML = `<div class="empty-state">프로그램을 불러올 수 없습니다: ${esc(err.message)}</div>`;
     }
+  }
+
+  function renderDetailList() {
+    if (!programs.length) {
+      detailListEl.innerHTML = '<div class="empty-state">현재 모집 중인 프로그램이 없습니다.</div>';
+      return;
+    }
+    detailListEl.innerHTML = programs.map(p => {
+      const isFull = p.is_full || p.remaining <= 0;
+      return `
+        <div class="program ${isFull ? 'disabled' : ''}">
+          <div class="body">
+            <div class="title">${esc(p.title)} ${typeBadge(p.program_type)} ${isFull ? '<span class="badge full">마감</span>' : '<span class="badge open">모집중</span>'}</div>
+            <div class="meta">
+              ${p.schedule ? `📅 ${esc(p.schedule)}<br>` : ''}
+              ${p.location ? `📍 ${esc(p.location)} · ` : ''}
+              👶 ${p.grade_min}~${p.grade_max}학년 · 정원 ${p.capacity}명
+              ${p.instructors ? `<br>🧑‍🏫 ${esc(p.instructors)}` : ''}
+              ${p.description ? `<br><span class="muted">${esc(p.description)}</span>` : ''}
+            </div>
+          </div>
+          <div class="right">
+            <div class="seats">남은자리<br><strong>${p.remaining}</strong> / ${p.capacity}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 
   function addStudent() {
     counter += 1;
-    students.push({ id: counter, selected: new Set() });
+    students.push({
+      id: counter,
+      selected: new Set(),
+      cache: {},
+      same_as_prev: students.length >= 1, // 형제는 기본 ON (편의)
+    });
     renderAllStudents();
     renderCart();
   }
@@ -60,102 +95,193 @@
     renderCart();
   }
 
+  function gradeOf(student) {
+    // same_as_prev이면 이전 학생의 학년 사용
+    if (!student) return '';
+    const idx = students.indexOf(student);
+    if (student.same_as_prev && idx > 0) {
+      return gradeOf(students[idx - 1]);
+    }
+    return student.cache.grade || '';
+  }
+  function classOf(student) {
+    if (!student) return '';
+    const idx = students.indexOf(student);
+    if (student.same_as_prev && idx > 0) {
+      return classOf(students[idx - 1]);
+    }
+    return student.cache.class_no || '';
+  }
+
   function renderAllStudents() {
     studentsArea.innerHTML = '';
     students.forEach((s, i) => {
       const node = tpl.content.firstElementChild.cloneNode(true);
       node.dataset.sid = s.id;
       node.querySelector('.idx').textContent = i === 0 ? '1 (본인)' : (i + 1);
+
       const rmBtn = node.querySelector('.remove-student');
       if (students.length > 1) {
         rmBtn.hidden = false;
         rmBtn.addEventListener('click', () => removeStudent(s.id));
       }
-      // 입력값 복원
-      const cache = s.cache || {};
-      node.querySelector('.f-name').value = cache.name || '';
-      node.querySelector('.f-grade').value = cache.grade || '';
-      node.querySelector('.f-class').value = cache.class_no || '';
-      node.querySelector('.f-sphone').value = cache.student_phone || '';
-      node.querySelector('.f-motivation').value = cache.motivation || '';
 
-      const plist = node.querySelector('.student-programs');
-      plist.innerHTML = renderProgramList(s);
+      // same-as-prev: 학생 2부터 노출
+      const sapRow = node.querySelector('.same-as-prev-row');
+      const sapCb = node.querySelector('.f-same-as-prev');
+      const gradeInput = node.querySelector('.f-grade');
+      const classInput = node.querySelector('.f-class');
 
-      // 체크박스 이벤트
-      plist.querySelectorAll('input[type="checkbox"][data-pid]').forEach(cb => {
-        cb.addEventListener('change', (e) => {
-          const pid = e.target.dataset.pid;
-          if (e.target.checked) s.selected.add(pid);
-          else s.selected.delete(pid);
-          updateMulticulturalBlock(node, s);
+      if (i >= 1) {
+        sapRow.hidden = false;
+        sapCb.checked = !!s.same_as_prev;
+        sapCb.addEventListener('change', () => {
+          s.same_as_prev = sapCb.checked;
+          if (s.same_as_prev) {
+            // 위 학생 값 자동 복사
+            s.cache.grade = gradeOf(students[i - 1]);
+            s.cache.class_no = classOf(students[i - 1]);
+          }
           renderAllStudents();
           renderCart();
         });
-      });
+      }
 
-      // 입력 캐싱
-      node.querySelectorAll('input, textarea').forEach(el => {
-        if (el.classList.contains('f-multicultural')) {
-          el.checked = !!cache.is_multicultural;
-          el.addEventListener('change', () => {
-            s.cache = collectCache(node, s);
-          });
-        } else {
-          el.addEventListener('input', () => {
-            s.cache = collectCache(node, s);
-          });
-        }
+      // 기본값 채우기
+      node.querySelector('.f-name').value = s.cache.name || '';
+      const effGrade = i >= 1 && s.same_as_prev ? gradeOf(students[i - 1]) : (s.cache.grade || '');
+      const effClass = i >= 1 && s.same_as_prev ? classOf(students[i - 1]) : (s.cache.class_no || '');
+      gradeInput.value = effGrade;
+      classInput.value = effClass;
+      if (i >= 1 && s.same_as_prev) {
+        gradeInput.readOnly = true;
+        classInput.readOnly = true;
+        gradeInput.classList.add('locked');
+        classInput.classList.add('locked');
+      }
+      node.querySelector('.f-sphone').value = s.cache.student_phone || '';
+      node.querySelector('.f-motivation').value = s.cache.motivation || '';
+      node.querySelector('.f-multicultural').checked = !!s.cache.is_multicultural;
+
+      // 입력 → 캐시 (학년·반이 바뀌면 같음 체크한 자식들에게 즉시 반영)
+      const onNameInput = () => { s.cache.name = node.querySelector('.f-name').value.trim(); renderCart(); };
+      node.querySelector('.f-name').addEventListener('input', onNameInput);
+
+      gradeInput.addEventListener('input', () => {
+        if (gradeInput.readOnly) return;
+        s.cache.grade = gradeInput.value;
+        propagateGradeClassDown(i);
+        // 학년이 바뀌면 그 학생의 체크 가능한 프로그램 목록이 달라지므로 그 블록만 다시 그림
+        rerenderCompactListForStudent(i);
+        // 자식의 학년이 바뀌었으면 자식 블록들도 다시 그려야 함 (same_as_prev=true인 동안)
+        rerenderCompactListForChildren(i);
+        updateMulticulturalBlock(node, s);
+        renderCart();
       });
+      classInput.addEventListener('input', () => {
+        if (classInput.readOnly) return;
+        s.cache.class_no = classInput.value;
+        propagateGradeClassDown(i);
+      });
+      node.querySelector('.f-sphone').addEventListener('input', (e) => { s.cache.student_phone = e.target.value.trim(); });
+      node.querySelector('.f-motivation').addEventListener('input', (e) => { s.cache.motivation = e.target.value.trim(); });
+      node.querySelector('.f-multicultural').addEventListener('change', (e) => { s.cache.is_multicultural = e.target.checked; });
+
+      // 컴팩트 프로그램 체크리스트
+      const plist = node.querySelector('.student-programs');
+      plist.innerHTML = renderCompactProgramList(s, i);
+      attachCompactListHandlers(plist, s, node);
 
       updateMulticulturalBlock(node, s);
-
       studentsArea.appendChild(node);
     });
   }
 
-  function collectCache(node, s) {
-    return {
-      name: node.querySelector('.f-name').value.trim(),
-      grade: node.querySelector('.f-grade').value,
-      class_no: node.querySelector('.f-class').value,
-      student_phone: node.querySelector('.f-sphone').value.trim(),
-      motivation: node.querySelector('.f-motivation').value.trim(),
-      is_multicultural: node.querySelector('.f-multicultural').checked,
-    };
+  function propagateGradeClassDown(parentIdx) {
+    // 부모의 학년/반이 바뀌면 same_as_prev 체크된 자식들의 입력값 DOM에 즉시 반영
+    const parent = students[parentIdx];
+    if (!parent) return;
+    const blocks = studentsArea.querySelectorAll('.student-block');
+    for (let j = parentIdx + 1; j < students.length; j++) {
+      const child = students[j];
+      if (!child.same_as_prev) break; // 연쇄 끊김
+      const childBlock = blocks[j];
+      if (!childBlock) continue;
+      const g = childBlock.querySelector('.f-grade');
+      const c = childBlock.querySelector('.f-class');
+      const newGrade = gradeOf(students[j - 1]);
+      const newClass = classOf(students[j - 1]);
+      g.value = newGrade;
+      c.value = newClass;
+    }
   }
 
-  function renderProgramList(s) {
-    if (!programs.length) {
-      return '<div class="empty-state">현재 모집 중인 프로그램이 없습니다.</div>';
+  function rerenderCompactListForStudent(idx) {
+    const blocks = studentsArea.querySelectorAll('.student-block');
+    const block = blocks[idx];
+    const s = students[idx];
+    if (!block || !s) return;
+    const plist = block.querySelector('.student-programs');
+    plist.innerHTML = renderCompactProgramList(s, idx);
+    attachCompactListHandlers(plist, s, block);
+    updateMulticulturalBlock(block, s);
+  }
+  function rerenderCompactListForChildren(parentIdx) {
+    for (let j = parentIdx + 1; j < students.length; j++) {
+      const child = students[j];
+      if (!child.same_as_prev) break;
+      rerenderCompactListForStudent(j);
     }
+  }
+
+  function effGradeForStudent(idx) {
+    const s = students[idx];
+    if (!s) return null;
+    if (s.same_as_prev && idx > 0) return Number(gradeOf(students[idx - 1])) || null;
+    return Number(s.cache.grade) || null;
+  }
+
+  function renderCompactProgramList(s, idx) {
+    if (!programs.length) {
+      return '<div class="empty-state muted" style="padding:14px;">모집 중인 프로그램이 없습니다.</div>';
+    }
+    const effGrade = effGradeForStudent(idx);
     return programs.map(p => {
       const isFull = p.is_full || p.remaining <= 0;
+      const gradeOk = effGrade == null || (effGrade >= p.grade_min && effGrade <= p.grade_max);
+      const disabled = isFull || !gradeOk;
       const checked = s.selected.has(p.id);
-      const cls = ['program'];
+      const cls = ['compact-row'];
       if (checked) cls.push('selected');
-      if (isFull) cls.push('disabled');
+      if (disabled) cls.push('disabled');
+      const tags = [
+        typeBadge(p.program_type),
+        isFull ? '<span class="badge full">마감</span>' : '',
+        (!isFull && !gradeOk) ? '<span class="badge closed">학년 안 맞음</span>' : '',
+      ].filter(Boolean).join(' ');
       return `
-        <div class="${cls.join(' ')}">
-          <label class="check">
-            <input type="checkbox" data-pid="${p.id}" ${checked ? 'checked' : ''} ${isFull ? 'disabled' : ''}>
-            <div class="body">
-              <div class="title">${esc(p.title)} ${typeBadge(p.program_type)} ${isFull ? '<span class="badge full">마감</span>' : '<span class="badge open">모집중</span>'}</div>
-              <div class="meta">
-                ${p.schedule ? `📅 ${esc(p.schedule)}<br>` : ''}
-                ${p.location ? `📍 ${esc(p.location)} · ` : ''}
-                👶 ${p.grade_min}~${p.grade_max}학년 · 정원 ${p.capacity}명
-                ${p.instructors ? `<br>🧑‍🏫 ${esc(p.instructors)}` : ''}
-                ${p.description ? `<br><span class="muted">${esc(p.description)}</span>` : ''}
-              </div>
-            </div>
-          </label>
-          <div class="right">
-            <div class="seats">남은자리<br><strong>${p.remaining}</strong> / ${p.capacity}</div>
-          </div>
-        </div>
+        <label class="${cls.join(' ')}">
+          <input type="checkbox" data-pid="${p.id}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
+          <span class="cr-title">${esc(p.title)}</span>
+          <span class="cr-meta">${p.grade_min}~${p.grade_max}학년 · 남은 ${p.remaining}/${p.capacity}</span>
+          <span class="cr-tags">${tags}</span>
+        </label>
       `;
     }).join('');
+  }
+
+  function attachCompactListHandlers(plistEl, s, blockNode) {
+    plistEl.querySelectorAll('input[type="checkbox"][data-pid]').forEach(cb => {
+      cb.addEventListener('change', (e) => {
+        const pid = e.target.dataset.pid;
+        if (e.target.checked) s.selected.add(pid);
+        else s.selected.delete(pid);
+        // 시각적 selected 클래스만 토글
+        cb.closest('.compact-row').classList.toggle('selected', e.target.checked);
+        updateMulticulturalBlock(blockNode, s);
+        renderCart();
+      });
+    });
   }
 
   function updateMulticulturalBlock(node, s) {
@@ -169,27 +295,27 @@
     if (!hasMc) {
       const cb = node.querySelector('.f-multicultural');
       if (cb) cb.checked = false;
-      if (s.cache) s.cache.is_multicultural = false;
+      s.cache.is_multicultural = false;
     }
   }
 
   function renderCart() {
-    const total = students.reduce((acc, s) => acc + s.selected.size, 0);
+    const lines = [];
+    let total = 0;
+    students.forEach((s, i) => {
+      const name = s.cache.name || `학생 ${i + 1}`;
+      Array.from(s.selected).forEach(pid => {
+        const p = programs.find(x => x.id === pid);
+        if (!p) return;
+        total += 1;
+        lines.push(`<li><b>${esc(name)}</b> — ${esc(p.title)} <span class="muted">(${esc(p.schedule || '')})</span></li>`);
+      });
+    });
     if (total === 0) {
       cartEl.innerHTML = '<div class="empty">아직 선택한 프로그램이 없습니다.</div>';
       return;
     }
-    const lines = [];
-    students.forEach((s, i) => {
-      const name = (s.cache && s.cache.name) || `학생 ${i + 1}`;
-      const list = Array.from(s.selected).map(pid => {
-        const p = programs.find(x => x.id === pid);
-        if (!p) return null;
-        return `<li>${esc(p.title)} <span class="muted">(${p.grade_min}~${p.grade_max}학년 · ${esc(p.schedule || '')})</span></li>`;
-      }).filter(Boolean).join('');
-      if (list) lines.push(`<div style="margin-bottom:6px;"><b>${esc(name)}</b><ul>${list}</ul></div>`);
-    });
-    cartEl.innerHTML = `<b>총 ${total}건 신청 예정${students.length >= 2 ? ` (형제·자매 ${students.length}명)` : ''}:</b>${lines.join('')}`;
+    cartEl.innerHTML = `<b>총 ${total}건 신청 예정${students.length >= 2 ? ` (형제·자매 ${students.length}명)` : ''}:</b><ul>${lines.join('')}</ul>`;
   }
 
   addSiblingBtn.addEventListener('click', () => {
@@ -204,29 +330,26 @@
     e.preventDefault();
     if (submitBtn.disabled) return;
 
-    // 학생별 collect & validate
-    const blocks = studentsArea.querySelectorAll('.student-block');
     const studentsPayload = [];
     let validationErr = null;
 
-    blocks.forEach((node, i) => {
+    students.forEach((s, i) => {
       if (validationErr) return;
-      const s = students[i];
-      if (!s) return;
-      const name = node.querySelector('.f-name').value.trim();
-      const grade = Number(node.querySelector('.f-grade').value);
-      const classNo = Number(node.querySelector('.f-class').value);
-      const sphone = node.querySelector('.f-sphone').value.trim() || null;
-      const mot = node.querySelector('.f-motivation').value.trim() || null;
-      const isMc = node.querySelector('.f-multicultural').checked;
+      const name = (s.cache.name || '').trim();
+      const grade = Number(effGradeForStudent(i));
+      const cls = Number(
+        (s.same_as_prev && i > 0) ? classOf(students[i - 1]) : s.cache.class_no
+      );
+      const sphone = (s.cache.student_phone || '').trim() || null;
+      const mot = (s.cache.motivation || '').trim() || null;
+      const isMc = !!s.cache.is_multicultural;
       const program_ids = Array.from(s.selected);
 
       if (!name) { validationErr = `학생 ${i + 1}의 이름을 입력해 주세요.`; return; }
       if (!grade || grade < 1 || grade > 6) { validationErr = `${name}의 학년을 1~6 사이로 입력해 주세요.`; return; }
-      if (!classNo || classNo < 1 || classNo > 30) { validationErr = `${name}의 반을 1~30 사이로 입력해 주세요.`; return; }
+      if (!cls || cls < 1 || cls > 30) { validationErr = `${name}의 반을 1~30 사이로 입력해 주세요.`; return; }
       if (program_ids.length === 0) { validationErr = `${name}이(가) 신청할 프로그램을 1개 이상 선택해 주세요.`; return; }
 
-      // 학년 범위 검증
       for (const pid of program_ids) {
         const p = programs.find(x => x.id === pid);
         if (!p) continue;
@@ -238,7 +361,7 @@
       studentsPayload.push({
         student_name: name,
         grade,
-        class_no: classNo,
+        class_no: cls,
         student_phone: sphone,
         motivation: mot,
         program_ids,
@@ -287,14 +410,9 @@
     if (sibling_group_id) {
       html += `<div class="muted" style="margin-bottom:10px;">형제·자매 ${payload.students.length}명 묶음 접수</div>`;
     }
-    // by student
     const byStudent = {};
-    accepted.forEach(a => {
-      (byStudent[a.student_name] = byStudent[a.student_name] || { accepted: [], rejected: [] }).accepted.push(a);
-    });
-    rejected.forEach(r => {
-      (byStudent[r.student_name] = byStudent[r.student_name] || { accepted: [], rejected: [] }).rejected.push(r);
-    });
+    accepted.forEach(a => { (byStudent[a.student_name] = byStudent[a.student_name] || { accepted: [], rejected: [] }).accepted.push(a); });
+    rejected.forEach(r => { (byStudent[r.student_name] = byStudent[r.student_name] || { accepted: [], rejected: [] }).rejected.push(r); });
 
     Object.keys(byStudent).forEach(name => {
       const g = byStudent[name];

@@ -26,6 +26,14 @@
     </ul>
   </div>
 
+  <div class="section-title">📚 모집 중인 프로그램 안내</div>
+  <div id="program-detail-list" class="program-list">
+    <div class="empty-state muted">불러오는 중…</div>
+  </div>
+  <div class="muted" style="font-size:12px; margin: 6px 2px 22px;">
+    ↓ 아래에서 학생별로 신청할 프로그램을 체크하세요.
+  </div>
+
   <form id="apply-form" autocomplete="off">
     <div class="section-title">👤 신청 학생</div>
     <div id="students-area">
@@ -83,6 +91,14 @@
       <div class="student-title">학생 <span class="idx"></span></div>
       <button type="button" class="btn small danger remove-student" hidden>삭제</button>
     </div>
+
+    <div class="same-as-prev-row" hidden>
+      <label class="same-as-prev">
+        <input type="checkbox" class="f-same-as-prev">
+        <span>위 학생과 <b>학년·반 같음</b></span>
+      </label>
+    </div>
+
     <div class="form" style="gap:10px;">
       <div class="form-row">
         <label>학생 이름</label>
@@ -105,13 +121,13 @@
       </div>
     </div>
 
-    <div class="section-title" style="margin:14px 0 8px; font-size:14px;">📚 이 학생이 신청할 프로그램</div>
-    <div class="program-list student-programs"></div>
+    <div class="section-title" style="margin:14px 0 6px; font-size:13.5px;">📚 이 학생이 신청할 프로그램</div>
+    <div class="compact-program-list student-programs"></div>
 
-    <div class="multicultural-q" hidden style="margin-top:12px;">
-      <label class="row" style="background:#F8FAFC; padding:10px 12px; border-radius:8px; cursor:pointer;">
+    <div class="multicultural-q" hidden style="margin-top:10px;">
+      <label class="row" style="background:#F8FAFC; padding:9px 12px; border-radius:8px; cursor:pointer;">
         <input type="checkbox" class="f-multicultural" style="accent-color:var(--primary);">
-        <span style="font-size:13.5px;">다문화가정 여부 <span class="muted">(선택)</span></span>
+        <span style="font-size:13px;">다문화가정 여부 <span class="muted">(선택)</span></span>
       </label>
       <div class="muted" style="font-size:11.5px; margin-top:4px;">선택한 프로그램 중 다문화 우대형이 포함되어 있어 표시됩니다.</div>
     </div>
