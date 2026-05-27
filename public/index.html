@@ -36,23 +36,26 @@
   <div id="program-detail-list" class="program-list">
     <div class="empty-state muted">불러오는 중…</div>
   </div>
-  <div class="muted" style="font-size:12px; margin: 6px 2px 22px;">
-    ↓ 아래에서 학생별로 신청할 프로그램을 체크하세요.
-  </div>
 
   <form id="apply-form" autocomplete="off">
-    <div class="section-title">👤 신청 학생</div>
-    <div id="students-area">
-      <!-- student blocks rendered by JS -->
-    </div>
-    <div class="row" style="margin: 10px 0 22px;">
+    <div class="step-title"><span class="step-num">1</span> 신청 학생 등록</div>
+    <p class="step-desc">신청할 학생 정보를 먼저 입력하세요. 형제·자매가 함께 신청하면 한 번에 묶어 접수됩니다.</p>
+    <div id="students-area"></div>
+    <div class="row" style="margin: 10px 0 26px;">
       <button type="button" class="btn" id="add-sibling-btn">+ 형제·자매 추가</button>
-      <span class="muted">여러 명을 함께 신청하면 한 묶음(형제)으로 접수됩니다.</span>
+      <span class="muted">최대 4명까지</span>
     </div>
 
-    <div class="section-title">🛒 선택한 프로그램</div>
-    <div class="cart" id="cart">
-      <div class="empty">아직 선택한 프로그램이 없습니다.</div>
+    <div class="step-title"><span class="step-num">2</span> 프로그램별 신청할 학생 선택</div>
+    <p class="step-desc">각 프로그램마다 신청할 학생을 골라 주세요. 한 학생이 여러 프로그램에 신청할 수 있어요.</p>
+    <div id="programs-area">
+      <div class="empty-state muted">불러오는 중…</div>
+    </div>
+
+    <div class="step-title"><span class="step-num">3</span> 신청 내용 확인</div>
+    <p class="step-desc">학생별로 신청할 프로그램이 맞는지 확인해 주세요.</p>
+    <div id="summary-area">
+      <div class="empty">먼저 위에서 학생과 프로그램을 선택해 주세요.</div>
     </div>
 
     <div class="section-title">📝 보호자 정보</div>
@@ -117,20 +120,9 @@
         <input type="tel" class="f-sphone" placeholder="010-0000-0000">
       </div>
       <div class="form-row">
-        <label>신청 동기<br><span class="muted" style="font-size:11px">(선택)</span></label>
-        <textarea class="f-motivation" maxlength="500" placeholder="자유롭게 적어주세요."></textarea>
+        <label>문의사항<br><span class="muted" style="font-size:11px">(선택)</span></label>
+        <textarea class="f-motivation" maxlength="500" placeholder="궁금한 점이 있으면 적어주세요."></textarea>
       </div>
-    </div>
-
-    <div class="section-title" style="margin:14px 0 6px; font-size:13.5px;">📚 이 학생이 신청할 프로그램</div>
-    <div class="compact-program-list student-programs"></div>
-
-    <div class="multicultural-q" hidden style="margin-top:10px;">
-      <label class="row" style="background:#F8FAFC; padding:9px 12px; border-radius:8px; cursor:pointer;">
-        <input type="checkbox" class="f-multicultural" style="accent-color:var(--primary);">
-        <span style="font-size:13px;">다문화가정 여부 <span class="muted">(선택)</span></span>
-      </label>
-      <div class="muted" style="font-size:11.5px; margin-top:4px;">선택한 프로그램 중 다문화 우대형이 포함되어 있어 표시됩니다.</div>
     </div>
   </div>
 </template>
