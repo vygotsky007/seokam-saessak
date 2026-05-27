@@ -8,6 +8,7 @@ router.get('/me', (req, res) => {
 });
 
 router.get('/programs', async (req, res) => {
+  // 관리자 화면은 닫힌 프로그램도 봐야 하므로 is_open 필터 없이 모두 반환.
   try {
     const { data: programs, error } = await supabase
       .from('saessak_programs')

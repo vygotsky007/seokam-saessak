@@ -311,15 +311,27 @@
   // ===== Applicants Tab =====
   async function loadApplicantsTab() {
     try {
-      if (programs.length === 0) {
-        const j = await api('/programs');
-        programs = j.data || [];
-      }
+      // 신청자 관리는 닫힌 프로그램도 봐야 한다. /programs는 is_open 필터 없이 모두 반환.
+      // stale 캐시로 옵션이 비어 보이는 케이스를 막기 위해 진입할 때마다 fresh fetch.
+      const j = await api('/programs');
+      programs = j.data || [];
+
       const sel = $('#app-program-select');
-      sel.innerHTML = '<option value="">— 프로그램 선택 —</option>' +
-        programs.map(p => `<option value="${p.id}" ${p.id === currentProgramId ? 'selected' : ''}>${esc(p.title)} (${p.applied_count}/${p.capacity})</option>`).join('');
-      if (currentProgramId) await loadApplications(currentProgramId);
-      else $('#applicants-tbody').innerHTML = `<tr><td colspan="9" class="empty-state">프로그램을 선택하세요.</td></tr>`;
+      if (programs.length === 0) {
+        sel.innerHTML = '<option value="">— 등록된 프로그램이 없습니다 —</option>';
+      } else {
+        sel.innerHTML = '<option value="">— 프로그램 선택 —</option>' +
+          programs.map(p => {
+            const stateTag = p.is_open ? '🟢' : '⚪';
+            return `<option value="${p.id}" ${p.id === currentProgramId ? 'selected' : ''}>${stateTag} ${esc(p.title)} (${p.applied_count}/${p.capacity})</option>`;
+          }).join('');
+      }
+      if (currentProgramId && programs.some(p => p.id === currentProgramId)) {
+        await loadApplications(currentProgramId);
+      } else {
+        currentProgramId = null;
+        $('#applicants-tbody').innerHTML = `<tr><td colspan="10" class="empty-state">프로그램을 선택하세요.</td></tr>`;
+      }
     } catch (err) { toast(err.message); }
   }
 
@@ -525,9 +537,8 @@
 
   // ===== Export =====
   async function loadExportTab() {
-    if (programs.length === 0) {
-      try { const j = await api('/programs'); programs = j.data || []; } catch (err) { toast(err.message); }
-    }
+    // 내보내기도 매번 fresh fetch (캐시 stale 방지).
+    try { const j = await api('/programs'); programs = j.data || []; } catch (err) { toast(err.message); }
     $('#export-program').innerHTML =
       '<option value="">전체 프로그램</option>' +
       programs.map(p => `<option value="${p.id}">${esc(p.title)}</option>`).join('');
