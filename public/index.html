@@ -19,74 +19,104 @@
     <strong>안내</strong>
     <ul>
       <li>듣고 싶은 프로그램을 <b>여러 개 동시에 신청</b>할 수 있어요.</li>
+      <li>형제·자매가 함께 신청한다면 <b>"+ 형제·자매 추가"</b>로 한 번에 신청할 수 있어요.</li>
       <li>프로그램마다 <b>대상 학년</b>과 <b>정원</b>이 다르니 꼭 확인해 주세요.</li>
       <li>정원이 마감된 프로그램은 선택할 수 없습니다.</li>
       <li>선정 결과는 추후 보호자 연락처로 개별 안내됩니다.</li>
     </ul>
   </div>
 
-  <div class="section-title">📚 모집 중인 프로그램</div>
-  <div id="program-list" class="program-list">
-    <div class="empty-state muted">불러오는 중…</div>
-  </div>
-
-  <div class="section-title">🛒 선택한 프로그램</div>
-  <div class="cart" id="cart">
-    <div class="empty">아직 선택한 프로그램이 없습니다.</div>
-  </div>
-
-  <div class="section-title">📝 신청자 정보</div>
-  <form id="apply-form" class="form" autocomplete="off">
-    <div class="form-row">
-      <label for="student_name">학생 이름</label>
-      <input type="text" id="student_name" name="student_name" required maxlength="20" placeholder="예: 홍길동">
+  <form id="apply-form" autocomplete="off">
+    <div class="section-title">👤 신청 학생</div>
+    <div id="students-area">
+      <!-- student blocks rendered by JS -->
     </div>
-    <div class="form-row">
-      <label>학년 / 반</label>
-      <div class="pair">
-        <input type="number" id="grade" name="grade" required min="1" max="6" placeholder="학년">
-        <input type="number" id="class_no" name="class_no" required min="1" max="30" placeholder="반">
+    <div class="row" style="margin: 10px 0 22px;">
+      <button type="button" class="btn" id="add-sibling-btn">+ 형제·자매 추가</button>
+      <span class="muted">여러 명을 함께 신청하면 한 묶음(형제)으로 접수됩니다.</span>
+    </div>
+
+    <div class="section-title">🛒 선택한 프로그램</div>
+    <div class="cart" id="cart">
+      <div class="empty">아직 선택한 프로그램이 없습니다.</div>
+    </div>
+
+    <div class="section-title">📝 보호자 정보</div>
+    <div class="form">
+      <div class="form-row">
+        <label for="guardian_name">보호자 이름</label>
+        <input type="text" id="guardian_name" name="guardian_name" required maxlength="20" placeholder="예: 김부모">
       </div>
-    </div>
-    <div class="form-row">
-      <label for="guardian_name">보호자 이름</label>
-      <input type="text" id="guardian_name" name="guardian_name" required maxlength="20" placeholder="예: 김부모">
-    </div>
-    <div class="form-row">
-      <label for="guardian_phone">보호자 연락처</label>
-      <input type="tel" id="guardian_phone" name="guardian_phone" required placeholder="010-1234-5678">
-    </div>
-    <div class="form-row">
-      <label for="student_phone">학생 연락처<br><span class="muted" style="font-size:11px">(선택)</span></label>
-      <input type="tel" id="student_phone" name="student_phone" placeholder="010-0000-0000">
-    </div>
-    <div class="form-row">
-      <label for="motivation">신청 동기<br><span class="muted" style="font-size:11px">(선택)</span></label>
-      <textarea id="motivation" name="motivation" maxlength="500" placeholder="자유롭게 적어주세요."></textarea>
-    </div>
-
-    <div class="agree">
-      <input type="checkbox" id="privacy_agreed" required>
-      <div>
-        <label for="privacy_agreed"><b>개인정보 수집·이용 동의 (필수)</b></label>
-        <details>
-          <summary>자세히 보기</summary>
-          <div style="margin-top:8px; font-size:12px; color:var(--muted); line-height:1.6;">
-            수집 항목: 학생 이름, 학년/반, 보호자 이름, 보호자 연락처, 학생 연락처(선택), 신청 동기(선택)<br>
-            수집 목적: 디지털새싹 프로그램 신청 접수, 선정 안내, 학사 연락<br>
-            보유 기간: 2026학년도 사업 종료 후 1년 이내 파기
-          </div>
-        </details>
+      <div class="form-row">
+        <label for="guardian_phone">보호자 연락처</label>
+        <input type="tel" id="guardian_phone" name="guardian_phone" required placeholder="010-1234-5678">
       </div>
-    </div>
 
-    <div class="submit-row">
-      <button type="submit" class="btn primary" id="submit-btn">신청하기</button>
+      <div class="agree">
+        <input type="checkbox" id="privacy_agreed" required>
+        <div>
+          <label for="privacy_agreed"><b>개인정보 수집·이용 동의 (필수)</b></label>
+          <details>
+            <summary>자세히 보기</summary>
+            <div style="margin-top:8px; font-size:12px; color:var(--muted); line-height:1.6;">
+              수집 항목: 학생 이름, 학년/반, 보호자 이름, 보호자 연락처, 학생 연락처(선택), 신청 동기(선택),
+              해당 시 다문화가정 여부(선택)<br>
+              수집 목적: 디지털새싹 프로그램 신청 접수, 선정 안내, 학사 연락<br>
+              보유 기간: 2026학년도 사업 종료 후 1년 이내 파기
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="submit-row">
+        <button type="submit" class="btn primary" id="submit-btn">신청하기</button>
+      </div>
     </div>
   </form>
 
   <div id="result-area"></div>
 </div>
+
+<template id="student-block-tpl">
+  <div class="student-block panel">
+    <div class="student-head">
+      <div class="student-title">학생 <span class="idx"></span></div>
+      <button type="button" class="btn small danger remove-student" hidden>삭제</button>
+    </div>
+    <div class="form" style="gap:10px;">
+      <div class="form-row">
+        <label>학생 이름</label>
+        <input type="text" class="f-name" required maxlength="20" placeholder="예: 홍길동">
+      </div>
+      <div class="form-row">
+        <label>학년 / 반</label>
+        <div class="pair">
+          <input type="number" class="f-grade" required min="1" max="6" placeholder="학년">
+          <input type="number" class="f-class" required min="1" max="30" placeholder="반">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>학생 연락처<br><span class="muted" style="font-size:11px">(선택)</span></label>
+        <input type="tel" class="f-sphone" placeholder="010-0000-0000">
+      </div>
+      <div class="form-row">
+        <label>신청 동기<br><span class="muted" style="font-size:11px">(선택)</span></label>
+        <textarea class="f-motivation" maxlength="500" placeholder="자유롭게 적어주세요."></textarea>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin:14px 0 8px; font-size:14px;">📚 이 학생이 신청할 프로그램</div>
+    <div class="program-list student-programs"></div>
+
+    <div class="multicultural-q" hidden style="margin-top:12px;">
+      <label class="row" style="background:#F8FAFC; padding:10px 12px; border-radius:8px; cursor:pointer;">
+        <input type="checkbox" class="f-multicultural" style="accent-color:var(--primary);">
+        <span style="font-size:13.5px;">다문화가정 여부 <span class="muted">(선택)</span></span>
+      </label>
+      <div class="muted" style="font-size:11.5px; margin-top:4px;">선택한 프로그램 중 다문화 우대형이 포함되어 있어 표시됩니다.</div>
+    </div>
+  </div>
+</template>
 
 <script src="/js/public.js"></script>
 </body>

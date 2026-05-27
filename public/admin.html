@@ -34,10 +34,12 @@
           <thead>
             <tr>
               <th>프로그램</th>
+              <th>유형</th>
               <th>신청</th>
               <th>선정</th>
               <th>정원</th>
               <th>남은자리</th>
+              <th>우대 진행</th>
               <th>상태</th>
             </tr>
           </thead>
@@ -52,7 +54,7 @@
         <span id="dash-low"></span> · <span id="dash-high"></span>
       </div>
     </div>
-    <div class="panel">
+    <div class="panel" style="margin-bottom:14px;">
       <h3 style="font-size:14px; margin-bottom:10px;">🔁 여러 프로그램 중복 신청자</h3>
       <div class="table-wrap">
         <table>
@@ -68,6 +70,24 @@
         </table>
       </div>
     </div>
+
+    <div class="panel">
+      <h3 style="font-size:14px; margin-bottom:10px;">👫 형제·자매 묶음 신청</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>묶음 ID</th>
+              <th>학생 수</th>
+              <th>학생</th>
+              <th>프로그램</th>
+              <th>보호자 연락처</th>
+            </tr>
+          </thead>
+          <tbody id="dash-siblings"></tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
   <section class="tab-pane" id="pane-programs" hidden>
@@ -80,6 +100,7 @@
         <thead>
           <tr>
             <th>프로그램명</th>
+            <th>유형</th>
             <th>일정</th>
             <th>장소</th>
             <th>대상</th>
@@ -116,6 +137,7 @@
             <th>학년/반</th>
             <th>보호자 / 연락처</th>
             <th>학생연락처</th>
+            <th>우대 배지</th>
             <th>상태</th>
             <th>경로</th>
             <th>접수시각</th>
@@ -162,6 +184,17 @@
         </div>
         <label>정원</label><input type="number" name="capacity" min="1" value="20">
         <label>강사</label><input type="text" name="instructors">
+        <label>유형</label>
+        <select name="program_type" id="program-type-select">
+          <option value="general">일반형</option>
+          <option value="multicultural">다문화 우대형</option>
+          <option value="sibling">형제 우대형</option>
+        </select>
+        <label id="multi-min-label" hidden>다문화 최소 보장</label>
+        <div id="multi-min-row" hidden>
+          <input type="number" name="multicultural_min" min="0" style="width:120px;" placeholder="예: 10">
+          <span class="muted" style="margin-left:6px; font-size:12px;">정원 중 최소 보장 인원</span>
+        </div>
         <label>모집 열기</label>
         <span class="toggle-switch">
           <input type="checkbox" id="program-is-open">
@@ -194,6 +227,10 @@
         <label>보호자 연락처</label><input type="text" name="guardian_phone">
         <label>학생 연락처</label><input type="text" name="student_phone">
         <label>신청동기</label><textarea name="motivation"></textarea>
+        <label>다문화가정</label>
+        <label class="row"><input type="checkbox" name="is_multicultural"> 해당 시 체크 (다문화 우대형 프로그램일 때만 의미 있음)</label>
+        <label>형제 묶음 ID</label>
+        <input type="text" name="sibling_group_id" placeholder="UUID (없으면 비워두세요)">
         <label>상태</label>
         <select name="status">
           <option value="applied">신청</option>

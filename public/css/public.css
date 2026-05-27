@@ -81,14 +81,42 @@
 }
 .program .seats strong { color: var(--primary-ink); font-weight: 700; }
 
+.student-block {
+  margin-bottom: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+}
+.student-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.student-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary-ink);
+}
+
+.badge.tag-multicultural {
+  background: #E0F2FE;
+  color: #075985;
+}
+.badge.tag-sibling {
+  background: #FCE7F3;
+  color: #9D174D;
+}
+
 .cart {
-  margin-top: 20px;
+  margin-top: 8px;
+  margin-bottom: 24px;
   background: #FFFDF5;
   border: 1px dashed #E0C875;
   border-radius: 10px;
   padding: 12px 14px;
   font-size: 13px;
 }
+.cart ul { padding-left: 18px; margin-top: 2px; }
 .cart .empty { color: var(--muted); }
 .cart ul { margin-top: 4px; padding-left: 18px; }
 .cart li { line-height: 1.65; }

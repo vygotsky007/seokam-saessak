@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const supabase = require('../utils/supabase');
 
@@ -39,34 +40,31 @@ router.get('/programs', async (req, res) => {
   }
 });
 
+function normalizeStudents(body) {
+  if (Array.isArray(body.students) && body.students.length > 0) {
+    return body.students;
+  }
+  // 단일 학생 호환
+  return [{
+    student_name: body.student_name,
+    grade: body.grade,
+    class_no: body.class_no,
+    student_phone: body.student_phone,
+    motivation: body.motivation,
+    program_ids: body.program_ids,
+    is_multicultural: body.is_multicultural,
+  }];
+}
+
 router.post('/apply', async (req, res) => {
   try {
+    const body = req.body || {};
     const {
-      program_ids,
-      student_name,
-      grade,
-      class_no,
       guardian_name,
       guardian_phone,
-      student_phone,
-      motivation,
       privacy_agreed,
-    } = req.body || {};
+    } = body;
 
-    if (!Array.isArray(program_ids) || program_ids.length === 0) {
-      return res.status(400).json({ ok: false, error: '신청할 프로그램을 1개 이상 선택해 주세요.' });
-    }
-    if (!student_name || !String(student_name).trim()) {
-      return res.status(400).json({ ok: false, error: '학생 이름을 입력해 주세요.' });
-    }
-    const gradeNum = Number(grade);
-    const classNum = Number(class_no);
-    if (!Number.isInteger(gradeNum) || gradeNum < 1 || gradeNum > 6) {
-      return res.status(400).json({ ok: false, error: '학년은 1~6 사이로 입력해 주세요.' });
-    }
-    if (!Number.isInteger(classNum) || classNum < 1 || classNum > 30) {
-      return res.status(400).json({ ok: false, error: '반은 1~30 사이로 입력해 주세요.' });
-    }
     if (!guardian_name || !String(guardian_name).trim()) {
       return res.status(400).json({ ok: false, error: '보호자 이름을 입력해 주세요.' });
     }
@@ -77,51 +75,100 @@ router.post('/apply', async (req, res) => {
       return res.status(400).json({ ok: false, error: '개인정보 수집·이용 동의가 필요합니다.' });
     }
 
-    const studentName = String(student_name).trim();
     const guardianName = String(guardian_name).trim();
     const guardianPhone = String(guardian_phone).trim();
-    const studentPhone = student_phone ? String(student_phone).trim() : null;
-    const mot = motivation ? String(motivation).trim() : null;
 
+    const students = normalizeStudents(body);
+    if (!Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({ ok: false, error: '학생 정보가 없습니다.' });
+    }
+    if (students.length > 6) {
+      return res.status(400).json({ ok: false, error: '한 번에 최대 6명까지 신청할 수 있습니다.' });
+    }
+
+    // 입력 정규화
+    const normalized = [];
+    let totalPrograms = 0;
+    for (let i = 0; i < students.length; i++) {
+      const s = students[i] || {};
+      const name = s.student_name ? String(s.student_name).trim() : '';
+      if (!name) {
+        return res.status(400).json({ ok: false, error: `${i + 1}번째 학생의 이름을 입력해 주세요.` });
+      }
+      const grade = Number(s.grade);
+      const classNo = Number(s.class_no);
+      if (!Number.isInteger(grade) || grade < 1 || grade > 6) {
+        return res.status(400).json({ ok: false, error: `${name} 학생의 학년은 1~6 사이로 입력해 주세요.` });
+      }
+      if (!Number.isInteger(classNo) || classNo < 1 || classNo > 30) {
+        return res.status(400).json({ ok: false, error: `${name} 학생의 반은 1~30 사이로 입력해 주세요.` });
+      }
+      const programIds = Array.isArray(s.program_ids) ? s.program_ids.filter(Boolean) : [];
+      if (programIds.length === 0) {
+        return res.status(400).json({ ok: false, error: `${name} 학생이 신청할 프로그램을 1개 이상 선택해 주세요.` });
+      }
+      totalPrograms += programIds.length;
+      normalized.push({
+        student_name: name,
+        grade,
+        class_no: classNo,
+        student_phone: s.student_phone ? String(s.student_phone).trim() : null,
+        motivation: s.motivation ? String(s.motivation).trim() : null,
+        is_multicultural: s.is_multicultural === true || s.is_multicultural === 'true',
+        program_ids: programIds,
+      });
+    }
+    if (totalPrograms === 0) {
+      return res.status(400).json({ ok: false, error: '선택된 프로그램이 없습니다.' });
+    }
+
+    // 프로그램 일괄 조회
+    const allProgramIds = Array.from(new Set(normalized.flatMap(s => s.program_ids)));
     const { data: programs, error: pErr } = await supabase
       .from('saessak_programs')
       .select('*')
-      .in('id', program_ids);
+      .in('id', allProgramIds);
     if (pErr) throw pErr;
     if (!programs || programs.length === 0) {
       return res.status(404).json({ ok: false, error: '선택한 프로그램을 찾을 수 없습니다.' });
     }
-
     const programMap = {};
     programs.forEach(p => { programMap[p.id] = p; });
 
-    for (const pid of program_ids) {
-      const p = programMap[pid];
-      if (!p) {
-        return res.status(400).json({ ok: false, error: '잘못된 프로그램이 포함되어 있습니다.' });
-      }
-      if (gradeNum < p.grade_min || gradeNum > p.grade_max) {
-        return res.status(400).json({
-          ok: false,
-          error: `"${p.title}" 은(는) ${p.grade_min}~${p.grade_max}학년 대상입니다. (입력 학년: ${gradeNum})`,
-        });
+    // 학년 검증 (제출 전 가드)
+    for (const s of normalized) {
+      for (const pid of s.program_ids) {
+        const p = programMap[pid];
+        if (!p) {
+          return res.status(400).json({ ok: false, error: '잘못된 프로그램이 포함되어 있습니다.' });
+        }
+        if (s.grade < p.grade_min || s.grade > p.grade_max) {
+          return res.status(400).json({
+            ok: false,
+            error: `${s.student_name}: "${p.title}" 은(는) ${p.grade_min}~${p.grade_max}학년 대상입니다.`,
+          });
+        }
       }
     }
 
+    // 중복 신청 사전 체크 (학생이름+보호자연락처+program_id)
+    const dupSet = new Set();
+    const studentNames = Array.from(new Set(normalized.map(s => s.student_name)));
     const { data: existingApps, error: eErr } = await supabase
       .from('saessak_applications')
-      .select('id, program_id')
-      .in('program_id', program_ids)
-      .eq('student_name', studentName)
+      .select('id, program_id, student_name')
+      .in('program_id', allProgramIds)
+      .in('student_name', studentNames)
       .eq('guardian_phone', guardianPhone)
       .neq('status', 'cancelled');
     if (eErr) throw eErr;
-    const dupSet = new Set((existingApps || []).map(r => r.program_id));
+    (existingApps || []).forEach(r => dupSet.add(`${r.student_name}::${r.program_id}`));
 
+    // 실시간 카운트
     const { data: allApps, error: cErr } = await supabase
       .from('saessak_applications')
       .select('program_id, status')
-      .in('program_id', program_ids);
+      .in('program_id', allProgramIds);
     if (cErr) throw cErr;
     const liveCounts = {};
     (allApps || []).forEach(a => {
@@ -129,60 +176,77 @@ router.post('/apply', async (req, res) => {
       liveCounts[a.program_id] = (liveCounts[a.program_id] || 0) + 1;
     });
 
-    const accepted = [];
-    const rejected = [];
+    // 형제 묶음 UUID (학생 2명 이상이면 생성)
+    const siblingGroupId = normalized.length >= 2 ? crypto.randomUUID() : null;
     const now = new Date().toISOString();
 
-    for (const pid of program_ids) {
-      const p = programMap[pid];
-      if (!p.is_open) {
-        rejected.push({ program_id: pid, title: p.title, reason: '모집이 마감되었습니다.' });
-        continue;
-      }
-      if (dupSet.has(pid)) {
-        rejected.push({ program_id: pid, title: p.title, reason: '이미 신청한 프로그램입니다.' });
-        continue;
-      }
-      const applied = liveCounts[pid] || 0;
-      if (applied >= p.capacity) {
-        rejected.push({ program_id: pid, title: p.title, reason: '정원이 마감되었습니다.' });
-        continue;
-      }
+    const accepted = [];
+    const rejected = [];
 
-      const { data: inserted, error: iErr } = await supabase
-        .from('saessak_applications')
-        .insert([{
+    for (const s of normalized) {
+      for (const pid of s.program_ids) {
+        const p = programMap[pid];
+        if (!p.is_open) {
+          rejected.push({ student_name: s.student_name, program_id: pid, title: p.title, reason: '모집이 마감되었습니다.' });
+          continue;
+        }
+        if (dupSet.has(`${s.student_name}::${pid}`)) {
+          rejected.push({ student_name: s.student_name, program_id: pid, title: p.title, reason: '이미 신청한 프로그램입니다.' });
+          continue;
+        }
+        const applied = liveCounts[pid] || 0;
+        if (applied >= p.capacity) {
+          rejected.push({ student_name: s.student_name, program_id: pid, title: p.title, reason: '정원이 마감되었습니다.' });
+          continue;
+        }
+
+        const isMulticulturalRow = p.program_type === 'multicultural' ? !!s.is_multicultural : false;
+
+        const { data: inserted, error: iErr } = await supabase
+          .from('saessak_applications')
+          .insert([{
+            program_id: pid,
+            student_name: s.student_name,
+            grade: s.grade,
+            class_no: s.class_no,
+            guardian_name: guardianName,
+            guardian_phone: guardianPhone,
+            student_phone: s.student_phone,
+            motivation: s.motivation,
+            privacy_agreed: true,
+            status: 'applied',
+            source: 'online',
+            submitted_at: now,
+            is_multicultural: isMulticulturalRow,
+            sibling_group_id: siblingGroupId,
+          }])
+          .select();
+        if (iErr) {
+          console.error('[insert application]', iErr);
+          rejected.push({ student_name: s.student_name, program_id: pid, title: p.title, reason: '접수 중 오류가 발생했습니다.' });
+          continue;
+        }
+        accepted.push({
+          student_name: s.student_name,
           program_id: pid,
-          student_name: studentName,
-          grade: gradeNum,
-          class_no: classNum,
-          guardian_name: guardianName,
-          guardian_phone: guardianPhone,
-          student_phone: studentPhone,
-          motivation: mot,
-          privacy_agreed: true,
-          status: 'applied',
-          source: 'online',
-          submitted_at: now,
-        }])
-        .select();
-      if (iErr) {
-        console.error('[insert application]', iErr);
-        rejected.push({ program_id: pid, title: p.title, reason: '접수 중 오류가 발생했습니다.' });
-        continue;
+          title: p.title,
+          schedule: p.schedule,
+          location: p.location,
+          program_type: p.program_type,
+          application_id: inserted[0].id,
+          submitted_at: inserted[0].submitted_at,
+        });
+        liveCounts[pid] = applied + 1;
       }
-      accepted.push({
-        program_id: pid,
-        title: p.title,
-        schedule: p.schedule,
-        location: p.location,
-        application_id: inserted[0].id,
-        submitted_at: inserted[0].submitted_at,
-      });
-      liveCounts[pid] = applied + 1;
     }
 
-    res.json({ ok: true, accepted, rejected });
+    res.json({
+      ok: true,
+      accepted,
+      rejected,
+      sibling_group_id: siblingGroupId,
+      students_count: normalized.length,
+    });
   } catch (err) {
     console.error('[POST /api/public/apply]', err);
     res.status(500).json({ ok: false, error: err.message });

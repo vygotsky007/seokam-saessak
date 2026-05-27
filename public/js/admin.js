@@ -42,6 +42,29 @@
     const [c, l] = map[s] || ['badge', s];
     return `<span class="${c}">${l}</span>`;
   }
+  function typeLabel(t) {
+    return { general: '일반형', multicultural: '다문화 우대', sibling: '형제 우대' }[t] || '일반형';
+  }
+  function typeBadge(t) {
+    if (t === 'multicultural') return '<span class="badge tag-multicultural">다문화 우대</span>';
+    if (t === 'sibling') return '<span class="badge tag-sibling">형제 우대</span>';
+    return '<span class="badge">일반형</span>';
+  }
+  function siblingShort(id) {
+    if (!id) return '';
+    return id.slice(0, 6);
+  }
+  const siblingColorCache = {};
+  function siblingColor(id) {
+    if (!id) return '';
+    if (siblingColorCache[id]) return siblingColorCache[id];
+    // hash → hue
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 360;
+    const c = `hsl(${h}, 70%, 88%)`;
+    siblingColorCache[id] = c;
+    return c;
+  }
 
   async function api(path, opts = {}) {
     const res = await fetch(API + path, {
@@ -82,18 +105,22 @@
         <div class="stat-card"><div class="label">전체 프로그램</div><div class="value">${d.totals.programs}</div><div class="sub">모집중 ${d.totals.openPrograms}</div></div>
         <div class="stat-card"><div class="label">총 신청</div><div class="value">${d.totals.applications}</div></div>
         <div class="stat-card"><div class="label">선정자</div><div class="value">${d.totals.selected}</div></div>
-        <div class="stat-card"><div class="label">중복 신청자</div><div class="value">${d.multiStudents.length}</div><div class="sub">2개 이상 프로그램 신청</div></div>
+        <div class="stat-card"><div class="label">다문화 신청자</div><div class="value">${d.totals.multiculturalApplicants ?? 0}</div><div class="sub">${d.totals.multiculturalShortage ? `최소보장 미달 ${d.totals.multiculturalShortage}개` : '모두 충족'}</div></div>
+        <div class="stat-card"><div class="label">형제 묶음</div><div class="value">${d.totals.siblingGroups ?? 0}</div></div>
+        <div class="stat-card"><div class="label">여러 프로그램 신청자</div><div class="value">${d.multiStudents.length}</div></div>
       `;
 
       $('#dash-programs').innerHTML = d.programs.length === 0
-        ? `<tr><td colspan="6" class="empty-state">프로그램이 없습니다.</td></tr>`
+        ? `<tr><td colspan="8" class="empty-state">프로그램이 없습니다.</td></tr>`
         : d.programs.map(p => `
           <tr>
             <td>${esc(p.title)}</td>
+            <td>${typeBadge(p.program_type)}</td>
             <td>${p.applied}</td>
             <td>${p.selected}</td>
             <td>${p.capacity}</td>
             <td>${p.remaining}</td>
+            <td>${renderPreferenceProgress(p)}</td>
             <td>${p.is_open ? '<span class="badge open">모집중</span>' : '<span class="badge closed">마감</span>'}</td>
           </tr>
         `).join('');
@@ -122,9 +149,42 @@
             <td>${s.program_titles.map(esc).join(', ')}</td>
           </tr>
         `).join('');
+
+      const sibs = d.siblings || [];
+      $('#dash-siblings').innerHTML = sibs.length === 0
+        ? `<tr><td colspan="5" class="empty-state">형제·자매 묶음 신청이 없습니다.</td></tr>`
+        : sibs.map(s => `
+          <tr>
+            <td><span class="badge" style="background:${siblingColor(s.sibling_group_id)}; color:#0F172A;">${esc(siblingShort(s.sibling_group_id))}</span></td>
+            <td><b>${s.student_count}</b>명</td>
+            <td>${s.students.map(esc).join(', ')}</td>
+            <td>${s.program_titles.map(esc).join(', ')}</td>
+            <td>${esc(s.guardian_phone || '')}</td>
+          </tr>
+        `).join('');
     } catch (err) {
       toast(err.message);
     }
+  }
+
+  function renderPreferenceProgress(p) {
+    if (p.program_type === 'multicultural') {
+      if (p.multicultural_min == null) {
+        return `<span class="muted">최소 보장 미설정</span>`;
+      }
+      const c = p.multicultural_count || 0;
+      const m = p.multicultural_min;
+      const pct = Math.min(100, (c / m) * 100);
+      const cls = c >= m ? 'ok' : 'short';
+      return `<div class="pref-bar ${cls}">
+        <span class="pref-text">다문화 <b>${c}</b> / ${m}</span>
+        <span class="pref-track"><span class="pref-fill" style="width:${pct}%"></span></span>
+      </div>`;
+    }
+    if (p.program_type === 'sibling') {
+      return `<span class="muted">형제 우대 (수동 판단)</span>`;
+    }
+    return '<span class="muted">—</span>';
   }
 
   // ===== Programs Tab =====
@@ -133,10 +193,11 @@
       const j = await api('/programs');
       programs = j.data || [];
       $('#programs-tbody').innerHTML = programs.length === 0
-        ? `<tr><td colspan="9" class="empty-state">등록된 프로그램이 없습니다.</td></tr>`
+        ? `<tr><td colspan="10" class="empty-state">등록된 프로그램이 없습니다.</td></tr>`
         : programs.map(p => `
           <tr data-id="${p.id}">
             <td><b>${esc(p.title)}</b></td>
+            <td>${typeBadge(p.program_type)}${p.program_type === 'multicultural' && p.multicultural_min != null ? `<div class="muted" style="font-size:11px; margin-top:2px;">최소 ${p.multicultural_min}명</div>` : ''}</td>
             <td>${esc(p.schedule || '')}</td>
             <td>${esc(p.location || '')}</td>
             <td>${p.grade_min}~${p.grade_max}학년</td>
@@ -196,16 +257,31 @@
         form.grade_max.value = p.grade_max || 6;
         form.capacity.value = p.capacity || 20;
         form.instructors.value = p.instructors || '';
+        form.program_type.value = p.program_type || 'general';
+        form.multicultural_min.value = p.multicultural_min ?? '';
         $('#program-is-open').checked = !!p.is_open;
       }
     } else {
+      form.program_type.value = 'general';
+      form.multicultural_min.value = '';
       $('#program-is-open').checked = false;
     }
+    updateMulticulturalMinVisibility();
     dlg.classList.add('open');
   }
+
+  function updateMulticulturalMinVisibility() {
+    const t = $('#program-type-select').value;
+    const show = t === 'multicultural';
+    $('#multi-min-label').hidden = !show;
+    $('#multi-min-row').hidden = !show;
+  }
+  $('#program-type-select').addEventListener('change', updateMulticulturalMinVisibility);
+
   $('#program-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
+    const ptype = form.program_type.value;
     const payload = {
       title: form.title.value.trim(),
       description: form.description.value.trim(),
@@ -216,6 +292,9 @@
       capacity: Number(form.capacity.value),
       instructors: form.instructors.value.trim(),
       is_open: $('#program-is-open').checked,
+      program_type: ptype,
+      multicultural_min: ptype === 'multicultural' && form.multicultural_min.value !== ''
+        ? Number(form.multicultural_min.value) : null,
     };
     try {
       if (form.dataset.editId) {
@@ -281,16 +360,23 @@
 
     $('#app-count').textContent = `${list.length}명`;
     if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="9" class="empty-state">신청자가 없습니다.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" class="empty-state">신청자가 없습니다.</td></tr>`;
       return;
     }
-    tbody.innerHTML = list.map((a, i) => `
+    tbody.innerHTML = list.map((a, i) => {
+      const badges = [];
+      if (a.is_multicultural) badges.push('<span class="badge tag-multicultural">다문화</span>');
+      if (a.sibling_group_id) {
+        badges.push(`<span class="badge" style="background:${siblingColor(a.sibling_group_id)}; color:#0F172A;">형제 ${esc(siblingShort(a.sibling_group_id))}</span>`);
+      }
+      return `
       <tr data-id="${a.id}">
         <td>${i + 1}</td>
         <td><b>${esc(a.student_name)}</b></td>
         <td>${a.grade ?? '?'}-${a.class_no ?? '?'}</td>
         <td>${esc(a.guardian_name || '')}<br><span class="muted">${esc(a.guardian_phone || '')}</span></td>
         <td>${esc(a.student_phone || '')}</td>
+        <td>${badges.join(' ') || '<span class="muted">—</span>'}</td>
         <td>
           <select class="select" data-status="${a.id}">
             <option value="applied" ${a.status==='applied'?'selected':''}>신청</option>
@@ -309,7 +395,8 @@
           <button class="btn small danger" data-del-app="${a.id}">삭제</button>
         </td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
 
     $$('[data-status]').forEach(el => el.addEventListener('change', async (e) => {
       try {
@@ -371,9 +458,13 @@
         form.student_phone.value = a.student_phone || '';
         form.motivation.value = a.motivation || '';
         form.status.value = a.status || 'applied';
+        form.is_multicultural.checked = !!a.is_multicultural;
+        form.sibling_group_id.value = a.sibling_group_id || '';
       }
     } else {
       psel.value = currentProgramId || (programs[0] && programs[0].id) || '';
+      form.is_multicultural.checked = false;
+      form.sibling_group_id.value = '';
     }
     dlg.classList.add('open');
   }
@@ -391,6 +482,8 @@
       student_phone: form.student_phone.value.trim(),
       motivation: form.motivation.value.trim(),
       status: form.status.value,
+      is_multicultural: form.is_multicultural.checked,
+      sibling_group_id: form.sibling_group_id.value.trim() || null,
     };
     try {
       if (form.dataset.editId) {
