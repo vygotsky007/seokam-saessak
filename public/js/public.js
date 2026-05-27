@@ -66,7 +66,6 @@
   const form = document.getElementById('apply-form');
   const submitBtn = document.getElementById('submit-btn');
   const resultArea = document.getElementById('result-area');
-  const addSiblingBtn = document.getElementById('add-sibling-btn');
   const studentTpl = document.getElementById('student-block-tpl');
 
   // === 학생/학년 계산 ===
@@ -243,6 +242,23 @@
       node.querySelector('.f-motivation').addEventListener('input', (e) => {
         s.cache.motivation = e.target.value.trim();
       });
+
+      // 형제·자매 추가 버튼 (마지막 블록에만, 4명 미만일 때)
+      const addBtn = node.querySelector('.add-sibling-inline');
+      const addHint = node.querySelector('.add-sibling-hint');
+      if (addBtn) {
+        const isLast = i === students.length - 1;
+        const canAdd = isLast && students.length < MAX_STUDENTS;
+        addBtn.hidden = !canAdd;
+        if (addHint) addHint.hidden = !canAdd;
+        addBtn.addEventListener('click', () => {
+          if (students.length >= MAX_STUDENTS) {
+            alert(`한 번에 최대 ${MAX_STUDENTS}명까지 신청할 수 있습니다.`);
+            return;
+          }
+          addStudent();
+        });
+      }
 
       // 선택 정보 접기/펼치기 (상태는 students[i].optional_open 에 보존)
       const optToggle = node.querySelector('.optional-toggle');
@@ -499,15 +515,6 @@
       <ol style="padding-left:18px; list-style:none;">${items}</ol>
     `;
   }
-
-  // === 학생 추가 버튼 ===
-  addSiblingBtn.addEventListener('click', () => {
-    if (students.length >= MAX_STUDENTS) {
-      alert(`한 번에 최대 ${MAX_STUDENTS}명까지 신청할 수 있습니다.`);
-      return;
-    }
-    addStudent();
-  });
 
   // === 제출 ===
   form.addEventListener('submit', async (e) => {
