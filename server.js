@@ -69,9 +69,11 @@ const loginLimiter = rateLimit({
 const { requireAdmin } = require('./utils/auth');
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/me', (req, res) => res.sendFile(path.join(__dirname, 'public', 'me.html')));
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
 app.use('/api/public', require('./routes/public'));
+app.use('/api/public', require('./routes/me'));
 
 app.get(ADMIN_PATH + '/login', (req, res) => {
   if (req.session && req.session.isAdmin) {

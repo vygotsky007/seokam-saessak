@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>내 신청 확인 · 디지털새싹</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="/css/common.css">
+<link rel="stylesheet" href="/css/public.css">
+<link rel="stylesheet" href="/css/me.css">
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>🔎 내 신청 확인·취소</h1>
+    <p class="sub">보호자 연락처와 학생 이름으로 신청 내역을 확인할 수 있어요.</p>
+    <div style="margin-top:10px;">
+      <a class="btn small" href="/">← 신청 페이지로</a>
+    </div>
+  </div>
+
+  <div class="section-title">📞 본인 확인</div>
+  <form id="lookup-form" class="form" autocomplete="off">
+    <div class="form-row">
+      <label for="lookup_phone">보호자 연락처</label>
+      <input type="tel" id="lookup_phone" required placeholder="010-1234-5678">
+    </div>
+    <div class="form-row">
+      <label for="lookup_name">학생 이름</label>
+      <input type="text" id="lookup_name" required maxlength="20" placeholder="예: 홍길동">
+    </div>
+    <div class="submit-row">
+      <button type="submit" class="btn primary">조회</button>
+    </div>
+  </form>
+
+  <div id="lookup-result"></div>
+</div>
+
+<!-- PIN 모달 -->
+<div class="dialog-mask" id="pin-dialog">
+  <div class="dialog">
+    <h2 id="pin-dialog-title">확인 비밀번호</h2>
+    <p class="muted" id="pin-dialog-msg" style="margin-bottom:10px;"></p>
+    <input type="password" id="pin-input" inputmode="numeric" maxlength="4" pattern="\d{4}" placeholder="숫자 4자리" autocomplete="off"
+      style="width:100%; border:1px solid var(--border-strong); border-radius:8px; padding:10px 12px; font-size:16px; letter-spacing:6px; text-align:center;">
+    <div class="err-text" id="pin-err"></div>
+    <div class="actions">
+      <button type="button" class="btn" id="pin-cancel">취소</button>
+      <button type="button" class="btn primary" id="pin-confirm">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- 수정 모달 -->
+<div class="dialog-mask" id="edit-dialog">
+  <div class="dialog">
+    <h2>신청 정보 수정</h2>
+    <p class="muted" style="margin-bottom:10px;">
+      프로그램을 바꾸려면 기존 신청을 취소하고 새로 신청해 주세요. 여기서는 학생/보호자 정보와 문의사항만 수정할 수 있어요.
+    </p>
+    <form id="edit-form">
+      <div class="form-grid">
+        <label>학생 이름</label>
+        <input type="text" name="student_name" required>
+        <label>학년 / 반</label>
+        <div class="pair">
+          <input type="number" name="grade" min="1" max="6" required style="width:80px;"> /
+          <input type="number" name="class_no" min="1" max="30" required style="width:80px;">
+        </div>
+        <label>보호자 이름</label>
+        <input type="text" name="guardian_name" required>
+        <label>보호자 연락처</label>
+        <input type="tel" name="guardian_phone" required>
+        <label>학생 연락처</label>
+        <input type="tel" name="student_phone" placeholder="(선택)">
+        <label>문의사항</label>
+        <textarea name="motivation" rows="3" placeholder="(선택)"></textarea>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn" data-close-edit>취소</button>
+        <button type="submit" class="btn primary">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/js/me.js"></script>
+</body>
+</html>

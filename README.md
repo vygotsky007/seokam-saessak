@@ -207,6 +207,7 @@ npm start
 |---|---|
 | `2026-05-27_init.sql` | `saessak_programs`, `saessak_applications` 두 테이블 생성 |
 | `2026-05-27_program_type_and_sibling.sql` | `saessak_programs`에 `program_type`, `multicultural_min` 컬럼 추가 / `saessak_applications`에 `is_multicultural`, `sibling_group_id` 컬럼 추가 |
+| `2026-05-27_pin_hash.sql` | `saessak_applications`에 `pin_hash` 컬럼 추가 (내 신청 조회·취소·수정용 PIN bcrypt 해시) + `guardian_phone` 인덱스 |
 
 > ⚠️ **마이그레이션은 자동 실행되지 않는다.** Supabase 대시보드 → SQL Editor 에서 위 SQL 파일을 새로 실행해야 새 컬럼이 적용된다. 컬럼이 없으면 신규 코드가 insert에서 에러를 낸다.
 
