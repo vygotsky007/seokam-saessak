@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>석암초 디지털새싹 신청</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="/css/common.css">
+<link rel="stylesheet" href="/css/public.css">
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>🌱 석암초등학교 디지털새싹 신청</h1>
+    <p class="sub">2026학년도 디지털새싹 교실 프로그램 신청 페이지입니다.</p>
+  </div>
+
+  <div class="notice">
+    <strong>안내</strong>
+    <ul>
+      <li>듣고 싶은 프로그램을 <b>여러 개 동시에 신청</b>할 수 있어요.</li>
+      <li>프로그램마다 <b>대상 학년</b>과 <b>정원</b>이 다르니 꼭 확인해 주세요.</li>
+      <li>정원이 마감된 프로그램은 선택할 수 없습니다.</li>
+      <li>선정 결과는 추후 보호자 연락처로 개별 안내됩니다.</li>
+    </ul>
+  </div>
+
+  <div class="section-title">📚 모집 중인 프로그램</div>
+  <div id="program-list" class="program-list">
+    <div class="empty-state muted">불러오는 중…</div>
+  </div>
+
+  <div class="section-title">🛒 선택한 프로그램</div>
+  <div class="cart" id="cart">
+    <div class="empty">아직 선택한 프로그램이 없습니다.</div>
+  </div>
+
+  <div class="section-title">📝 신청자 정보</div>
+  <form id="apply-form" class="form" autocomplete="off">
+    <div class="form-row">
+      <label for="student_name">학생 이름</label>
+      <input type="text" id="student_name" name="student_name" required maxlength="20" placeholder="예: 홍길동">
+    </div>
+    <div class="form-row">
+      <label>학년 / 반</label>
+      <div class="pair">
+        <input type="number" id="grade" name="grade" required min="1" max="6" placeholder="학년">
+        <input type="number" id="class_no" name="class_no" required min="1" max="30" placeholder="반">
+      </div>
+    </div>
+    <div class="form-row">
+      <label for="guardian_name">보호자 이름</label>
+      <input type="text" id="guardian_name" name="guardian_name" required maxlength="20" placeholder="예: 김부모">
+    </div>
+    <div class="form-row">
+      <label for="guardian_phone">보호자 연락처</label>
+      <input type="tel" id="guardian_phone" name="guardian_phone" required placeholder="010-1234-5678">
+    </div>
+    <div class="form-row">
+      <label for="student_phone">학생 연락처<br><span class="muted" style="font-size:11px">(선택)</span></label>
+      <input type="tel" id="student_phone" name="student_phone" placeholder="010-0000-0000">
+    </div>
+    <div class="form-row">
+      <label for="motivation">신청 동기<br><span class="muted" style="font-size:11px">(선택)</span></label>
+      <textarea id="motivation" name="motivation" maxlength="500" placeholder="자유롭게 적어주세요."></textarea>
+    </div>
+
+    <div class="agree">
+      <input type="checkbox" id="privacy_agreed" required>
+      <div>
+        <label for="privacy_agreed"><b>개인정보 수집·이용 동의 (필수)</b></label>
+        <details>
+          <summary>자세히 보기</summary>
+          <div style="margin-top:8px; font-size:12px; color:var(--muted); line-height:1.6;">
+            수집 항목: 학생 이름, 학년/반, 보호자 이름, 보호자 연락처, 학생 연락처(선택), 신청 동기(선택)<br>
+            수집 목적: 디지털새싹 프로그램 신청 접수, 선정 안내, 학사 연락<br>
+            보유 기간: 2026학년도 사업 종료 후 1년 이내 파기
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="submit-row">
+      <button type="submit" class="btn primary" id="submit-btn">신청하기</button>
+    </div>
+  </form>
+
+  <div id="result-area"></div>
+</div>
+
+<script src="/js/public.js"></script>
+</body>
+</html>

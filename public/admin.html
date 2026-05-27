@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>석암 디지털새싹 관리</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="/css/common.css">
+<link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+<div class="admin-shell">
+  <div class="admin-header">
+    <h1>🌱 디지털새싹 관리</h1>
+    <div class="row">
+      <span class="meta" id="me-meta"></span>
+      <button class="btn small" id="logout-btn">로그아웃</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="dashboard">📊 종합</button>
+    <button class="tab" data-tab="programs">📚 프로그램</button>
+    <button class="tab" data-tab="applicants">👥 신청자</button>
+    <button class="tab" data-tab="export">📥 내보내기</button>
+  </div>
+
+  <section class="tab-pane" id="pane-dashboard">
+    <div class="dashboard-grid" id="dash-totals"></div>
+    <div class="panel" style="margin-bottom:14px;">
+      <h3 style="font-size:14px; margin-bottom:10px;">프로그램별 현황</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>프로그램</th>
+              <th>신청</th>
+              <th>선정</th>
+              <th>정원</th>
+              <th>남은자리</th>
+              <th>상태</th>
+            </tr>
+          </thead>
+          <tbody id="dash-programs"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel" style="margin-bottom:14px;">
+      <h3 style="font-size:14px; margin-bottom:10px;">학년별 분포</h3>
+      <div id="dash-grades"></div>
+      <div class="muted" style="margin-top:8px; font-size:12px;">
+        <span id="dash-low"></span> · <span id="dash-high"></span>
+      </div>
+    </div>
+    <div class="panel">
+      <h3 style="font-size:14px; margin-bottom:10px;">🔁 여러 프로그램 중복 신청자</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>학생</th>
+              <th>학년/반</th>
+              <th>신청수</th>
+              <th>프로그램</th>
+            </tr>
+          </thead>
+          <tbody id="dash-multi"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="tab-pane" id="pane-programs" hidden>
+    <div class="toolbar">
+      <button class="btn primary" id="new-program-btn">+ 프로그램 추가</button>
+      <span class="muted">is_open 토글로 모집 열기/마감 통제</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>프로그램명</th>
+            <th>일정</th>
+            <th>장소</th>
+            <th>대상</th>
+            <th>정원</th>
+            <th>신청</th>
+            <th>강사</th>
+            <th>모집</th>
+            <th>관리</th>
+          </tr>
+        </thead>
+        <tbody id="programs-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="tab-pane" id="pane-applicants" hidden>
+    <div class="toolbar">
+      <select id="app-program-select" class="select"></select>
+      <select id="app-sort" class="select">
+        <option value="order">제출시각순(수동 정렬 포함)</option>
+        <option value="submitted">제출시각순(원본)</option>
+        <option value="grade">학년순</option>
+        <option value="name">이름순</option>
+      </select>
+      <button class="btn small" id="add-applicant-btn">+ 신청자 추가</button>
+      <span class="muted" id="app-count"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>학생</th>
+            <th>학년/반</th>
+            <th>보호자 / 연락처</th>
+            <th>학생연락처</th>
+            <th>상태</th>
+            <th>경로</th>
+            <th>접수시각</th>
+            <th>관리</th>
+          </tr>
+        </thead>
+        <tbody id="applicants-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="tab-pane" id="pane-export" hidden>
+    <div class="panel">
+      <h3 style="font-size:15px; margin-bottom:10px;">엑셀 명단 내보내기</h3>
+      <p class="muted" style="margin-bottom:14px;">프로그램별 시트로 저장됩니다. 선정자만 받기 옵션을 켜면 status='selected' 필터가 적용됩니다.</p>
+      <div class="row" style="margin-bottom:12px;">
+        <label class="row">
+          대상:
+          <select id="export-program" class="select"></select>
+        </label>
+        <label class="row">
+          <input type="checkbox" id="export-only-selected"> 선정자만
+        </label>
+      </div>
+      <button class="btn primary" id="export-btn">엑셀 다운로드</button>
+    </div>
+  </section>
+</div>
+
+<!-- Program Dialog -->
+<div class="dialog-mask" id="program-dialog">
+  <div class="dialog">
+    <h2 id="program-dialog-title">프로그램 추가</h2>
+    <form id="program-form">
+      <div class="form-grid">
+        <label>프로그램명*</label><input type="text" name="title" required>
+        <label>설명</label><textarea name="description"></textarea>
+        <label>일정</label><input type="text" name="schedule" placeholder="예: 10월 20일(월)~23일(목) 14:40~16:00">
+        <label>장소</label><input type="text" name="location">
+        <label>학년</label>
+        <div class="row">
+          <input type="number" name="grade_min" min="1" max="6" value="1" style="width:80px;"> ~
+          <input type="number" name="grade_max" min="1" max="6" value="6" style="width:80px;">
+        </div>
+        <label>정원</label><input type="number" name="capacity" min="1" value="20">
+        <label>강사</label><input type="text" name="instructors">
+        <label>모집 열기</label>
+        <span class="toggle-switch">
+          <input type="checkbox" id="program-is-open">
+          <span class="slider"></span>
+        </span>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn" data-close>취소</button>
+        <button type="submit" class="btn primary">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Applicant Dialog -->
+<div class="dialog-mask" id="applicant-dialog">
+  <div class="dialog">
+    <h2 id="applicant-dialog-title">신청자 추가</h2>
+    <form id="applicant-form">
+      <div class="form-grid">
+        <label>프로그램</label>
+        <select name="program_id" required></select>
+        <label>학생 이름*</label><input type="text" name="student_name" required>
+        <label>학년/반</label>
+        <div class="row">
+          <input type="number" name="grade" min="1" max="6" style="width:80px;"> /
+          <input type="number" name="class_no" min="1" max="30" style="width:80px;">
+        </div>
+        <label>보호자</label><input type="text" name="guardian_name">
+        <label>보호자 연락처</label><input type="text" name="guardian_phone">
+        <label>학생 연락처</label><input type="text" name="student_phone">
+        <label>신청동기</label><textarea name="motivation"></textarea>
+        <label>상태</label>
+        <select name="status">
+          <option value="applied">신청</option>
+          <option value="selected">선정</option>
+          <option value="waiting">대기</option>
+          <option value="cancelled">취소</option>
+        </select>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn" data-close>취소</button>
+        <button type="submit" class="btn primary">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Copy Dialog -->
+<div class="dialog-mask" id="copy-dialog">
+  <div class="dialog">
+    <h2>다른 프로그램으로 복사</h2>
+    <p class="muted" id="copy-source-info" style="margin-bottom:10px;"></p>
+    <div class="form-grid">
+      <label>대상 프로그램</label>
+      <select id="copy-target" class="select"></select>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn" data-close>취소</button>
+      <button type="button" class="btn primary" id="copy-confirm">복사</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "name": "seokam-saessak",
+  "version": "1.0.0",
+  "description": "석암 디지털새싹 모집/운영 관리 앱",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "seed": "node scripts/seed.js",
+    "hash": "node scripts/hash-password.js",
+    "gen-admin-path": "node scripts/gen-admin-path.js"
+  },
+  "keywords": ["saessak", "digital", "school", "education"],
+  "author": "vygotsky007",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.104.1",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "express-session": "^1.18.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
