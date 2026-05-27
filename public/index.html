@@ -81,7 +81,8 @@
       </div>
 
       <div class="submit-row">
-        <button type="submit" class="btn primary" id="submit-btn">신청하기</button>
+        <span class="submit-hint" id="submit-hint">신청할 프로그램을 1개 이상 선택해 주세요</span>
+        <button type="submit" class="btn primary" id="submit-btn" disabled>신청하기</button>
       </div>
     </div>
   </form>
@@ -99,7 +100,7 @@
     <div class="same-as-prev-row" hidden>
       <label class="same-as-prev">
         <input type="checkbox" class="f-same-as-prev">
-        <span>위 학생과 <b>학년·반 같음</b></span>
+        <span>위 학생과 <b>같은 학년·반으로 입력</b></span>
       </label>
     </div>
 
@@ -115,13 +116,18 @@
           <input type="number" class="f-class" required min="1" max="30" placeholder="반">
         </div>
       </div>
-      <div class="form-row">
-        <label>학생 연락처<br><span class="muted" style="font-size:11px">(선택)</span></label>
-        <input type="tel" class="f-sphone" placeholder="010-0000-0000">
+      <div class="optional-toggle-row">
+        <button type="button" class="optional-toggle">+ 추가 정보 입력 (연락처·문의사항)</button>
       </div>
-      <div class="form-row">
-        <label>문의사항<br><span class="muted" style="font-size:11px">(선택)</span></label>
-        <textarea class="f-motivation" maxlength="500" placeholder="궁금한 점이 있으면 적어주세요."></textarea>
+      <div class="optional-fields" hidden>
+        <div class="form-row">
+          <label>학생 연락처<br><span class="muted" style="font-size:11px">(선택)</span></label>
+          <input type="tel" class="f-sphone" placeholder="010-0000-0000">
+        </div>
+        <div class="form-row">
+          <label>문의사항<br><span class="muted" style="font-size:11px">(선택)</span></label>
+          <textarea class="f-motivation" maxlength="500" placeholder="궁금한 점이 있으면 적어주세요."></textarea>
+        </div>
       </div>
     </div>
   </div>

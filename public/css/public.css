@@ -483,7 +483,88 @@ input.locked {
 .agree input { margin-top: 3px; accent-color: var(--primary); }
 .agree details { margin-top: 6px; }
 .agree summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
-.submit-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.submit-row { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.submit-hint {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-right: auto;
+}
+.btn.primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.2);
+}
+
+/* 학생 블록 - 선택 정보 토글 */
+.optional-toggle-row {
+  margin-top: 2px;
+}
+.optional-toggle {
+  background: #fff;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 100ms, color 100ms, border-color 100ms;
+}
+.optional-toggle:hover {
+  background: #F8FAFC;
+  color: var(--ink);
+  border-color: var(--primary);
+}
+.optional-toggle.open {
+  background: #F4FBF7;
+  color: var(--primary-ink);
+  border-style: solid;
+  border-color: var(--primary);
+}
+.optional-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+/* ② 프로그램 카드 - 일괄 선택 버튼 */
+.s2-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+.s2-select-all {
+  background: #fff;
+  border: 1px solid var(--border-strong);
+  color: var(--primary-ink);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 100ms, border-color 100ms;
+}
+.s2-select-all:hover:not(:disabled) {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+}
+.s2-select-all:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ② 프로그램 카드 - 학생 미입력 안내 */
+.s2-empty-hint {
+  padding: 14px 12px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--muted);
+  background: #F8FAFC;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
 
 .result-box {
   margin-top: 22px;

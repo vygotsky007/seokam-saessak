@@ -92,6 +92,14 @@
     const g = Number(s.cache.grade);
     return Number.isFinite(g) && g > 0 ? g : null;
   }
+  function allStudentsEmpty() {
+    if (students.length === 0) return true;
+    return students.every((s, i) => {
+      const noName = !(s.cache.name || '').trim();
+      const noGrade = effGradeForStudent(i) == null;
+      return noName && noGrade;
+    });
+  }
   function reconcileSelections() {
     // 모든 학생에 대해 자기 학년 안 맞는 program_id를 selected에서 제거
     students.forEach((s, i) => {
@@ -236,6 +244,31 @@
         s.cache.motivation = e.target.value.trim();
       });
 
+      // 선택 정보 접기/펼치기 (상태는 students[i].optional_open 에 보존)
+      const optToggle = node.querySelector('.optional-toggle');
+      const optFields = node.querySelector('.optional-fields');
+      if (optToggle && optFields) {
+        if (s.optional_open === undefined) {
+          s.optional_open = !!(s.cache.student_phone || s.cache.motivation);
+        }
+        const applyOptState = () => {
+          if (s.optional_open) {
+            optFields.hidden = false;
+            optToggle.textContent = '− 추가 정보 접기';
+            optToggle.classList.add('open');
+          } else {
+            optFields.hidden = true;
+            optToggle.textContent = '+ 추가 정보 입력 (연락처·문의사항)';
+            optToggle.classList.remove('open');
+          }
+        };
+        applyOptState();
+        optToggle.addEventListener('click', () => {
+          s.optional_open = !s.optional_open;
+          applyOptState();
+        });
+      }
+
       studentsArea.appendChild(node);
     });
   }
@@ -271,6 +304,7 @@
       programsArea.innerHTML = '<div class="empty-state muted">먼저 위에서 신청 학생을 등록해 주세요.</div>';
       return;
     }
+    const noStudentInfo = allStudentsEmpty();
 
     programsArea.innerHTML = programs.map(p => {
       const isFull = p.is_full || p.remaining <= 0;
@@ -279,25 +313,47 @@
         isFull ? '<span class="badge full">마감</span>' : '<span class="badge open">모집중</span>',
       ].filter(Boolean).join(' ');
 
-      const studentRows = students.map((s, i) => {
+      // 자격 학생 인덱스
+      const eligibleIdxs = [];
+      students.forEach((s, i) => {
         const eff = effGradeForStudent(i);
-        const gradeOk = eff != null && eff >= p.grade_min && eff <= p.grade_max;
-        const disabled = isFull || !gradeOk;
-        const checked = s.selected.has(p.id);
-        const cls = ['s2-row'];
-        if (checked) cls.push('selected');
-        if (disabled) cls.push('disabled');
-        const noGrade = eff == null;
-        const reason = noGrade ? '<span class="s2-note">학년 입력 필요</span>'
-          : (!gradeOk ? '<span class="s2-note bad">대상 학년 아님</span>' : '');
-        return `
-          <label class="${cls.join(' ')}">
-            <input type="checkbox" data-pid="${esc(p.id)}" data-sid="${s.id}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
-            <span class="s2-name">${esc(studentDisplayName(s, i))}</span>
-            ${reason}
-          </label>
+        if (eff != null && eff >= p.grade_min && eff <= p.grade_max) eligibleIdxs.push(i);
+      });
+      const allEligibleSelected = eligibleIdxs.length > 0 &&
+        eligibleIdxs.every(i => students[i].selected.has(p.id));
+      const selectAllLabel = allEligibleSelected ? '전체 해제' : '신청 가능한 학생 모두 선택';
+      const selectAllDisabled = isFull || eligibleIdxs.length === 0;
+
+      let body;
+      if (noStudentInfo) {
+        body = `<div class="s2-empty-hint">먼저 위에서 신청 학생 정보를 입력해 주세요</div>`;
+      } else {
+        const studentRows = students.map((s, i) => {
+          const eff = effGradeForStudent(i);
+          const gradeOk = eff != null && eff >= p.grade_min && eff <= p.grade_max;
+          const disabled = isFull || !gradeOk;
+          const checked = s.selected.has(p.id);
+          const cls = ['s2-row'];
+          if (checked) cls.push('selected');
+          if (disabled) cls.push('disabled');
+          const noGrade = eff == null;
+          const reason = noGrade ? '<span class="s2-note">학년 입력 후 선택 가능</span>'
+            : (!gradeOk ? '<span class="s2-note bad">대상 학년 아님</span>' : '');
+          return `
+            <label class="${cls.join(' ')}">
+              <input type="checkbox" data-pid="${esc(p.id)}" data-sid="${s.id}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
+              <span class="s2-name">${esc(studentDisplayName(s, i))}</span>
+              ${reason}
+            </label>
+          `;
+        }).join('');
+        body = `
+          <div class="s2-actions">
+            <button type="button" class="s2-select-all" data-pid="${esc(p.id)}" ${selectAllDisabled ? 'disabled' : ''}>${selectAllLabel}</button>
+          </div>
+          <div class="s2-students">${studentRows}</div>
         `;
-      }).join('');
+      }
 
       return `
         <div class="step2-card ${isFull ? 'disabled' : ''}">
@@ -308,12 +364,12 @@
             </div>
           </header>
           <div class="s2-sub">이 프로그램을 신청할 학생</div>
-          <div class="s2-students">${studentRows}</div>
+          ${body}
         </div>
       `;
     }).join('');
 
-    // 이벤트 등록
+    // 체크박스 이벤트
     programsArea.querySelectorAll('input[type="checkbox"][data-pid]').forEach(cb => {
       cb.addEventListener('change', (e) => {
         const pid = e.target.dataset.pid;
@@ -322,19 +378,52 @@
         if (!s) return;
         if (e.target.checked) s.selected.add(pid);
         else s.selected.delete(pid);
-        e.target.closest('.s2-row').classList.toggle('selected', e.target.checked);
+        renderStep2();
         renderSummary();
       });
     });
+
+    // 일괄 선택 버튼 이벤트
+    programsArea.querySelectorAll('button.s2-select-all').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pid = btn.dataset.pid;
+        const p = programs.find(x => x.id === pid);
+        if (!p) return;
+        const eligible = [];
+        students.forEach((s, i) => {
+          const eff = effGradeForStudent(i);
+          if (eff != null && eff >= p.grade_min && eff <= p.grade_max) eligible.push(s);
+        });
+        if (eligible.length === 0) return;
+        const allChecked = eligible.every(s => s.selected.has(pid));
+        if (allChecked) eligible.forEach(s => s.selected.delete(pid));
+        else eligible.forEach(s => s.selected.add(pid));
+        renderStep2();
+        renderSummary();
+      });
+    });
+  }
+
+  function updateSubmitState(totalCount) {
+    const hint = document.getElementById('submit-hint');
+    if (totalCount === 0) {
+      submitBtn.disabled = true;
+      if (hint) hint.style.display = '';
+    } else {
+      submitBtn.disabled = false;
+      if (hint) hint.style.display = 'none';
+    }
   }
 
   // === 3단계: 신청 내용 확인 (학생별 요약) + 다문화 질문 ===
   function renderSummary() {
     if (students.length === 0) {
       summaryArea.innerHTML = '<div class="empty">먼저 위에서 학생과 프로그램을 선택해 주세요.</div>';
+      updateSubmitState(0);
       return;
     }
     const totalCount = students.reduce((acc, s) => acc + s.selected.size, 0);
+    updateSubmitState(totalCount);
     const groupTag = students.length >= 2
       ? `<div class="summary-group-tag">형제·자매 ${students.length}명 묶음 신청</div>` : '';
 
