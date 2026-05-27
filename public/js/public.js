@@ -424,16 +424,10 @@
 
     const guardianName = document.getElementById('guardian_name').value.trim();
     const guardianPhone = document.getElementById('guardian_phone').value.trim();
-    const pin = document.getElementById('apply_pin').value.trim();
     if (!guardianName) { alert('보호자 이름을 입력해 주세요.'); return; }
     if (!isValidPhone(guardianPhone)) {
       alert('올바른 휴대폰 번호를 입력해 주세요(010-XXXX-XXXX).');
       document.getElementById('guardian_phone').focus();
-      return;
-    }
-    if (!/^\d{4}$/.test(pin)) {
-      alert('신청 확인용 비밀번호는 숫자 4자리입니다.');
-      document.getElementById('apply_pin').focus();
       return;
     }
     if (!document.getElementById('privacy_agreed').checked) {
@@ -446,7 +440,6 @@
       guardian_name: guardianName,
       guardian_phone: guardianPhone,
       privacy_agreed: true,
-      pin,
     };
 
     submitBtn.disabled = true;
@@ -505,7 +498,7 @@
     html += '<b>선정된 학생에게만 따로 연락드립니다.</b><br><span class="sub">결과 발표 전까지 보호자 연락처를 확인해 주세요.</span>';
     html += '</div>';
     html += '<div class="item" style="margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px;">';
-    html += '🔎 내 신청은 상단 <a href="/me"><b>내 신청 확인</b></a> 메뉴에서 <b>보호자 연락처·학생 이름·확인 비밀번호</b>로 조회·취소할 수 있어요.';
+    html += '🔎 내 신청은 상단 <a href="/me"><b>내 신청 확인</b></a> 메뉴에서 <b>보호자 연락처와 학생 이름</b>으로 조회·취소할 수 있어요.';
     html += '</div>';
     html += '<div class="submit-row"><a class="btn" href="/me">내 신청 확인</a><button class="btn" onclick="location.reload()">다른 신청 하기</button></div>';
     html += '</div>';

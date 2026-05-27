@@ -127,7 +127,7 @@
         <strong>안내</strong>
         <ul>
           <li>여기에 보이는 상태는 <b>접수 완료</b> 또는 <b>취소됨</b>만 표시돼요. 선정 결과는 따로 안내드립니다.</li>
-          <li>취소·수정 시에는 신청할 때 정한 <b>확인 비밀번호</b>가 필요합니다.</li>
+          <li>취소·수정은 본인 확인을 위해 <b>조회에 사용한 보호자 연락처와 학생 이름</b>이 신청 정보와 일치해야 가능합니다.</li>
         </ul>
       </div>
     `;
@@ -136,47 +136,23 @@
     el.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => onEditClick(b.dataset.edit)));
   }
 
-  // ===== PIN 모달 =====
-  let pinResolve = null;
-  function askPin({ title, msg }) {
-    return new Promise(resolve => {
-      pinResolve = resolve;
-      document.getElementById('pin-dialog-title').textContent = title || '확인 비밀번호';
-      document.getElementById('pin-dialog-msg').textContent = msg || '신청할 때 설정한 4자리 확인 비밀번호를 입력해 주세요.';
-      document.getElementById('pin-input').value = '';
-      document.getElementById('pin-err').textContent = '';
-      document.getElementById('pin-dialog').classList.add('open');
-      setTimeout(() => document.getElementById('pin-input').focus(), 50);
-    });
+  // 본인 확인 키는 조회에 사용한 (guardian_phone + student_name) 그대로 사용.
+  // 단, 신청 행의 student_name이 조회 입력값과 달라지면(형제 신청에 다른 학생도 들어 있는 경우)
+  // 해당 행의 student_name을 본인 확인 키로 보낸다.
+  function ownerKeyFor(row) {
+    return { guardian_phone: lastPhone, student_name: row ? row.student_name : lastName };
   }
-  function closePinDialog(result) {
-    document.getElementById('pin-dialog').classList.remove('open');
-    if (pinResolve) { const r = pinResolve; pinResolve = null; r(result); }
-  }
-  document.getElementById('pin-cancel').addEventListener('click', () => closePinDialog(null));
-  document.getElementById('pin-confirm').addEventListener('click', () => {
-    const v = document.getElementById('pin-input').value.trim();
-    if (!/^\d{4}$/.test(v)) {
-      document.getElementById('pin-err').textContent = '숫자 4자리를 입력해 주세요.';
-      return;
-    }
-    closePinDialog(v);
-  });
-  document.getElementById('pin-input').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') document.getElementById('pin-confirm').click();
-  });
 
   // ===== 취소 =====
   async function onCancelClick(id) {
     const ok = confirm('취소하면 자리가 사라지고, 다시 신청할 때 정원이 찼을 수 있어요. 취소할까요?');
     if (!ok) return;
-    const pin = await askPin({ title: '신청 취소', msg: '확인 비밀번호를 입력해 주세요. (취소는 되돌릴 수 없어요)' });
-    if (!pin) return;
+    const row = lastList.find(r => r.id === id);
     try {
       const res = await fetch(`/api/public/applications/${id}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin }),
+        body: JSON.stringify(ownerKeyFor(row)),
       });
       const j = await res.json();
       if (!j.ok) { alert(j.error || '취소 실패'); return; }
@@ -187,14 +163,12 @@
 
   // ===== 수정 =====
   let editingId = null;
-  let editingPin = null;
-  async function onEditClick(id) {
-    const pin = await askPin({ title: '정보 수정', msg: '신청할 때 설정한 확인 비밀번호를 입력해 주세요.' });
-    if (!pin) return;
-    editingId = id;
-    editingPin = pin;
+  let editingRow = null;
+  function onEditClick(id) {
     const row = lastList.find(r => r.id === id);
     if (!row) { alert('신청을 찾을 수 없습니다.'); return; }
+    editingId = id;
+    editingRow = row;
     const f = document.getElementById('edit-form');
     f.student_name.value = row.student_name || '';
     f.grade.value = row.grade ?? '';
@@ -207,14 +181,14 @@
   }
   document.querySelectorAll('[data-close-edit]').forEach(b => b.addEventListener('click', () => {
     document.getElementById('edit-dialog').classList.remove('open');
-    editingId = null; editingPin = null;
+    editingId = null; editingRow = null;
   }));
   attachPhoneFormatter(document.querySelector('#edit-form [name="guardian_phone"]'));
   attachPhoneFormatter(document.querySelector('#edit-form [name="student_phone"]'));
 
   document.getElementById('edit-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!editingId || !editingPin) return;
+    if (!editingId || !editingRow) return;
     const f = e.target;
     const patch = {
       student_name: f.student_name.value.trim(),
@@ -228,17 +202,18 @@
     if (!isValidPhone(patch.guardian_phone)) { alert('올바른 보호자 연락처를 입력해 주세요(010-XXXX-XXXX).'); return; }
     if (patch.student_phone && !isValidPhone(patch.student_phone)) { alert('학생 연락처 형식이 올바르지 않습니다.'); return; }
     try {
+      const owner = ownerKeyFor(editingRow);
       const res = await fetch(`/api/public/applications/${editingId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: editingPin, patch }),
+        body: JSON.stringify({ ...owner, patch }),
       });
       const j = await res.json();
       if (!j.ok) { alert(j.error || '수정 실패'); return; }
       toast('수정되었습니다.');
       document.getElementById('edit-dialog').classList.remove('open');
-      editingId = null; editingPin = null;
-      // 보호자 연락처가 바뀌었으면 그 값으로 다시 조회
+      editingId = null; editingRow = null;
+      // 보호자 연락처가 바뀌었으면 다음 조회 기준도 새 값으로
       const newPhone = patch.guardian_phone;
       if (newPhone && newPhone !== lastPhone) lastPhone = newPhone;
       await loadLookup();

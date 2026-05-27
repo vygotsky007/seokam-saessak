@@ -1,6 +1,5 @@
 const express = require('express');
 const crypto = require('crypto');
-const bcrypt = require('bcryptjs');
 const router = express.Router();
 const supabase = require('../utils/supabase');
 const { normalizeMobile, isValidMobile } = require('../utils/phone');
@@ -65,7 +64,6 @@ router.post('/apply', async (req, res) => {
       guardian_name,
       guardian_phone,
       privacy_agreed,
-      pin,
     } = body;
 
     if (!guardian_name || !String(guardian_name).trim()) {
@@ -78,10 +76,6 @@ router.post('/apply', async (req, res) => {
     if (privacy_agreed !== true && privacy_agreed !== 'true' && privacy_agreed !== 1 && privacy_agreed !== '1') {
       return res.status(400).json({ ok: false, error: '개인정보 수집·이용 동의가 필요합니다.' });
     }
-    if (!/^\d{4}$/.test(String(pin || ''))) {
-      return res.status(400).json({ ok: false, error: '신청 확인용 비밀번호(숫자 4자리)를 입력해 주세요.' });
-    }
-    const pinHash = bcrypt.hashSync(String(pin), 8);
 
     const guardianName = String(guardian_name).trim();
 
@@ -234,7 +228,6 @@ router.post('/apply', async (req, res) => {
             submitted_at: now,
             is_multicultural: isMulticulturalRow,
             sibling_group_id: siblingGroupId,
-            pin_hash: pinHash,
           }])
           .select();
         if (iErr) {

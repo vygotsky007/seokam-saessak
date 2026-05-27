@@ -1,19 +1,19 @@
 // 공개 "내 신청 조회/취소/수정" 라우터 — /api/public prefix 아래에 마운트됨.
+// 본인 확인: guardian_phone + student_name 조합 일치 (PIN 없음).
 const express = require('express');
-const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const supabase = require('../utils/supabase');
 const { normalizeMobile, isValidMobile } = require('../utils/phone');
 
-// PIN 검증을 동반하는 라우트에 적용 — IP+신청 id 기준 15분 5회.
-const pinLimiter = rateLimit({
+// 취소·수정 등 본인 확인 동반 라우트 — IP 기준 15분 5회.
+const ownerLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
-  keyGenerator: (req) => `${req.ip}::${req.params.id || ''}`,
+  keyGenerator: (req) => req.ip,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { ok: false, error: 'PIN 확인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.' },
+  message: { ok: false, error: '본인 확인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.' },
 });
 
 router.post('/lookup', async (req, res) => {
@@ -28,7 +28,6 @@ router.post('/lookup', async (req, res) => {
       return res.status(400).json({ ok: false, error: '학생 이름을 입력해 주세요.' });
     }
 
-    // 1) 입력한 학생 이름과 일치하는 행
     const { data: own, error: e1 } = await supabase
       .from('saessak_applications')
       .select('id, program_id, student_name, grade, class_no, guardian_name, guardian_phone, student_phone, motivation, status, source, submitted_at, sibling_group_id, program:saessak_programs(id, title, schedule, location, program_type)')
@@ -36,7 +35,6 @@ router.post('/lookup', async (req, res) => {
       .eq('student_name', name);
     if (e1) throw e1;
 
-    // 2) 같은 sibling_group_id 의 다른 형제 행도 함께
     const groupIds = Array.from(new Set((own || []).map(r => r.sibling_group_id).filter(Boolean)));
     let siblings = [];
     if (groupIds.length > 0) {
@@ -52,7 +50,6 @@ router.post('/lookup', async (req, res) => {
     const merged = {};
     [...(own || []), ...siblings].forEach(r => { merged[r.id] = r; });
     const list = Object.values(merged).sort((a, b) => {
-      // 학생별로 묶어서 보기 좋게 — student_name + submitted_at
       if (a.student_name !== b.student_name) return a.student_name.localeCompare(b.student_name);
       return new Date(a.submitted_at) - new Date(b.submitted_at);
     });
@@ -67,33 +64,31 @@ router.post('/lookup', async (req, res) => {
   }
 });
 
-async function verifyPin(applicationId, pin) {
-  if (!/^\d{4}$/.test(String(pin || ''))) {
-    return { ok: false, status: 400, error: '확인 비밀번호는 숫자 4자리입니다.' };
+// 본인 확인: 요청 본문의 guardian_phone + student_name이 해당 신청행과 일치해야 통과.
+async function verifyOwnership(applicationId, body) {
+  const phone = normalizeMobile((body || {}).guardian_phone);
+  const name = String(((body || {}).student_name) || '').trim();
+  if (!isValidMobile(phone) || !name) {
+    return { ok: false, status: 400, error: '본인 확인 정보(보호자 연락처/학생 이름)가 올바르지 않습니다.' };
   }
   const { data, error } = await supabase
     .from('saessak_applications')
-    .select('id, pin_hash, guardian_phone, sibling_group_id, status, program_id')
+    .select('id, guardian_phone, student_name, status, program_id, sibling_group_id')
     .eq('id', applicationId)
     .single();
   if (error || !data) {
     return { ok: false, status: 404, error: '신청을 찾을 수 없습니다.' };
   }
-  if (!data.pin_hash) {
-    return { ok: false, status: 400, error: '이 신청에는 확인 비밀번호가 등록되어 있지 않습니다.' };
-  }
-  const ok = await bcrypt.compare(String(pin), data.pin_hash);
-  if (!ok) {
-    return { ok: false, status: 401, error: '확인 비밀번호가 일치하지 않습니다.' };
+  if (data.guardian_phone !== phone || data.student_name !== name) {
+    return { ok: false, status: 401, error: '본인 확인 정보가 일치하지 않습니다.' };
   }
   return { ok: true, row: data };
 }
 
-router.post('/applications/:id/cancel', pinLimiter, async (req, res) => {
+router.post('/applications/:id/cancel', ownerLimiter, async (req, res) => {
   try {
     const { id } = req.params;
-    const { pin } = req.body || {};
-    const v = await verifyPin(id, pin);
+    const v = await verifyOwnership(id, req.body);
     if (!v.ok) return res.status(v.status).json({ ok: false, error: v.error });
 
     if (v.row.status === 'cancelled') {
@@ -112,14 +107,13 @@ router.post('/applications/:id/cancel', pinLimiter, async (req, res) => {
   }
 });
 
-router.patch('/applications/:id', pinLimiter, async (req, res) => {
+router.patch('/applications/:id', ownerLimiter, async (req, res) => {
   try {
     const { id } = req.params;
-    const { pin, patch } = req.body || {};
-    const v = await verifyPin(id, pin);
+    const v = await verifyOwnership(id, req.body);
     if (!v.ok) return res.status(v.status).json({ ok: false, error: v.error });
 
-    // 허용 필드만 (program_id, status, sibling_group_id, pin_hash 등은 변경 불가)
+    const { patch } = req.body || {};
     const allowed = ['student_name', 'grade', 'class_no', 'guardian_name', 'guardian_phone', 'student_phone', 'motivation'];
     const updates = {};
     const p = patch || {};
@@ -169,7 +163,7 @@ router.patch('/applications/:id', pinLimiter, async (req, res) => {
       return res.json({ ok: true, noop: true });
     }
 
-    // 학년/반 변경 시 학년이 신청 프로그램 대상 범위를 벗어나면 막는다.
+    // 학년 변경 시 신청 프로그램 grade 범위 검증
     if ('grade' in updates) {
       const { data: prog, error: pErr } = await supabase
         .from('saessak_programs')
