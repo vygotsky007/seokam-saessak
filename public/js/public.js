@@ -99,22 +99,26 @@
     }
     detailListEl.innerHTML = programs.map(p => {
       const isFull = p.is_full || p.remaining <= 0;
+      const metaParts = [];
+      if (p.schedule)    metaParts.push(`<span>📅 ${esc(p.schedule)}</span>`);
+      if (p.location)    metaParts.push(`<span>📍 ${esc(p.location)}</span>`);
+      metaParts.push(`<span>👶 ${p.grade_min}~${p.grade_max}학년</span>`);
+      metaParts.push(`<span>👥 정원 ${p.capacity}명</span>`);
+      if (p.instructors) metaParts.push(`<span>🧑‍🏫 ${esc(p.instructors)}</span>`);
+
       return `
-        <div class="program ${isFull ? 'disabled' : ''}">
-          <div class="body">
-            <div class="title">${esc(p.title)} ${typeBadge(p.program_type)} ${isFull ? '<span class="badge full">마감</span>' : '<span class="badge open">모집중</span>'}</div>
-            <div class="meta">
-              ${p.schedule ? `📅 ${esc(p.schedule)}<br>` : ''}
-              ${p.location ? `📍 ${esc(p.location)} · ` : ''}
-              👶 ${p.grade_min}~${p.grade_max}학년 · 정원 ${p.capacity}명
-              ${p.instructors ? `<br>🧑‍🏫 ${esc(p.instructors)}` : ''}
-              ${p.description ? `<br><span class="muted">${esc(p.description)}</span>` : ''}
+        <article class="program-card ${isFull ? 'disabled' : ''}">
+          <header class="pc-head">
+            <div class="pc-title">
+              ${esc(p.title)}
+              ${typeBadge(p.program_type)}
+              ${isFull ? '<span class="badge full">마감</span>' : '<span class="badge open">모집중</span>'}
             </div>
-          </div>
-          <div class="right">
-            <div class="seats">남은자리<br><strong>${p.remaining}</strong> / ${p.capacity}</div>
-          </div>
-        </div>
+            <div class="pc-seats">남은자리 <strong>${p.remaining}</strong> / ${p.capacity}</div>
+          </header>
+          <div class="pc-meta">${metaParts.join('')}</div>
+          ${p.description ? `<div class="pc-body">${esc(p.description)}</div>` : ''}
+        </article>
       `;
     }).join('');
   }
