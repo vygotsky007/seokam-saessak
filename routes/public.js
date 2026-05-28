@@ -50,7 +50,6 @@ function normalizeStudents(body) {
     student_name: body.student_name,
     grade: body.grade,
     class_no: body.class_no,
-    student_phone: body.student_phone,
     motivation: body.motivation,
     program_ids: body.program_ids,
     is_multicultural: body.is_multicultural,
@@ -108,20 +107,11 @@ router.post('/apply', async (req, res) => {
       if (programIds.length === 0) {
         return res.status(400).json({ ok: false, error: `${name} 학생이 신청할 프로그램을 1개 이상 선택해 주세요.` });
       }
-      // 학생 연락처는 선택 — 비어있으면 통과, 입력했으면 형식 검증
-      let studentPhoneNorm = null;
-      if (s.student_phone !== null && s.student_phone !== undefined && String(s.student_phone).trim() !== '') {
-        studentPhoneNorm = normalizeMobile(s.student_phone);
-        if (!isValidMobile(studentPhoneNorm)) {
-          return res.status(400).json({ ok: false, error: `${name}의 학생 연락처가 올바르지 않습니다(010-XXXX-XXXX).` });
-        }
-      }
       totalPrograms += programIds.length;
       normalized.push({
         student_name: name,
         grade,
         class_no: classNo,
-        student_phone: studentPhoneNorm,
         motivation: s.motivation ? String(s.motivation).trim() : null,
         is_multicultural: s.is_multicultural === true || s.is_multicultural === 'true',
         program_ids: programIds,
@@ -220,7 +210,7 @@ router.post('/apply', async (req, res) => {
             class_no: s.class_no,
             guardian_name: guardianName,
             guardian_phone: guardianPhone,
-            student_phone: s.student_phone,
+            student_phone: null,
             motivation: s.motivation,
             privacy_agreed: true,
             status: 'applied',

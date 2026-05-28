@@ -64,15 +64,16 @@
         <label for="guardian_phone">보호자 연락처</label>
         <input type="tel" id="guardian_phone" name="guardian_phone" required placeholder="010-1234-5678">
       </div>
+      <div class="form-row">
+        <label for="guardian_motivation">문의사항<br><span class="muted" style="font-size:11px">(선택)</span></label>
+        <textarea id="guardian_motivation" name="guardian_motivation" maxlength="500" placeholder="궁금한 점이 있으면 적어주세요."></textarea>
+      </div>
 
       <div class="agree">
         <input type="checkbox" id="privacy_agreed" required>
         <div>
           <label for="privacy_agreed"><b>위 내용에 모두 동의합니다 (필수)</b></label>
-          <details open>
-            <summary>자세히 보기</summary>
-            <div id="privacy-text" style="margin-top:8px; font-size:12.5px; color:var(--ink); line-height:1.65;"></div>
-          </details>
+          <div id="privacy-text" style="margin-top:8px; font-size:12.5px; color:var(--ink); line-height:1.65;"></div>
         </div>
       </div>
 
@@ -106,19 +107,8 @@
         </div>
       </div>
       <div class="student-actions">
-        <button type="button" class="optional-toggle">+ 추가 정보 입력 (연락처·문의사항)</button>
         <button type="button" class="add-sibling-inline" hidden>+ 형제·자매 추가</button>
         <span class="add-sibling-hint muted" hidden>(최대 4명)</span>
-      </div>
-      <div class="optional-fields" hidden>
-        <div class="form-row">
-          <label>학생 연락처<br><span class="muted" style="font-size:11px">(선택)</span></label>
-          <input type="tel" class="f-sphone" placeholder="010-0000-0000">
-        </div>
-        <div class="form-row">
-          <label>문의사항<br><span class="muted" style="font-size:11px">(선택)</span></label>
-          <textarea class="f-motivation" maxlength="500" placeholder="궁금한 점이 있으면 적어주세요."></textarea>
-        </div>
       </div>
     </div>
   </div>

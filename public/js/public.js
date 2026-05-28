@@ -194,48 +194,6 @@
         renderSummary();
       });
 
-      // 학생 1(본인) 전용: 연락처/문의사항 + 토글
-      if (i === 0) {
-        const sphone = node.querySelector('.f-sphone');
-        const motivation = node.querySelector('.f-motivation');
-        if (sphone) {
-          sphone.value = s.cache.student_phone || '';
-          attachPhoneFormatter(sphone);
-          sphone.addEventListener('input', (e) => {
-            s.cache.student_phone = e.target.value.trim();
-          });
-        }
-        if (motivation) {
-          motivation.value = s.cache.motivation || '';
-          motivation.addEventListener('input', (e) => {
-            s.cache.motivation = e.target.value.trim();
-          });
-        }
-        const optToggle = node.querySelector('.optional-toggle');
-        const optFields = node.querySelector('.optional-fields');
-        if (optToggle && optFields) {
-          if (s.optional_open === undefined) {
-            s.optional_open = !!(s.cache.student_phone || s.cache.motivation);
-          }
-          const applyOptState = () => {
-            if (s.optional_open) {
-              optFields.hidden = false;
-              optToggle.textContent = '− 추가 정보 접기';
-              optToggle.classList.add('open');
-            } else {
-              optFields.hidden = true;
-              optToggle.textContent = '+ 추가 정보 입력 (연락처·문의사항)';
-              optToggle.classList.remove('open');
-            }
-          };
-          applyOptState();
-          optToggle.addEventListener('click', () => {
-            s.optional_open = !s.optional_open;
-            applyOptState();
-          });
-        }
-      }
-
       // 형제·자매 추가 버튼 (마지막 블록에만, 4명 미만일 때)
       const addBtn = node.querySelector('.add-sibling-inline');
       const addHint = node.querySelector('.add-sibling-hint');
@@ -479,14 +437,13 @@
 
     const studentsPayload = [];
     let validationErr = null;
+    const guardianMotivation = (document.getElementById('guardian_motivation').value || '').trim() || null;
 
     students.forEach((s, i) => {
       if (validationErr) return;
       const name = (s.cache.name || '').trim();
       const grade = Number(effGradeForStudent(i));
       const cls = Number(s.cache.class_no);
-      const sphone = (s.cache.student_phone || '').trim() || null;
-      const mot = (s.cache.motivation || '').trim() || null;
       const isMc = !!s.cache.is_multicultural;
       const program_ids = Array.from(s.selected);
 
@@ -494,7 +451,6 @@
       if (!grade || grade < 1 || grade > 6) { validationErr = `${name}의 학년을 1~6 사이로 입력해 주세요.`; return; }
       if (!cls || cls < 1 || cls > 30) { validationErr = `${name}의 반을 1~30 사이로 입력해 주세요.`; return; }
       if (program_ids.length === 0) { validationErr = `${name}이(가) 신청할 프로그램을 1개 이상 선택해 주세요. (② 영역에서 체크)`; return; }
-      if (sphone && !isValidPhone(sphone)) { validationErr = `${name}의 학생 연락처가 올바르지 않습니다(010-XXXX-XXXX).`; return; }
 
       for (const pid of program_ids) {
         const p = programs.find(x => x.id === pid);
@@ -508,8 +464,7 @@
       studentsPayload.push({
         student_name: name,
         grade, class_no: cls,
-        student_phone: sphone,
-        motivation: mot,
+        motivation: guardianMotivation,
         program_ids,
         is_multicultural: isMc,
       });
