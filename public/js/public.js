@@ -117,23 +117,25 @@
     detailListEl.innerHTML = programs.map(p => {
       const isFull = p.is_full || p.remaining <= 0;
       const meta = [];
-      if (p.schedule)    meta.push(`<span>📅 ${esc(p.schedule)}</span>`);
-      if (p.location)    meta.push(`<span>📍 ${esc(p.location)}</span>`);
-      meta.push(`<span>👶 ${formatGradesLabel(p.grades)}</span>`);
-      meta.push(`<span>👥 정원 ${p.capacity}명</span>`);
-      if (p.instructors) meta.push(`<span>🧑‍🏫 ${esc(p.instructors)}</span>`);
+      if (p.schedule)    meta.push(`<span class="meta-item"><span class="meta-ic">📅</span>${esc(p.schedule)}</span>`);
+      if (p.location)    meta.push(`<span class="meta-item"><span class="meta-ic">📍</span>${esc(p.location)}</span>`);
+      meta.push(`<span class="meta-item"><span class="meta-ic">🎯</span>${formatGradesLabel(p.grades)}</span>`);
+      if (p.instructors) meta.push(`<span class="meta-item"><span class="meta-ic">🧑‍🏫</span>${esc(p.instructors)}</span>`);
+      const seatsLine = isFull
+        ? `<span class="seats-full">정원 ${p.capacity}명 (모집 마감)</span>`
+        : `남은 자리 <strong>${p.remaining}명</strong> / 정원 ${p.capacity}명`;
       return `
         <article class="program-card ${isFull ? 'disabled' : ''}">
-          <header class="pc-head">
-            <div class="pc-title">
-              ${esc(p.title)}
+          <div class="pc-inner">
+            <div class="pc-tags">
+              ${isFull ? '<span class="badge full">모집 마감</span>' : '<span class="badge open">모집중</span>'}
               ${typeBadge(p.program_type)}
-              ${isFull ? '<span class="badge full">마감</span>' : '<span class="badge open">모집중</span>'}
             </div>
-            <div class="pc-seats">남은자리 <strong>${p.remaining}</strong> / ${p.capacity}</div>
-          </header>
-          <div class="pc-meta">${meta.join('')}</div>
-          ${p.description ? `<div class="pc-body">${esc(p.description)}</div>` : ''}
+            <h3 class="pc-title">${esc(p.title)}</h3>
+            <div class="pc-meta-row">${meta.join('')}</div>
+            <div class="pc-seats-line">${seatsLine}</div>
+            ${p.description ? `<div class="pc-body">${esc(p.description)}</div>` : ''}
+          </div>
         </article>
       `;
     }).join('');
@@ -346,6 +348,8 @@
 
   function updateSubmitState(totalCount) {
     const hint = document.getElementById('submit-hint');
+    const countEl = document.getElementById('submit-bar-count');
+    if (countEl) countEl.innerHTML = `총 <strong>${totalCount}</strong>건 신청 예정`;
     if (totalCount === 0) {
       submitBtn.disabled = true;
       if (hint) hint.style.display = '';
@@ -565,6 +569,8 @@
     html += '</div>';
     resultArea.innerHTML = html;
     form.style.display = 'none';
+    const bar = document.getElementById('submit-bar');
+    if (bar) bar.style.display = 'none';
   }
 
   // === 초기화 ===

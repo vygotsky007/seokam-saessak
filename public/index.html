@@ -8,29 +8,33 @@
 <link rel="stylesheet" href="/css/common.css">
 <link rel="stylesheet" href="/css/public.css">
 </head>
-<body>
+<body class="public-page">
 <div class="page">
   <div class="header">
     <h1>🌱 석암초등학교 디지털새싹 신청</h1>
     <p class="sub">2026학년도 디지털새싹 교실 프로그램 신청 페이지입니다.</p>
-    <div class="me-cta">
-      <a class="btn me-cta-btn" href="/me">🔎 내 신청 확인·취소</a>
-      <div class="me-cta-hint">이미 신청한 분은 여기서 조회·수정·취소할 수 있어요</div>
-    </div>
+  </div>
+
+  <div class="me-cta-row">
+    <a class="me-cta-link" href="/me">🔎 이미 신청한 분은 여기서 조회·수정·취소</a>
   </div>
 
   <div class="notice">
-    <strong>안내</strong>
-    <ul>
-      <li>듣고 싶은 프로그램을 <b>여러 개 동시에 신청</b>할 수 있어요.</li>
-      <li>형제·자매가 함께 신청한다면 <b>"+ 형제·자매 추가"</b>로 한 번에 신청할 수 있어요.</li>
-      <li>프로그램마다 <b>대상 학년</b>과 <b>정원</b>이 다르니 꼭 확인해 주세요.</li>
-      <li>정원이 마감된 프로그램은 선택할 수 없습니다.</li>
-      <li>프로그램은 모두 무료이며, 간식 제공은 운영 업체에 따라 다를 수 있어요.</li>
-      <li>선정 결과는 추후 보호자 연락처로 개별 안내됩니다.</li>
-      <li>디지털새싹 프로그램은 각 담당 선생님이 독립적으로 운영해요. 신청하실 프로그램의 내용과 담당 선생님을 꼭 확인해 주세요.</li>
-      <li>프로그램은 함께 만들어가는 배움의 시간이에요. 잦은 결석·지각이나 연락 없는 불참이 반복되면 다음 프로그램 참여가 어려울 수 있으니, 끝까지 성실하게 함께해 주세요.</li>
+    <div class="notice-title">📌 안내</div>
+    <ul class="notice-core">
+      <li>여러 자녀를 한 번에 신청할 수 있어요.</li>
+      <li>프로그램마다 신청할 학생을 따로 선택해요.</li>
+      <li>선정 결과는 보호자 연락처로 개별 안내됩니다.</li>
     </ul>
+    <details class="notice-more">
+      <summary>자세히 보기</summary>
+      <ul>
+        <li>정원이 마감된 프로그램은 선택할 수 없습니다.</li>
+        <li>프로그램은 모두 무료이며, 간식 제공은 운영 업체에 따라 다를 수 있어요.</li>
+        <li>디지털새싹 프로그램은 각 담당 선생님이 독립적으로 운영해요. 신청하실 프로그램의 내용과 담당 선생님을 꼭 확인해 주세요.</li>
+        <li>프로그램은 함께 만들어가는 배움의 시간이에요. 잦은 결석·지각이나 연락 없는 불참이 반복되면 다음 프로그램 참여가 어려울 수 있으니, 끝까지 성실하게 함께해 주세요.</li>
+      </ul>
+    </details>
   </div>
 
   <div class="section-title">📚 모집 중인 프로그램 안내</div>
@@ -39,53 +43,66 @@
   </div>
 
   <form id="apply-form" autocomplete="off">
-    <div class="step-title"><span class="step-num">1</span> 신청 학생 등록</div>
-    <p class="step-desc">신청할 학생 정보를 먼저 입력하세요. 형제·자매가 함께 신청하면 한 번에 묶어 접수됩니다.</p>
-    <div id="students-area"></div>
+    <section class="step">
+      <div class="step-title"><span class="step-num">1</span> 신청 학생 등록</div>
+      <p class="step-desc">신청할 학생 정보를 먼저 입력하세요. 형제·자매가 함께 신청하면 한 번에 묶어 접수됩니다.</p>
+      <div id="students-area"></div>
+    </section>
 
-    <div class="step-title"><span class="step-num">2</span> 프로그램별 신청할 학생 선택</div>
-    <p class="step-desc">각 프로그램마다 신청할 학생을 골라 주세요. 한 학생이 여러 프로그램에 신청할 수 있어요.</p>
-    <div id="programs-area">
-      <div class="empty-state muted">불러오는 중…</div>
-    </div>
-
-    <div class="step-title"><span class="step-num">3</span> 신청 내용 확인</div>
-    <p class="step-desc">학생별로 신청할 프로그램이 맞는지 확인해 주세요.</p>
-    <div id="summary-area">
-      <div class="empty">먼저 위에서 학생과 프로그램을 선택해 주세요.</div>
-    </div>
-
-    <div class="section-title">📝 보호자 정보</div>
-    <div class="form">
-      <div class="form-row">
-        <label for="guardian_name">보호자 이름</label>
-        <input type="text" id="guardian_name" name="guardian_name" required maxlength="20" placeholder="예: 김부모">
+    <section class="step">
+      <div class="step-title"><span class="step-num">2</span> 프로그램별 신청할 학생 선택</div>
+      <p class="step-desc">각 프로그램마다 신청할 학생을 골라 주세요. 한 학생이 여러 프로그램에 신청할 수 있어요.</p>
+      <div id="programs-area">
+        <div class="empty-state muted">불러오는 중…</div>
       </div>
-      <div class="form-row">
-        <label for="guardian_phone">보호자 연락처</label>
-        <input type="tel" id="guardian_phone" name="guardian_phone" required placeholder="010-1234-5678">
-      </div>
-      <div class="form-row">
-        <label for="guardian_motivation">문의사항<br><span class="muted" style="font-size:11px">(선택)</span></label>
-        <textarea id="guardian_motivation" name="guardian_motivation" maxlength="500" placeholder="궁금한 점이 있으면 적어주세요."></textarea>
-      </div>
+    </section>
 
-      <div class="agree">
-        <input type="checkbox" id="privacy_agreed" required>
-        <div>
-          <label for="privacy_agreed"><b>위 내용에 모두 동의합니다 (필수)</b></label>
-          <div id="privacy-text" style="margin-top:8px; font-size:12.5px; color:var(--ink); line-height:1.65;"></div>
+    <section class="step">
+      <div class="step-title"><span class="step-num">3</span> 신청 내용 확인</div>
+      <p class="step-desc">학생별로 신청할 프로그램이 맞는지 확인해 주세요.</p>
+      <div id="summary-area">
+        <div class="empty">먼저 위에서 학생과 프로그램을 선택해 주세요.</div>
+      </div>
+    </section>
+
+    <section class="step guardian-step">
+      <div class="step-title"><span class="step-num">📝</span> 보호자 정보</div>
+      <div class="form">
+        <div class="form-row">
+          <label for="guardian_name">보호자 이름</label>
+          <input type="text" id="guardian_name" name="guardian_name" required maxlength="20" placeholder="예: 김부모">
+        </div>
+        <div class="form-row">
+          <label for="guardian_phone">보호자 연락처</label>
+          <input type="tel" id="guardian_phone" name="guardian_phone" required placeholder="010-1234-5678">
+        </div>
+        <div class="form-row">
+          <label for="guardian_motivation">문의사항<br><span class="muted" style="font-size:11px">(선택)</span></label>
+          <textarea id="guardian_motivation" name="guardian_motivation" maxlength="500" placeholder="궁금한 점이 있으면 적어주세요."></textarea>
+        </div>
+
+        <div class="agree">
+          <input type="checkbox" id="privacy_agreed" required>
+          <div>
+            <label for="privacy_agreed"><b>위 내용에 모두 동의합니다 (필수)</b></label>
+            <div id="privacy-text" style="margin-top:8px; font-size:12.5px; color:var(--ink); line-height:1.65;"></div>
+          </div>
         </div>
       </div>
-
-      <div class="submit-row">
-        <span class="submit-hint" id="submit-hint">신청할 프로그램을 1개 이상 선택해 주세요</span>
-        <button type="submit" class="btn primary" id="submit-btn" disabled>신청하기</button>
-      </div>
-    </div>
+    </section>
   </form>
 
   <div id="result-area"></div>
+</div>
+
+<div class="submit-bar" id="submit-bar">
+  <div class="submit-bar-inner">
+    <div class="submit-bar-info">
+      <div class="submit-bar-count" id="submit-bar-count">총 <strong>0</strong>건 신청 예정</div>
+      <div class="submit-bar-hint" id="submit-hint">신청할 프로그램을 1개 이상 선택해 주세요</div>
+    </div>
+    <button form="apply-form" type="submit" class="btn primary submit-bar-btn" id="submit-btn" disabled>신청하기</button>
+  </div>
 </div>
 
 <template id="student-block-tpl">
