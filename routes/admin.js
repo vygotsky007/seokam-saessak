@@ -22,9 +22,10 @@ router.get('/programs', async (req, res) => {
     let waitlistCounts = {};
     let selectedCounts = {};
     if (ids.length > 0) {
+      // is_waitlist 컬럼이 PostgREST schema cache 갱신 전이라도 select('*')는 안전.
       const { data: apps, error: aErr } = await supabase
         .from('saessak_applications')
-        .select('program_id, status, is_waitlist')
+        .select('*')
         .in('program_id', ids);
       if (aErr) throw aErr;
       (apps || []).forEach(a => {

@@ -25,9 +25,10 @@ router.get('/programs', async (req, res) => {
     const appliedCounts = {};
     const waitlistCounts = {};
     if (ids.length > 0) {
+      // schema cache 갱신 전에도 안전하도록 select('*')
       const { data: apps, error: aErr } = await supabase
         .from('saessak_applications')
-        .select('program_id, status, is_waitlist')
+        .select('*')
         .in('program_id', ids);
       if (aErr) throw aErr;
       (apps || []).forEach(a => {
@@ -188,7 +189,7 @@ router.post('/apply', async (req, res) => {
     // 실시간 카운트 (자동 접수와 자동 대기를 분리해서 센다)
     const { data: allApps, error: cErr } = await supabase
       .from('saessak_applications')
-      .select('program_id, status, is_waitlist')
+      .select('*')
       .in('program_id', allProgramIds);
     if (cErr) throw cErr;
     const appliedLive = {};

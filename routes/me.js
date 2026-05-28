@@ -30,7 +30,7 @@ router.post('/lookup', async (req, res) => {
 
     const { data: own, error: e1 } = await supabase
       .from('saessak_applications')
-      .select('id, program_id, student_name, grade, class_no, guardian_name, guardian_phone, student_phone, motivation, status, source, submitted_at, sibling_group_id, is_waitlist, program:saessak_programs(id, title, schedule, location, program_type, capacity, waitlist_capacity)')
+      .select('*, program:saessak_programs(id, title, schedule, location, program_type, capacity, waitlist_capacity)')
       .eq('guardian_phone', phone)
       .eq('student_name', name);
     if (e1) throw e1;
@@ -40,7 +40,7 @@ router.post('/lookup', async (req, res) => {
     if (groupIds.length > 0) {
       const { data, error } = await supabase
         .from('saessak_applications')
-        .select('id, program_id, student_name, grade, class_no, guardian_name, guardian_phone, student_phone, motivation, status, source, submitted_at, sibling_group_id, is_waitlist, program:saessak_programs(id, title, schedule, location, program_type, capacity, waitlist_capacity)')
+        .select('*, program:saessak_programs(id, title, schedule, location, program_type, capacity, waitlist_capacity)')
         .eq('guardian_phone', phone)
         .in('sibling_group_id', groupIds);
       if (error) throw error;
@@ -64,7 +64,7 @@ router.post('/lookup', async (req, res) => {
     if (programIds.length > 0) {
       const { data, error } = await supabase
         .from('saessak_applications')
-        .select('id, program_id, is_waitlist, status, submitted_at')
+        .select('*')
         .in('program_id', programIds);
       if (error) throw error;
       peers = data || [];
