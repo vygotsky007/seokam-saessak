@@ -50,16 +50,28 @@ router.get('/programs', async (req, res) => {
   }
 });
 
+function normalizeGrades(input) {
+  if (!Array.isArray(input)) return null;
+  const out = Array.from(new Set(
+    input.map(v => Number(v)).filter(v => Number.isInteger(v) && v >= 1 && v <= 6)
+  )).sort((a, b) => a - b);
+  return out.length > 0 ? out : null;
+}
+
 router.post('/programs', async (req, res) => {
   try {
     const {
       title, description, schedule, location,
-      grade_min, grade_max, capacity, instructors, is_open,
+      grades, capacity, instructors, is_open,
       program_type, multicultural_min,
     } = req.body || {};
 
     if (!title || !String(title).trim()) {
       return res.status(400).json({ ok: false, error: '프로그램명을 입력하세요.' });
+    }
+    const gradesNorm = normalizeGrades(grades);
+    if (!gradesNorm) {
+      return res.status(400).json({ ok: false, error: '대상 학년을 1개 이상 선택하세요.' });
     }
     const ptype = ['general', 'multicultural', 'sibling'].includes(program_type) ? program_type : 'general';
     const payload = {
@@ -67,8 +79,7 @@ router.post('/programs', async (req, res) => {
       description: description ? String(description).trim() : null,
       schedule: schedule ? String(schedule).trim() : null,
       location: location ? String(location).trim() : null,
-      grade_min: Number(grade_min) || 1,
-      grade_max: Number(grade_max) || 6,
+      grades: gradesNorm,
       capacity: Number(capacity) || 0,
       instructors: instructors ? String(instructors).trim() : null,
       is_open: is_open === true || is_open === 'true',
@@ -93,14 +104,19 @@ router.put('/programs/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const allowed = ['title', 'description', 'schedule', 'location',
-      'grade_min', 'grade_max', 'capacity', 'instructors', 'is_open',
+      'grades', 'capacity', 'instructors', 'is_open',
       'program_type', 'multicultural_min'];
     const patch = {};
     for (const k of allowed) {
       if (k in req.body) patch[k] = req.body[k];
     }
-    if ('grade_min' in patch) patch.grade_min = Number(patch.grade_min);
-    if ('grade_max' in patch) patch.grade_max = Number(patch.grade_max);
+    if ('grades' in patch) {
+      const g = normalizeGrades(patch.grades);
+      if (!g) {
+        return res.status(400).json({ ok: false, error: '대상 학년을 1개 이상 선택하세요.' });
+      }
+      patch.grades = g;
+    }
     if ('capacity' in patch) patch.capacity = Number(patch.capacity);
     if ('is_open' in patch) patch.is_open = patch.is_open === true || patch.is_open === 'true';
     if ('program_type' in patch) {

@@ -163,16 +163,20 @@ router.patch('/applications/:id', ownerLimiter, async (req, res) => {
       return res.json({ ok: true, noop: true });
     }
 
-    // 학년 변경 시 신청 프로그램 grade 범위 검증
+    // 학년 변경 시 신청 프로그램 grades 배열 검증
     if ('grade' in updates) {
       const { data: prog, error: pErr } = await supabase
         .from('saessak_programs')
-        .select('grade_min, grade_max, title')
+        .select('grades, title')
         .eq('id', v.row.program_id)
         .single();
       if (pErr) throw pErr;
-      if (prog && (updates.grade < prog.grade_min || updates.grade > prog.grade_max)) {
-        return res.status(400).json({ ok: false, error: `"${prog.title}"은(는) ${prog.grade_min}~${prog.grade_max}학년 대상입니다.` });
+      const gs = Array.isArray(prog && prog.grades) ? prog.grades : [];
+      if (prog && !gs.includes(updates.grade)) {
+        const sorted = [...new Set(gs)].sort((a, b) => a - b);
+        const contiguous = sorted.length >= 2 && sorted.every((v, i) => i === 0 || v === sorted[i - 1] + 1);
+        const label = sorted.length === 0 ? '' : (contiguous ? `${sorted[0]}~${sorted[sorted.length - 1]}학년` : `${sorted.join(',')}학년`);
+        return res.status(400).json({ ok: false, error: `"${prog.title}"은(는) ${label} 대상입니다.` });
       }
     }
 

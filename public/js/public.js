@@ -50,6 +50,16 @@
     if (t === 'sibling') return '<span class="badge tag-sibling">형제 우대</span>';
     return '';
   }
+  function formatGradesLabel(grades) {
+    if (!Array.isArray(grades) || grades.length === 0) return '';
+    const sorted = [...new Set(grades.map(Number))].sort((a, b) => a - b);
+    const contiguous = sorted.length >= 2 && sorted.every((v, i) => i === 0 || v === sorted[i - 1] + 1);
+    if (contiguous) return `${sorted[0]}~${sorted[sorted.length - 1]}학년`;
+    return `${sorted.join(',')}학년`;
+  }
+  function gradeIncluded(p, g) {
+    return Array.isArray(p.grades) && p.grades.map(Number).includes(Number(g));
+  }
 
   // === 상태 ===
   let programs = [];
@@ -93,7 +103,7 @@
       for (const pid of Array.from(s.selected)) {
         const p = programs.find(x => x.id === pid);
         if (!p) { s.selected.delete(pid); continue; }
-        if (g < p.grade_min || g > p.grade_max) s.selected.delete(pid);
+        if (!gradeIncluded(p, g)) s.selected.delete(pid);
       }
     });
   }
@@ -109,7 +119,7 @@
       const meta = [];
       if (p.schedule)    meta.push(`<span>📅 ${esc(p.schedule)}</span>`);
       if (p.location)    meta.push(`<span>📍 ${esc(p.location)}</span>`);
-      meta.push(`<span>👶 ${p.grade_min}~${p.grade_max}학년</span>`);
+      meta.push(`<span>👶 ${formatGradesLabel(p.grades)}</span>`);
       meta.push(`<span>👥 정원 ${p.capacity}명</span>`);
       if (p.instructors) meta.push(`<span>🧑‍🏫 ${esc(p.instructors)}</span>`);
       return `
@@ -247,7 +257,7 @@
       const eligibleIdxs = [];
       students.forEach((s, i) => {
         const eff = effGradeForStudent(i);
-        if (eff != null && eff >= p.grade_min && eff <= p.grade_max) eligibleIdxs.push(i);
+        if (eff != null && gradeIncluded(p, eff)) eligibleIdxs.push(i);
       });
       const allEligibleSelected = eligibleIdxs.length > 0 &&
         eligibleIdxs.every(i => students[i].selected.has(p.id));
@@ -260,7 +270,7 @@
       } else {
         const studentRows = students.map((s, i) => {
           const eff = effGradeForStudent(i);
-          const gradeOk = eff != null && eff >= p.grade_min && eff <= p.grade_max;
+          const gradeOk = eff != null && gradeIncluded(p, eff);
           const disabled = isFull || !gradeOk;
           const checked = s.selected.has(p.id);
           const cls = ['s2-row'];
@@ -290,7 +300,7 @@
           <header class="s2-head">
             <div class="s2-title">${esc(p.title)} ${tags}</div>
             <div class="s2-meta">
-              👶 ${p.grade_min}~${p.grade_max}학년 · 남은자리 <strong>${p.remaining}</strong>/${p.capacity}
+              👶 ${formatGradesLabel(p.grades)} · 남은자리 <strong>${p.remaining}</strong>/${p.capacity}
             </div>
           </header>
           <div class="s2-sub">이 프로그램을 신청할 학생</div>
@@ -322,7 +332,7 @@
         const eligible = [];
         students.forEach((s, i) => {
           const eff = effGradeForStudent(i);
-          if (eff != null && eff >= p.grade_min && eff <= p.grade_max) eligible.push(s);
+          if (eff != null && gradeIncluded(p, eff)) eligible.push(s);
         });
         if (eligible.length === 0) return;
         const allChecked = eligible.every(s => s.selected.has(pid));
@@ -455,8 +465,8 @@
       for (const pid of program_ids) {
         const p = programs.find(x => x.id === pid);
         if (!p) continue;
-        if (grade < p.grade_min || grade > p.grade_max) {
-          validationErr = `${name}: "${p.title}"은(는) ${p.grade_min}~${p.grade_max}학년 대상입니다.`;
+        if (!gradeIncluded(p, grade)) {
+          validationErr = `${name}: "${p.title}"은(는) ${formatGradesLabel(p.grades)} 대상입니다.`;
           return;
         }
       }

@@ -177,10 +177,14 @@
         <label>설명</label><textarea name="description" rows="5" placeholder="공개 안내 영역의 카드 본문에 표시됩니다. 줄바꿈은 그대로 유지됩니다."></textarea>
         <label>일정</label><input type="text" name="schedule" placeholder="예: 10월 20일(월)~23일(목) 14:40~16:00">
         <label>장소</label><input type="text" name="location">
-        <label>학년</label>
-        <div class="row">
-          <input type="number" name="grade_min" min="1" max="6" value="1" style="width:80px;"> ~
-          <input type="number" name="grade_max" min="1" max="6" value="6" style="width:80px;">
+        <label>대상 학년</label>
+        <div class="grade-checks">
+          <label><input type="checkbox" class="grade-check" value="1"> 1학년</label>
+          <label><input type="checkbox" class="grade-check" value="2"> 2학년</label>
+          <label><input type="checkbox" class="grade-check" value="3"> 3학년</label>
+          <label><input type="checkbox" class="grade-check" value="4"> 4학년</label>
+          <label><input type="checkbox" class="grade-check" value="5"> 5학년</label>
+          <label><input type="checkbox" class="grade-check" value="6"> 6학년</label>
         </div>
         <label>정원</label><input type="number" name="capacity" min="1" value="20">
         <label>강사</label><input type="text" name="instructors">

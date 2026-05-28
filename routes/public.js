@@ -4,6 +4,14 @@ const router = express.Router();
 const supabase = require('../utils/supabase');
 const { normalizeMobile, isValidMobile } = require('../utils/phone');
 
+function formatGradesLabel(grades) {
+  if (!Array.isArray(grades) || grades.length === 0) return '';
+  const sorted = [...new Set(grades)].sort((a, b) => a - b);
+  const isContiguous = sorted.every((v, i) => i === 0 || v === sorted[i - 1] + 1);
+  if (isContiguous && sorted.length >= 2) return `${sorted[0]}~${sorted[sorted.length - 1]}학년`;
+  return `${sorted.join(',')}학년`;
+}
+
 router.get('/programs', async (req, res) => {
   try {
     const { data: programs, error } = await supabase
@@ -141,10 +149,11 @@ router.post('/apply', async (req, res) => {
         if (!p) {
           return res.status(400).json({ ok: false, error: '잘못된 프로그램이 포함되어 있습니다.' });
         }
-        if (s.grade < p.grade_min || s.grade > p.grade_max) {
+        const grades = Array.isArray(p.grades) ? p.grades : [];
+        if (!grades.includes(s.grade)) {
           return res.status(400).json({
             ok: false,
-            error: `${s.student_name}: "${p.title}" 은(는) ${p.grade_min}~${p.grade_max}학년 대상입니다.`,
+            error: `${s.student_name}: "${p.title}" 은(는) ${formatGradesLabel(grades)} 대상입니다.`,
           });
         }
       }

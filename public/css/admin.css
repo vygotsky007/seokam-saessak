@@ -222,6 +222,25 @@ tbody tr:hover { background: #F8FAFC; }
 }
 .toast.show { opacity: 0.95; }
 
+.grade-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+}
+.grade-checks label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.grade-checks input[type="checkbox"] {
+  accent-color: var(--primary);
+  width: 16px;
+  height: 16px;
+}
+
 @media (max-width: 720px) {
   .admin-shell { padding: 14px 12px 60px; }
   .admin-header h1 { font-size: 17px; }

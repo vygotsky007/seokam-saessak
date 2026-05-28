@@ -24,6 +24,24 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
+  function formatGradesLabel(grades) {
+    if (!Array.isArray(grades) || grades.length === 0) return '';
+    const sorted = [...new Set(grades.map(Number))].sort((a, b) => a - b);
+    const contiguous = sorted.length >= 2 && sorted.every((v, i) => i === 0 || v === sorted[i - 1] + 1);
+    if (contiguous) return `${sorted[0]}~${sorted[sorted.length - 1]}학년`;
+    return `${sorted.join(',')}학년`;
+  }
+  function readGradeChecks(form) {
+    return Array.from(form.querySelectorAll('.grade-check'))
+      .filter(c => c.checked)
+      .map(c => Number(c.value));
+  }
+  function setGradeChecks(form, grades) {
+    const set = new Set(Array.isArray(grades) ? grades.map(Number) : []);
+    form.querySelectorAll('.grade-check').forEach(c => {
+      c.checked = set.has(Number(c.value));
+    });
+  }
   function fmtTime(iso) {
     if (!iso) return '';
     try {
@@ -200,7 +218,7 @@
             <td>${typeBadge(p.program_type)}${p.program_type === 'multicultural' && p.multicultural_min != null ? `<div class="muted" style="font-size:11px; margin-top:2px;">최소 ${p.multicultural_min}명</div>` : ''}</td>
             <td>${esc(p.schedule || '')}</td>
             <td>${esc(p.location || '')}</td>
-            <td>${p.grade_min}~${p.grade_max}학년</td>
+            <td>${formatGradesLabel(p.grades)}</td>
             <td>${p.capacity}</td>
             <td>${p.applied_count} / ${p.capacity}</td>
             <td>${esc(p.instructors || '')}</td>
@@ -253,8 +271,7 @@
         form.description.value = p.description || '';
         form.schedule.value = p.schedule || '';
         form.location.value = p.location || '';
-        form.grade_min.value = p.grade_min || 1;
-        form.grade_max.value = p.grade_max || 6;
+        setGradeChecks(form, p.grades);
         form.capacity.value = p.capacity || 20;
         form.instructors.value = p.instructors || '';
         form.program_type.value = p.program_type || 'general';
@@ -282,13 +299,17 @@
     e.preventDefault();
     const form = e.target;
     const ptype = form.program_type.value;
+    const grades = readGradeChecks(form);
+    if (grades.length === 0) {
+      toast('대상 학년을 1개 이상 선택하세요.');
+      return;
+    }
     const payload = {
       title: form.title.value.trim(),
       description: form.description.value.trim(),
       schedule: form.schedule.value.trim(),
       location: form.location.value.trim(),
-      grade_min: Number(form.grade_min.value),
-      grade_max: Number(form.grade_max.value),
+      grades,
       capacity: Number(form.capacity.value),
       instructors: form.instructors.value.trim(),
       is_open: $('#program-is-open').checked,
