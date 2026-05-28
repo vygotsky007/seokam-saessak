@@ -277,12 +277,10 @@
         form.instructors.value = p.instructors || '';
         form.program_type.value = p.program_type || 'general';
         form.multicultural_min.value = p.multicultural_min ?? '';
-        $('#program-is-open').checked = !!p.is_open;
       }
     } else {
       form.program_type.value = 'general';
       form.multicultural_min.value = '';
-      $('#program-is-open').checked = false;
     }
     updateMulticulturalMinVisibility();
     dlg.classList.add('open');
@@ -314,16 +312,17 @@
       capacity: Number(form.capacity.value),
       waitlist_capacity: Math.max(0, Number(form.waitlist_capacity.value) || 0),
       instructors: form.instructors.value.trim(),
-      is_open: $('#program-is-open').checked,
       program_type: ptype,
       multicultural_min: ptype === 'multicultural' && form.multicultural_min.value !== ''
         ? Number(form.multicultural_min.value) : null,
     };
+    // 모집 열기/닫기는 목록의 토글로만 관리. 폼 제출은 is_open을 건드리지 않음.
+    // 신규 생성은 명시적으로 false(닫힘)로 시작.
     try {
       if (form.dataset.editId) {
         await api(`/programs/${form.dataset.editId}`, { method: 'PUT', body: JSON.stringify(payload) });
       } else {
-        await api('/programs', { method: 'POST', body: JSON.stringify(payload) });
+        await api('/programs', { method: 'POST', body: JSON.stringify({ ...payload, is_open: false }) });
       }
       $('#program-dialog').classList.remove('open');
       toast('저장됨');
