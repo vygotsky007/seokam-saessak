@@ -134,10 +134,10 @@
           <tr>
             <td>${esc(p.title)}</td>
             <td>${typeBadge(p.program_type)}</td>
-            <td>${p.applied}</td>
+            <td>${p.applied}<br><span class="muted" style="font-size:11px;">대기 ${p.waitlisted || 0}</span></td>
             <td>${p.selected}</td>
-            <td>${p.capacity}</td>
-            <td>${p.remaining}</td>
+            <td>${p.capacity}<br><span class="muted" style="font-size:11px;">대기 ${p.waitlist_capacity ?? 10}</span></td>
+            <td>${p.remaining}<br><span class="muted" style="font-size:11px;">대기여유 ${p.waitlist_remaining || 0}</span></td>
             <td>${renderPreferenceProgress(p)}</td>
             <td>${p.is_open ? '<span class="badge open">모집중</span>' : '<span class="badge closed">마감</span>'}</td>
           </tr>
@@ -219,8 +219,8 @@
             <td>${esc(p.schedule || '')}</td>
             <td>${esc(p.location || '')}</td>
             <td>${formatGradesLabel(p.grades)}</td>
-            <td>${p.capacity}</td>
-            <td>${p.applied_count} / ${p.capacity}</td>
+            <td>${p.capacity}<br><span class="muted" style="font-size:11px;">대기 ${p.waitlist_capacity ?? 10}</span></td>
+            <td>${p.applied_count} / ${p.capacity}${(p.waitlist_count || 0) > 0 ? `<br><span class="muted" style="font-size:11px;">대기 ${p.waitlist_count} / ${p.waitlist_capacity ?? 10}</span>` : ''}</td>
             <td>${esc(p.instructors || '')}</td>
             <td>
               <label class="toggle-switch">
@@ -273,6 +273,7 @@
         form.location.value = p.location || '';
         setGradeChecks(form, p.grades);
         form.capacity.value = p.capacity || 20;
+        form.waitlist_capacity.value = p.waitlist_capacity ?? 10;
         form.instructors.value = p.instructors || '';
         form.program_type.value = p.program_type || 'general';
         form.multicultural_min.value = p.multicultural_min ?? '';
@@ -311,6 +312,7 @@
       location: form.location.value.trim(),
       grades,
       capacity: Number(form.capacity.value),
+      waitlist_capacity: Math.max(0, Number(form.waitlist_capacity.value) || 0),
       instructors: form.instructors.value.trim(),
       is_open: $('#program-is-open').checked,
       program_type: ptype,
@@ -398,6 +400,9 @@
     }
     tbody.innerHTML = list.map((a, i) => {
       const badges = [];
+      // 접수 순번 자동 구분 (관리자 status 판정과는 별개 레이어)
+      if (a.is_waitlist) badges.push('<span class="badge" style="background:#FEF3C7; color:#92400E;">자동대기</span>');
+      else badges.push('<span class="badge" style="background:#DCFCE7; color:#166534;">자동접수</span>');
       if (a.is_multicultural) badges.push('<span class="badge tag-multicultural">다문화</span>');
       if (a.sibling_group_id) {
         badges.push(`<span class="badge" style="background:${siblingColor(a.sibling_group_id)}; color:#0F172A;">형제 ${esc(siblingShort(a.sibling_group_id))}</span>`);

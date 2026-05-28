@@ -35,6 +35,16 @@
     if (s === 'cancelled') return '<span class="badge cancelled">취소됨</span>';
     return '<span class="badge open">접수 완료</span>';
   }
+  // 자동 접수/대기 구분 (관리자의 선정 결과는 별개 - 여기선 미노출)
+  function autoSlotLabel(r) {
+    if (r.status === 'cancelled') return '';
+    if (r.is_waitlist) {
+      const n = r.slot_number;
+      return `<span class="badge waiting">대기${n ? ` ${n}번` : ''}</span>`;
+    }
+    const n = r.slot_number;
+    return `<span class="badge open">접수${n ? ` ${n}번째` : ''}</span>`;
+  }
 
   function toast(msg) {
     const t = document.getElementById('toast');
@@ -98,7 +108,7 @@
         return `
           <div class="app-item ${isCancelled ? 'cancelled' : ''}">
             <div class="app-main">
-              <div class="app-title">${esc(program.title || '(프로그램)')} ${statusLabel(r.status)}</div>
+              <div class="app-title">${esc(program.title || '(프로그램)')} ${statusLabel(r.status)} ${isCancelled ? '' : autoSlotLabel(r)}</div>
               <div class="app-meta">
                 ${program.schedule ? `📅 ${esc(program.schedule)}` : ''}
                 ${program.location ? ` · 📍 ${esc(program.location)}` : ''}
@@ -126,7 +136,7 @@
       <div class="notice" style="margin-top:14px;">
         <strong>안내</strong>
         <ul>
-          <li>여기에 보이는 상태는 <b>접수 완료</b> 또는 <b>취소됨</b>만 표시돼요. 선정 결과는 따로 안내드립니다.</li>
+          <li>여기에 보이는 상태는 <b>접수/대기/취소</b>만 표시돼요. <b>접수·대기는 확정이 아니며</b>, 최종 선정 결과는 담당 선생님이 별도로 안내드립니다.</li>
           <li>취소·수정은 본인 확인을 위해 <b>조회에 사용한 보호자 연락처와 학생 이름</b>이 신청 정보와 일치해야 가능합니다.</li>
         </ul>
       </div>

@@ -115,15 +115,20 @@
       return;
     }
     detailListEl.innerHTML = programs.map(p => {
-      const isFull = p.is_full || p.remaining <= 0;
+      const isFull = !!p.is_fully_closed;
       const meta = [];
       if (p.schedule)    meta.push(`<span class="meta-item"><span class="meta-ic">📅</span>${esc(p.schedule)}</span>`);
       if (p.location)    meta.push(`<span class="meta-item"><span class="meta-ic">📍</span>${esc(p.location)}</span>`);
       meta.push(`<span class="meta-item"><span class="meta-ic">🎯</span>${formatGradesLabel(p.grades)}</span>`);
       if (p.instructors) meta.push(`<span class="meta-item"><span class="meta-ic">🧑‍🏫</span>${esc(p.instructors)}</span>`);
-      const seatsLine = isFull
-        ? `<span class="seats-full">정원 ${p.capacity}명 (모집 마감)</span>`
-        : `남은 자리 <strong>${p.remaining}명</strong> / 정원 ${p.capacity}명`;
+      let seatsLine;
+      if (p.is_fully_closed) {
+        seatsLine = `<span class="seats-full">정원·대기 모두 마감</span>`;
+      } else if (p.remaining > 0) {
+        seatsLine = `남은 자리 <strong>${p.remaining}명</strong> / 정원 ${p.capacity}명`;
+      } else {
+        seatsLine = `정원 마감 · 대기 신청 가능 <strong>(대기 ${p.waitlist_count || 0}/${p.waitlist_capacity ?? 10}명)</strong>`;
+      }
       return `
         <article class="program-card ${isFull ? 'disabled' : ''}">
           <div class="pc-inner">
@@ -249,10 +254,13 @@
     const noStudentInfo = allStudentsEmpty();
 
     programsArea.innerHTML = programs.map(p => {
-      const isFull = p.is_full || p.remaining <= 0;
+      const isFull = !!p.is_fully_closed;
+      const isWaitOnly = !isFull && p.remaining <= 0;
       const tags = [
         typeBadge(p.program_type),
-        isFull ? '<span class="badge full">마감</span>' : '<span class="badge open">모집중</span>',
+        isFull ? '<span class="badge full">마감</span>'
+          : (isWaitOnly ? '<span class="badge waiting">대기 가능</span>'
+            : '<span class="badge open">모집중</span>'),
       ].filter(Boolean).join(' ');
 
       // 자격 학생 인덱스
@@ -302,7 +310,13 @@
           <header class="s2-head">
             <div class="s2-title">${esc(p.title)} ${tags}</div>
             <div class="s2-meta">
-              👶 ${formatGradesLabel(p.grades)} · 남은자리 <strong>${p.remaining}</strong>/${p.capacity}
+              👶 ${formatGradesLabel(p.grades)} · ${
+                isFull
+                  ? '<span class="seats-full">정원·대기 마감</span>'
+                  : (p.remaining > 0
+                      ? `남은자리 <strong>${p.remaining}</strong>/${p.capacity}`
+                      : `대기 <strong>${p.waitlist_count || 0}</strong>/${p.waitlist_capacity ?? 10}`)
+              }
             </div>
           </header>
           <div class="s2-sub">이 프로그램을 신청할 학생</div>
@@ -546,8 +560,16 @@
       const g = byStudent[name];
       html += `<div style="margin-top:14px;"><b>${esc(name)}</b></div>`;
       g.accepted.forEach(a => {
+        const isWait = !!a.is_waitlist;
+        const slot = a.slot_number;
+        const stateLabel = isWait
+          ? `<span class="badge waiting">대기 ${slot ?? ''}번</span>`
+          : `<span class="badge open">접수 ${slot ?? ''}번째</span>`;
+        const headLine = isWait
+          ? `🕓 ${esc(a.title)} ${stateLabel}<br><span class="sub">대기로 접수되었습니다 (대기 ${slot ?? ''}번)</span>`
+          : `✓ ${esc(a.title)} ${stateLabel}<br><span class="sub">접수되었습니다 (${slot ?? ''}번째 접수)</span>`;
         html += `<div class="item">
-          ✓ ${esc(a.title)}
+          ${headLine}
           <div class="sub">${esc(a.schedule || '')} · 접수시각: ${fmtTime(a.submitted_at)}</div>
         </div>`;
       });
@@ -560,7 +582,7 @@
       html += '<div class="item">접수 결과가 없습니다.</div>';
     }
     html += '<div class="item" style="margin-top:14px; background:var(--primary-soft); padding:12px; border-radius:8px;">';
-    html += '<b>선정된 학생에게만 따로 연락드립니다.</b><br><span class="sub">결과 발표 전까지 보호자 연락처를 확인해 주세요.</span>';
+    html += '<b>접수·대기는 확정이 아닙니다.</b><br><span class="sub">최종 선정된 학생에게만 담당 선생님이 개별 연락드립니다.</span>';
     html += '</div>';
     html += '<div class="item" style="margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px;">';
     html += '🔎 내 신청은 상단 <a href="/me"><b>내 신청 확인</b></a> 메뉴에서 <b>보호자 연락처와 학생 이름</b>으로 조회·취소할 수 있어요.';

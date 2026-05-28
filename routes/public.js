@@ -22,24 +22,37 @@ router.get('/programs', async (req, res) => {
     if (error) throw error;
 
     const ids = (programs || []).map(p => p.id);
-    let counts = {};
+    const appliedCounts = {};
+    const waitlistCounts = {};
     if (ids.length > 0) {
       const { data: apps, error: aErr } = await supabase
         .from('saessak_applications')
-        .select('program_id, status')
+        .select('program_id, status, is_waitlist')
         .in('program_id', ids);
       if (aErr) throw aErr;
       (apps || []).forEach(a => {
         if (a.status === 'cancelled') return;
-        counts[a.program_id] = (counts[a.program_id] || 0) + 1;
+        if (a.is_waitlist) waitlistCounts[a.program_id] = (waitlistCounts[a.program_id] || 0) + 1;
+        else appliedCounts[a.program_id] = (appliedCounts[a.program_id] || 0) + 1;
       });
     }
 
     const result = (programs || []).map(p => {
-      const applied = counts[p.id] || 0;
+      const applied = appliedCounts[p.id] || 0;
+      const waiting = waitlistCounts[p.id] || 0;
       const remaining = Math.max(0, (p.capacity || 0) - applied);
-      const isFull = remaining <= 0;
-      return { ...p, applied_count: applied, remaining, is_full: isFull };
+      const wRemaining = Math.max(0, (p.waitlist_capacity || 0) - waiting);
+      const isCapacityFull = remaining <= 0;
+      const isFullyClosed = isCapacityFull && wRemaining <= 0;
+      return {
+        ...p,
+        applied_count: applied,
+        waitlist_count: waiting,
+        remaining,
+        waitlist_remaining: wRemaining,
+        is_full: isCapacityFull,         // 정원 풀 (대기는 가능할 수 있음)
+        is_fully_closed: isFullyClosed,  // 정원+대기 모두 마감
+      };
     });
 
     res.json({ ok: true, data: result });
@@ -172,16 +185,18 @@ router.post('/apply', async (req, res) => {
     if (eErr) throw eErr;
     (existingApps || []).forEach(r => dupSet.add(`${r.student_name}::${r.program_id}`));
 
-    // 실시간 카운트
+    // 실시간 카운트 (자동 접수와 자동 대기를 분리해서 센다)
     const { data: allApps, error: cErr } = await supabase
       .from('saessak_applications')
-      .select('program_id, status')
+      .select('program_id, status, is_waitlist')
       .in('program_id', allProgramIds);
     if (cErr) throw cErr;
-    const liveCounts = {};
+    const appliedLive = {};
+    const waitlistLive = {};
     (allApps || []).forEach(a => {
       if (a.status === 'cancelled') return;
-      liveCounts[a.program_id] = (liveCounts[a.program_id] || 0) + 1;
+      if (a.is_waitlist) waitlistLive[a.program_id] = (waitlistLive[a.program_id] || 0) + 1;
+      else appliedLive[a.program_id] = (appliedLive[a.program_id] || 0) + 1;
     });
 
     // 형제 묶음 UUID (학생 2명 이상이면 생성)
@@ -202,9 +217,24 @@ router.post('/apply', async (req, res) => {
           rejected.push({ student_name: s.student_name, program_id: pid, title: p.title, reason: '이미 신청한 프로그램입니다.' });
           continue;
         }
-        const applied = liveCounts[pid] || 0;
-        if (applied >= p.capacity) {
-          rejected.push({ student_name: s.student_name, program_id: pid, title: p.title, reason: '정원이 마감되었습니다.' });
+        const aCount = appliedLive[pid] || 0;
+        const wCount = waitlistLive[pid] || 0;
+        const cap  = Number(p.capacity) || 0;
+        const wcap = Number(p.waitlist_capacity) || 0;
+
+        let isWait;
+        let slotNumber;
+        if (aCount < cap) {
+          isWait = false;
+          slotNumber = aCount + 1; // 정원 내 N번째 접수
+        } else if (wCount < wcap) {
+          isWait = true;
+          slotNumber = wCount + 1; // 대기 N번째
+        } else {
+          rejected.push({
+            student_name: s.student_name, program_id: pid, title: p.title,
+            reason: '정원과 대기 인원이 모두 찼습니다.',
+          });
           continue;
         }
 
@@ -227,6 +257,7 @@ router.post('/apply', async (req, res) => {
             submitted_at: now,
             is_multicultural: isMulticulturalRow,
             sibling_group_id: siblingGroupId,
+            is_waitlist: isWait,
           }])
           .select();
         if (iErr) {
@@ -243,8 +274,11 @@ router.post('/apply', async (req, res) => {
           program_type: p.program_type,
           application_id: inserted[0].id,
           submitted_at: inserted[0].submitted_at,
+          is_waitlist: isWait,
+          slot_number: slotNumber,
         });
-        liveCounts[pid] = applied + 1;
+        if (isWait) waitlistLive[pid] = wCount + 1;
+        else appliedLive[pid] = aCount + 1;
       }
     }
 

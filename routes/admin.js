@@ -18,18 +18,19 @@ router.get('/programs', async (req, res) => {
     if (error) throw error;
 
     const ids = (programs || []).map(p => p.id);
-    let counts = {};
+    let appliedCounts = {};
+    let waitlistCounts = {};
     let selectedCounts = {};
     if (ids.length > 0) {
       const { data: apps, error: aErr } = await supabase
         .from('saessak_applications')
-        .select('program_id, status')
+        .select('program_id, status, is_waitlist')
         .in('program_id', ids);
       if (aErr) throw aErr;
       (apps || []).forEach(a => {
-        if (a.status !== 'cancelled') {
-          counts[a.program_id] = (counts[a.program_id] || 0) + 1;
-        }
+        if (a.status === 'cancelled') return;
+        if (a.is_waitlist) waitlistCounts[a.program_id] = (waitlistCounts[a.program_id] || 0) + 1;
+        else appliedCounts[a.program_id] = (appliedCounts[a.program_id] || 0) + 1;
         if (a.status === 'selected') {
           selectedCounts[a.program_id] = (selectedCounts[a.program_id] || 0) + 1;
         }
@@ -38,9 +39,11 @@ router.get('/programs', async (req, res) => {
 
     const result = (programs || []).map(p => ({
       ...p,
-      applied_count: counts[p.id] || 0,
+      applied_count: appliedCounts[p.id] || 0,
+      waitlist_count: waitlistCounts[p.id] || 0,
       selected_count: selectedCounts[p.id] || 0,
-      remaining: Math.max(0, (p.capacity || 0) - (counts[p.id] || 0)),
+      remaining: Math.max(0, (p.capacity || 0) - (appliedCounts[p.id] || 0)),
+      waitlist_remaining: Math.max(0, (p.waitlist_capacity || 0) - (waitlistCounts[p.id] || 0)),
     }));
 
     res.json({ ok: true, data: result });
@@ -62,7 +65,7 @@ router.post('/programs', async (req, res) => {
   try {
     const {
       title, description, schedule, location,
-      grades, capacity, instructors, is_open,
+      grades, capacity, waitlist_capacity, instructors, is_open,
       program_type, multicultural_min,
     } = req.body || {};
 
@@ -81,6 +84,8 @@ router.post('/programs', async (req, res) => {
       location: location ? String(location).trim() : null,
       grades: gradesNorm,
       capacity: Number(capacity) || 0,
+      waitlist_capacity: waitlist_capacity === undefined || waitlist_capacity === null || waitlist_capacity === ''
+        ? 10 : Math.max(0, Number(waitlist_capacity) || 0),
       instructors: instructors ? String(instructors).trim() : null,
       is_open: is_open === true || is_open === 'true',
       program_type: ptype,
@@ -104,7 +109,7 @@ router.put('/programs/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const allowed = ['title', 'description', 'schedule', 'location',
-      'grades', 'capacity', 'instructors', 'is_open',
+      'grades', 'capacity', 'waitlist_capacity', 'instructors', 'is_open',
       'program_type', 'multicultural_min'];
     const patch = {};
     for (const k of allowed) {
@@ -118,6 +123,7 @@ router.put('/programs/:id', async (req, res) => {
       patch.grades = g;
     }
     if ('capacity' in patch) patch.capacity = Number(patch.capacity);
+    if ('waitlist_capacity' in patch) patch.waitlist_capacity = Math.max(0, Number(patch.waitlist_capacity) || 0);
     if ('is_open' in patch) patch.is_open = patch.is_open === true || patch.is_open === 'true';
     if ('program_type' in patch) {
       if (!['general', 'multicultural', 'sibling'].includes(patch.program_type)) {
@@ -400,13 +406,18 @@ router.get('/dashboard', async (req, res) => {
 
     const programSummary = (programs || []).map(p => {
       const list = active.filter(a => a.program_id === p.id);
+      const appliedList = list.filter(a => !a.is_waitlist);
+      const waitlist   = list.filter(a => a.is_waitlist);
       const multiculturalCount = list.filter(a => a.is_multicultural).length;
       return {
         id: p.id,
         title: p.title,
         capacity: p.capacity,
-        applied: list.length,
-        remaining: Math.max(0, p.capacity - list.length),
+        waitlist_capacity: p.waitlist_capacity,
+        applied: appliedList.length,
+        waitlisted: waitlist.length,
+        remaining: Math.max(0, p.capacity - appliedList.length),
+        waitlist_remaining: Math.max(0, (p.waitlist_capacity || 0) - waitlist.length),
         selected: list.filter(a => a.status === 'selected').length,
         is_open: p.is_open,
         program_type: p.program_type || 'general',

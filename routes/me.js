@@ -30,7 +30,7 @@ router.post('/lookup', async (req, res) => {
 
     const { data: own, error: e1 } = await supabase
       .from('saessak_applications')
-      .select('id, program_id, student_name, grade, class_no, guardian_name, guardian_phone, student_phone, motivation, status, source, submitted_at, sibling_group_id, program:saessak_programs(id, title, schedule, location, program_type)')
+      .select('id, program_id, student_name, grade, class_no, guardian_name, guardian_phone, student_phone, motivation, status, source, submitted_at, sibling_group_id, is_waitlist, program:saessak_programs(id, title, schedule, location, program_type, capacity, waitlist_capacity)')
       .eq('guardian_phone', phone)
       .eq('student_name', name);
     if (e1) throw e1;
@@ -40,7 +40,7 @@ router.post('/lookup', async (req, res) => {
     if (groupIds.length > 0) {
       const { data, error } = await supabase
         .from('saessak_applications')
-        .select('id, program_id, student_name, grade, class_no, guardian_name, guardian_phone, student_phone, motivation, status, source, submitted_at, sibling_group_id, program:saessak_programs(id, title, schedule, location, program_type)')
+        .select('id, program_id, student_name, grade, class_no, guardian_name, guardian_phone, student_phone, motivation, status, source, submitted_at, sibling_group_id, is_waitlist, program:saessak_programs(id, title, schedule, location, program_type, capacity, waitlist_capacity)')
         .eq('guardian_phone', phone)
         .in('sibling_group_id', groupIds);
       if (error) throw error;
@@ -57,6 +57,29 @@ router.post('/lookup', async (req, res) => {
     if (list.length === 0) {
       return res.json({ ok: true, data: [], message: '일치하는 신청을 찾을 수 없습니다. 입력하신 정보를 다시 확인해 주세요.' });
     }
+
+    // 각 신청의 접수/대기 순번(slot_number)을 그 program 안에서 계산
+    const programIds = Array.from(new Set(list.map(r => r.program_id)));
+    let peers = [];
+    if (programIds.length > 0) {
+      const { data, error } = await supabase
+        .from('saessak_applications')
+        .select('id, program_id, is_waitlist, status, submitted_at')
+        .in('program_id', programIds);
+      if (error) throw error;
+      peers = data || [];
+    }
+    list.forEach(r => {
+      if (r.status === 'cancelled') { r.slot_number = null; return; }
+      const group = peers
+        .filter(a => a.program_id === r.program_id
+                  && a.status !== 'cancelled'
+                  && !!a.is_waitlist === !!r.is_waitlist)
+        .sort((a, b) => new Date(a.submitted_at) - new Date(b.submitted_at));
+      const idx = group.findIndex(a => a.id === r.id);
+      r.slot_number = idx >= 0 ? idx + 1 : null;
+    });
+
     res.json({ ok: true, data: list });
   } catch (err) {
     console.error('[POST /api/public/lookup]', err);

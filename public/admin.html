@@ -186,7 +186,16 @@
           <label><input type="checkbox" class="grade-check" value="5"> 5학년</label>
           <label><input type="checkbox" class="grade-check" value="6"> 6학년</label>
         </div>
-        <label>정원</label><input type="number" name="capacity" min="1" value="20">
+        <label>정원</label>
+        <div>
+          <input type="number" name="capacity" min="1" value="20" style="width:120px;">
+          <span class="muted" style="font-size:12px; margin-left:6px;">선착순 접수 인원</span>
+        </div>
+        <label>대기 정원</label>
+        <div>
+          <input type="number" name="waitlist_capacity" min="0" value="10" style="width:120px;">
+          <span class="muted" style="font-size:12px; margin-left:6px;">정원 초과 시 받는 대기 인원</span>
+        </div>
         <label>강사</label><input type="text" name="instructors">
         <label>유형</label>
         <select name="program_type" id="program-type-select">
