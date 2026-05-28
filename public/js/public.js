@@ -403,7 +403,7 @@
       const mcBlock = hasMc ? `
         <label class="summary-mc">
           <input type="checkbox" class="f-mc" data-sid="${s.id}" ${s.cache.is_multicultural ? 'checked' : ''}>
-          <span>다문화가정 여부 <span class="muted">(선택)</span></span>
+          <span>다문화가정 여부 <span class="muted">(해당 시 체크 · 선택)</span></span>
         </label>
       ` : '';
 
