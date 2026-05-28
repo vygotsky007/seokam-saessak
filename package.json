@@ -8,7 +8,8 @@
     "dev": "nodemon server.js",
     "seed": "node scripts/seed.js",
     "hash": "node scripts/hash-password.js",
-    "gen-admin-path": "node scripts/gen-admin-path.js"
+    "gen-admin-path": "node scripts/gen-admin-path.js",
+    "clear:apps": "node scripts/clear-applications.js"
   },
   "keywords": ["saessak", "digital", "school", "education"],
   "author": "vygotsky007",
