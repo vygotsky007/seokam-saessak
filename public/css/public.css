@@ -368,26 +368,32 @@
   color: var(--primary-ink);
 }
 
-.same-as-prev-row {
-  margin: -4px 0 12px;
+/* 형제 미니 블록 */
+.sibling-block {
+  margin-bottom: 10px;
+  padding: 12px 14px;
 }
-.same-as-prev {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: #F1F5F9;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 12.5px;
-  cursor: pointer;
-  border: 1px solid var(--border);
+.sibling-head { margin-bottom: 8px; }
+.sibling-title { font-size: 13.5px; }
+.sibling-fields {
+  display: grid;
+  grid-template-columns: 1fr 80px 80px;
+  gap: 8px;
 }
-.same-as-prev input { accent-color: var(--primary); }
-
-input.locked {
-  background: #F1F5F9 !important;
-  color: var(--muted);
-  cursor: not-allowed;
+.sibling-fields input {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+}
+.sibling-block .student-actions { margin-top: 10px; }
+@media (max-width: 540px) {
+  .sibling-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+  .sib-name { grid-column: 1 / -1; }
 }
 
 .compact-program-list {

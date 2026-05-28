@@ -69,25 +69,11 @@
   const studentTpl = document.getElementById('student-block-tpl');
 
   // === 학생/학년 계산 ===
-  function gradeOf(s) {
-    if (!s) return '';
-    const idx = students.indexOf(s);
-    if (s.same_as_prev && idx > 0) return gradeOf(students[idx - 1]);
-    return s.cache.grade || '';
-  }
-  function classOf(s) {
-    if (!s) return '';
-    const idx = students.indexOf(s);
-    if (s.same_as_prev && idx > 0) return classOf(students[idx - 1]);
-    return s.cache.class_no || '';
-  }
+  function gradeOf(s) { return s && s.cache.grade ? s.cache.grade : ''; }
+  function classOf(s) { return s && s.cache.class_no ? s.cache.class_no : ''; }
   function effGradeForStudent(idx) {
     const s = students[idx];
     if (!s) return null;
-    if (s.same_as_prev && idx > 0) {
-      const g = Number(gradeOf(students[idx - 1]));
-      return Number.isFinite(g) && g > 0 ? g : null;
-    }
     const g = Number(s.cache.grade);
     return Number.isFinite(g) && g > 0 ? g : null;
   }
@@ -150,7 +136,6 @@
       id: counter,
       selected: new Set(),
       cache: {},
-      same_as_prev: students.length >= 1,
     });
     renderStudents();
     renderStep2();
@@ -167,81 +152,89 @@
 
   function renderStudents() {
     studentsArea.innerHTML = '';
+    const siblingTpl = document.getElementById('sibling-block-tpl');
     students.forEach((s, i) => {
-      const node = studentTpl.content.firstElementChild.cloneNode(true);
+      const tpl = i === 0 ? studentTpl : siblingTpl;
+      const node = tpl.content.firstElementChild.cloneNode(true);
       node.dataset.sid = s.id;
       node.querySelector('.idx').textContent = i === 0 ? '1 (본인)' : (i + 1);
 
       const rmBtn = node.querySelector('.remove-student');
-      if (students.length > 1) {
-        rmBtn.hidden = false;
-        rmBtn.addEventListener('click', () => removeStudent(s.id));
+      if (rmBtn) {
+        if (students.length > 1) {
+          rmBtn.hidden = false;
+          rmBtn.addEventListener('click', () => removeStudent(s.id));
+        } else {
+          rmBtn.hidden = true;
+        }
       }
 
-      const sapRow = node.querySelector('.same-as-prev-row');
-      const sapCb = node.querySelector('.f-same-as-prev');
+      const nameInput = node.querySelector('.f-name');
       const gradeInput = node.querySelector('.f-grade');
       const classInput = node.querySelector('.f-class');
 
-      if (i >= 1) {
-        sapRow.hidden = false;
-        sapCb.checked = !!s.same_as_prev;
-        sapCb.addEventListener('change', () => {
-          s.same_as_prev = sapCb.checked;
-          if (s.same_as_prev) {
-            s.cache.grade = gradeOf(students[i - 1]);
-            s.cache.class_no = classOf(students[i - 1]);
-          }
-          reconcileSelections();
-          renderStudents();
-          renderStep2();
-          renderSummary();
-        });
-      }
+      nameInput.value = s.cache.name || '';
+      gradeInput.value = s.cache.grade || '';
+      classInput.value = s.cache.class_no || '';
 
-      // 기본값 채우기
-      node.querySelector('.f-name').value = s.cache.name || '';
-      const effGrade = (i >= 1 && s.same_as_prev) ? gradeOf(students[i - 1]) : (s.cache.grade || '');
-      const effClass = (i >= 1 && s.same_as_prev) ? classOf(students[i - 1]) : (s.cache.class_no || '');
-      gradeInput.value = effGrade;
-      classInput.value = effClass;
-      if (i >= 1 && s.same_as_prev) {
-        gradeInput.readOnly = true;
-        classInput.readOnly = true;
-        gradeInput.classList.add('locked');
-        classInput.classList.add('locked');
-      }
-      node.querySelector('.f-sphone').value = s.cache.student_phone || '';
-      node.querySelector('.f-motivation').value = s.cache.motivation || '';
-
-      // 입력 이벤트
-      node.querySelector('.f-name').addEventListener('input', (e) => {
+      nameInput.addEventListener('input', (e) => {
         s.cache.name = e.target.value.trim();
-        renderStep2(); // 학생 라벨 갱신
+        renderStep2();
         renderSummary();
       });
       gradeInput.addEventListener('input', () => {
-        if (gradeInput.readOnly) return;
         s.cache.grade = gradeInput.value;
-        propagateGradeClassDown(i);
         reconcileSelections();
         renderStep2();
         renderSummary();
       });
       classInput.addEventListener('input', () => {
-        if (classInput.readOnly) return;
         s.cache.class_no = classInput.value;
-        propagateGradeClassDown(i);
-        renderStep2(); // 학년-반 라벨 갱신
+        renderStep2();
         renderSummary();
       });
-      attachPhoneFormatter(node.querySelector('.f-sphone'));
-      node.querySelector('.f-sphone').addEventListener('input', (e) => {
-        s.cache.student_phone = e.target.value.trim();
-      });
-      node.querySelector('.f-motivation').addEventListener('input', (e) => {
-        s.cache.motivation = e.target.value.trim();
-      });
+
+      // 학생 1(본인) 전용: 연락처/문의사항 + 토글
+      if (i === 0) {
+        const sphone = node.querySelector('.f-sphone');
+        const motivation = node.querySelector('.f-motivation');
+        if (sphone) {
+          sphone.value = s.cache.student_phone || '';
+          attachPhoneFormatter(sphone);
+          sphone.addEventListener('input', (e) => {
+            s.cache.student_phone = e.target.value.trim();
+          });
+        }
+        if (motivation) {
+          motivation.value = s.cache.motivation || '';
+          motivation.addEventListener('input', (e) => {
+            s.cache.motivation = e.target.value.trim();
+          });
+        }
+        const optToggle = node.querySelector('.optional-toggle');
+        const optFields = node.querySelector('.optional-fields');
+        if (optToggle && optFields) {
+          if (s.optional_open === undefined) {
+            s.optional_open = !!(s.cache.student_phone || s.cache.motivation);
+          }
+          const applyOptState = () => {
+            if (s.optional_open) {
+              optFields.hidden = false;
+              optToggle.textContent = '− 추가 정보 접기';
+              optToggle.classList.add('open');
+            } else {
+              optFields.hidden = true;
+              optToggle.textContent = '+ 추가 정보 입력 (연락처·문의사항)';
+              optToggle.classList.remove('open');
+            }
+          };
+          applyOptState();
+          optToggle.addEventListener('click', () => {
+            s.optional_open = !s.optional_open;
+            applyOptState();
+          });
+        }
+      }
 
       // 형제·자매 추가 버튼 (마지막 블록에만, 4명 미만일 때)
       const addBtn = node.querySelector('.add-sibling-inline');
@@ -260,52 +253,15 @@
         });
       }
 
-      // 선택 정보 접기/펼치기 (상태는 students[i].optional_open 에 보존)
-      const optToggle = node.querySelector('.optional-toggle');
-      const optFields = node.querySelector('.optional-fields');
-      if (optToggle && optFields) {
-        if (s.optional_open === undefined) {
-          s.optional_open = !!(s.cache.student_phone || s.cache.motivation);
-        }
-        const applyOptState = () => {
-          if (s.optional_open) {
-            optFields.hidden = false;
-            optToggle.textContent = '− 추가 정보 접기';
-            optToggle.classList.add('open');
-          } else {
-            optFields.hidden = true;
-            optToggle.textContent = '+ 추가 정보 입력 (연락처·문의사항)';
-            optToggle.classList.remove('open');
-          }
-        };
-        applyOptState();
-        optToggle.addEventListener('click', () => {
-          s.optional_open = !s.optional_open;
-          applyOptState();
-        });
-      }
-
       studentsArea.appendChild(node);
     });
-  }
-
-  function propagateGradeClassDown(parentIdx) {
-    const blocks = studentsArea.querySelectorAll('.student-block');
-    for (let j = parentIdx + 1; j < students.length; j++) {
-      const child = students[j];
-      if (!child.same_as_prev) break;
-      const childBlock = blocks[j];
-      if (!childBlock) continue;
-      childBlock.querySelector('.f-grade').value = gradeOf(students[j - 1]);
-      childBlock.querySelector('.f-class').value = classOf(students[j - 1]);
-    }
   }
 
   // === 2단계: 프로그램 카드 + 학생 체크 ===
   function studentDisplayName(s, i) {
     const name = (s.cache.name || '').trim() || `학생 ${i + 1}`;
-    const g = (i >= 1 && s.same_as_prev) ? gradeOf(students[i - 1]) : (s.cache.grade || '');
-    const c = (i >= 1 && s.same_as_prev) ? classOf(students[i - 1]) : (s.cache.class_no || '');
+    const g = s.cache.grade || '';
+    const c = s.cache.class_no || '';
     if (g && c) return `${name} ${g}-${c}`;
     if (g) return `${name} ${g}학년`;
     return name;
@@ -528,7 +484,7 @@
       if (validationErr) return;
       const name = (s.cache.name || '').trim();
       const grade = Number(effGradeForStudent(i));
-      const cls = Number((s.same_as_prev && i > 0) ? classOf(students[i - 1]) : s.cache.class_no);
+      const cls = Number(s.cache.class_no);
       const sphone = (s.cache.student_phone || '').trim() || null;
       const mot = (s.cache.motivation || '').trim() || null;
       const isMc = !!s.cache.is_multicultural;

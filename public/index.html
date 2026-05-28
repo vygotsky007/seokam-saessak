@@ -93,13 +93,6 @@
       <button type="button" class="btn small danger remove-student" hidden>삭제</button>
     </div>
 
-    <div class="same-as-prev-row" hidden>
-      <label class="same-as-prev">
-        <input type="checkbox" class="f-same-as-prev">
-        <span>위 학생과 <b>같은 학년·반으로 입력</b></span>
-      </label>
-    </div>
-
     <div class="form" style="gap:10px;">
       <div class="form-row">
         <label>학생 이름</label>
@@ -127,6 +120,24 @@
           <textarea class="f-motivation" maxlength="500" placeholder="궁금한 점이 있으면 적어주세요."></textarea>
         </div>
       </div>
+    </div>
+  </div>
+</template>
+
+<template id="sibling-block-tpl">
+  <div class="student-block sibling-block panel">
+    <div class="student-head sibling-head">
+      <div class="student-title sibling-title">학생 <span class="idx"></span></div>
+      <button type="button" class="btn small danger remove-student">삭제</button>
+    </div>
+    <div class="sibling-fields">
+      <input type="text" class="f-name sib-name" required maxlength="20" placeholder="학생 이름">
+      <input type="number" class="f-grade sib-grade" required min="1" max="6" placeholder="학년">
+      <input type="number" class="f-class sib-class" required min="1" max="30" placeholder="반">
+    </div>
+    <div class="student-actions">
+      <button type="button" class="add-sibling-inline" hidden>+ 형제·자매 추가</button>
+      <span class="add-sibling-hint muted" hidden>(최대 4명)</span>
     </div>
   </div>
 </template>
