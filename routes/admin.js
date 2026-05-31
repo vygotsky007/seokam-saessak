@@ -97,6 +97,7 @@ router.post('/programs', async (req, res) => {
       program_type, multicultural_min,
       session_dates, start_time, end_time,
       recruit_status,
+      is_type_multicultural, is_type_sibling,
     } = req.body || {};
 
     if (!title || !String(title).trim()) {
@@ -106,7 +107,15 @@ router.post('/programs', async (req, res) => {
     if (!gradesNorm) {
       return res.status(400).json({ ok: false, error: '대상 학년을 1개 이상 선택하세요.' });
     }
-    const ptype = ['general', 'multicultural', 'sibling'].includes(program_type) ? program_type : 'general';
+    // 다중 유형 입력 (없으면 program_type 에서 추정)
+    const tMulti = (typeof is_type_multicultural === 'boolean')
+      ? is_type_multicultural
+      : program_type === 'multicultural';
+    const tSib   = (typeof is_type_sibling === 'boolean')
+      ? is_type_sibling
+      : program_type === 'sibling';
+    // 호환용 program_type: 다문화 > 형제 > 일반 우선순위
+    const ptype = tMulti ? 'multicultural' : (tSib ? 'sibling' : 'general');
     const status = normalizeRecruitStatus(recruit_status) || 'hidden';
     const payload = {
       title: String(title).trim(),
@@ -119,10 +128,11 @@ router.post('/programs', async (req, res) => {
         ? 10 : Math.max(0, Number(waitlist_capacity) || 0),
       instructors: instructors ? String(instructors).trim() : null,
       recruit_status: status,
-      // is_open 은 호환을 위해 recruiting 일 때만 true 로 동기화
       is_open: status === 'recruiting',
       program_type: ptype,
-      multicultural_min: ptype === 'multicultural'
+      is_type_multicultural: tMulti,
+      is_type_sibling: tSib,
+      multicultural_min: tMulti
         ? (multicultural_min === '' || multicultural_min === null || multicultural_min === undefined ? null : Number(multicultural_min))
         : null,
       session_dates: normalizeSessionDates(session_dates),
@@ -148,7 +158,8 @@ router.put('/programs/:id', async (req, res) => {
       'grades', 'capacity', 'waitlist_capacity', 'instructors', 'is_open',
       'program_type', 'multicultural_min',
       'session_dates', 'start_time', 'end_time',
-      'recruit_status'];
+      'recruit_status',
+      'is_type_multicultural', 'is_type_sibling'];
     const patch = {};
     for (const k of allowed) {
       if (k in req.body) patch[k] = req.body[k];
@@ -170,7 +181,18 @@ router.put('/programs/:id', async (req, res) => {
     } else if ('is_open' in patch) {
       patch.is_open = patch.is_open === true || patch.is_open === 'true';
     }
-    if ('program_type' in patch) {
+    // 다중 유형: 클라이언트가 새 boolean 들을 보냈으면 program_type 도 함께 동기화
+    if ('is_type_multicultural' in patch) {
+      patch.is_type_multicultural = patch.is_type_multicultural === true || patch.is_type_multicultural === 'true';
+    }
+    if ('is_type_sibling' in patch) {
+      patch.is_type_sibling = patch.is_type_sibling === true || patch.is_type_sibling === 'true';
+    }
+    if ('is_type_multicultural' in patch || 'is_type_sibling' in patch) {
+      const m = patch.is_type_multicultural === true;
+      const s = patch.is_type_sibling === true;
+      patch.program_type = m ? 'multicultural' : (s ? 'sibling' : 'general');
+    } else if ('program_type' in patch) {
       if (!['general', 'multicultural', 'sibling'].includes(patch.program_type)) {
         patch.program_type = 'general';
       }
@@ -179,8 +201,11 @@ router.put('/programs/:id', async (req, res) => {
       patch.multicultural_min = (patch.multicultural_min === '' || patch.multicultural_min === null || patch.multicultural_min === undefined)
         ? null : Number(patch.multicultural_min);
     }
-    // 유형이 다문화가 아니면 multicultural_min 강제 null
-    if (patch.program_type && patch.program_type !== 'multicultural') {
+    // 다문화 우대가 아니면 multicultural_min 강제 null
+    const isMultiAfter = ('is_type_multicultural' in patch)
+      ? patch.is_type_multicultural === true
+      : patch.program_type === 'multicultural';
+    if (!isMultiAfter) {
       patch.multicultural_min = null;
     }
     if ('session_dates' in patch) patch.session_dates = normalizeSessionDates(patch.session_dates);

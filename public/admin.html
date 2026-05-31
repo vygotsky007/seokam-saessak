@@ -22,6 +22,7 @@
     <button class="tab active" data-tab="dashboard">📊 종합</button>
     <button class="tab" data-tab="programs">📚 프로그램</button>
     <button class="tab" data-tab="applicants">👥 신청자</button>
+    <button class="tab" data-tab="schedule">📅 일정</button>
     <button class="tab" data-tab="export">📥 내보내기</button>
   </div>
 
@@ -149,6 +150,23 @@
     </div>
   </section>
 
+  <section class="tab-pane" id="pane-schedule" hidden>
+    <div class="schedule-toolbar">
+      <button class="btn small" id="sched-prev">◀ 이전 달</button>
+      <div class="sched-month-label" id="sched-month-label">—</div>
+      <button class="btn small" id="sched-next">다음 달 ▶</button>
+      <button class="btn small" id="sched-today">이번 달로</button>
+      <span class="muted" style="margin-left:auto; font-size:12px;">session_dates 가 있는 프로그램만 표시됩니다 (보기 전용)</span>
+    </div>
+    <div class="cal-wrap">
+      <div class="cal-dows">
+        <div class="dow-sun">일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div class="dow-sat">토</div>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+    <div class="cal-legend" id="cal-legend"></div>
+  </section>
+
   <section class="tab-pane" id="pane-export" hidden>
     <div class="panel">
       <h3 style="font-size:15px; margin-bottom:10px;">엑셀 명단 내보내기</h3>
@@ -224,11 +242,11 @@
           <option value="closed">모집완료 (공개·신청 불가)</option>
         </select>
         <label>유형</label>
-        <select name="program_type" id="program-type-select">
-          <option value="general">일반형</option>
-          <option value="multicultural">다문화 우대형</option>
-          <option value="sibling">형제 우대형</option>
-        </select>
+        <div class="type-checks">
+          <label><input type="checkbox" id="type-multicultural"> 다문화 우대</label>
+          <label><input type="checkbox" id="type-sibling"> 형제 우대</label>
+          <span class="muted" style="font-size:12px;">둘 다 미체크면 일반형</span>
+        </div>
         <label id="multi-min-label" hidden>다문화 최소 보장</label>
         <div id="multi-min-row" hidden>
           <input type="number" name="multicultural_min" min="0" style="width:120px;" placeholder="예: 10">

@@ -847,6 +847,48 @@ body.public-page {
   cursor: not-allowed;
 }
 
+/* ② 다문화 우대 신청한 학생 입력 (학생당 1개) */
+#multicultural-area:empty { display: none; }
+.mc-card {
+  margin-top: 12px;
+  background: #F0F9FF;
+  border: 1px solid #BAE6FD;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.mc-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #075985;
+  margin-bottom: 4px;
+}
+.mc-desc {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+.mc-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  margin-top: 4px;
+  background: #fff;
+  border: 1px solid #E0F2FE;
+  border-radius: 8px;
+  font-size: 13.5px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.mc-row input[type="checkbox"] {
+  width: 18px; height: 18px;
+  accent-color: #0EA5E9;
+  flex-shrink: 0;
+}
+.mc-row .mc-name { font-weight: 600; }
+.mc-row .mc-q { color: #075985; }
+
 /* ② 프로그램 카드 - 학생 미입력 안내 */
 .s2-empty-hint {
   padding: 14px 12px;

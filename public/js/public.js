@@ -54,10 +54,20 @@
       return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     } catch { return iso; }
   }
-  function typeBadge(t) {
-    if (t === 'multicultural') return '<span class="badge tag-multicultural">다문화 우대</span>';
-    if (t === 'sibling') return '<span class="badge tag-sibling">형제 우대</span>';
-    return '';
+  function typesOf(p) {
+    const m = (typeof p.is_type_multicultural === 'boolean') ? p.is_type_multicultural : (p.program_type === 'multicultural');
+    const s = (typeof p.is_type_sibling === 'boolean')       ? p.is_type_sibling       : (p.program_type === 'sibling');
+    return { multicultural: m, sibling: s };
+  }
+  function isMulticulturalProgram(p) {
+    return !!(p && typesOf(p).multicultural);
+  }
+  function typeBadges(p) {
+    const t = typesOf(p);
+    const out = [];
+    if (t.multicultural) out.push('<span class="badge tag-multicultural">다문화 우대</span>');
+    if (t.sibling)       out.push('<span class="badge tag-sibling">형제 우대</span>');
+    return out.join(' ');
   }
   function formatGradesLabel(grades) {
     if (!Array.isArray(grades) || grades.length === 0) return '';
@@ -210,7 +220,7 @@
           <div class="pc-inner">
             <div class="pc-tags">
               ${statusBadge}
-              ${typeBadge(p.program_type)}
+              ${typeBadges(p)}
               <span class="grade-badge">👶 ${formatGradesLabel(p.grades)}</span>
             </div>
             <h3 class="pc-title">${esc(p.title)}</h3>
@@ -350,7 +360,7 @@
       else if (isFull)                statusTag = '<span class="badge full">마감</span>';
       else if (isWaitOnly)            statusTag = '<span class="badge waiting">대기 가능</span>';
       else                            statusTag = '<span class="badge open">모집중</span>';
-      const tags = [typeBadge(p.program_type), statusTag].filter(Boolean).join(' ');
+      const tags = [typeBadges(p), statusTag].filter(Boolean).join(' ');
 
       // 자격 학생 인덱스 (학년 + 시간충돌 모두 만족, recruiting 일 때만)
       const eligibleIdxs = [];
@@ -502,6 +512,7 @@
     if (students.length === 0) {
       summaryArea.innerHTML = '<div class="empty">먼저 위에서 학생과 프로그램을 선택해 주세요.</div>';
       updateSubmitState(0);
+      renderMulticulturalArea();
       return;
     }
     const totalCount = students.reduce((acc, s) => acc + s.selected.size, 0);
@@ -519,23 +530,10 @@
             return p ? esc(p.title) : '?';
           }).join(', ');
 
-      const hasMc = list.some(pid => {
-        const p = programs.find(x => x.id === pid);
-        return p && p.program_type === 'multicultural';
-      });
-      if (!hasMc) s.cache.is_multicultural = false;
-      const mcBlock = hasMc ? `
-        <label class="summary-mc">
-          <input type="checkbox" class="f-mc" data-sid="${s.id}" ${s.cache.is_multicultural ? 'checked' : ''}>
-          <span>다문화가정 여부 <span class="muted">(해당 시 체크 · 선택)</span></span>
-        </label>
-      ` : '';
-
       return `
         <div class="summary-student ${list.length === 0 ? 'empty' : ''}">
           <div class="ss-head"><b>${esc(dispName)}</b></div>
           <div class="ss-line">신청 프로그램: ${programLine}</div>
-          ${mcBlock}
         </div>
       `;
     }).join('');
@@ -546,7 +544,44 @@
       <div class="summary-total">총 <strong>${totalCount}</strong>건 신청 예정</div>
     `;
 
-    summaryArea.querySelectorAll('input.f-mc[data-sid]').forEach(cb => {
+    renderMulticulturalArea();
+  }
+
+  // === 2단계 하단: 다문화 우대형 신청한 학생에게만 다문화 입력 노출 (학생당 1개) ===
+  function renderMulticulturalArea() {
+    const el = document.getElementById('multicultural-area');
+    if (!el) return;
+    const rows = [];
+    students.forEach((s, i) => {
+      const hasMc = Array.from(s.selected).some(pid => {
+        const p = programs.find(x => x.id === pid);
+        return p && isMulticulturalProgram(p);
+      });
+      if (!hasMc) {
+        s.cache.is_multicultural = false;
+        return;
+      }
+      const name = (s.cache.name || '').trim() || `학생 ${i + 1}`;
+      rows.push(`
+        <label class="mc-row">
+          <input type="checkbox" class="mc-cb" data-sid="${s.id}" ${s.cache.is_multicultural ? 'checked' : ''}>
+          <span class="mc-name">${esc(name)}</span>
+          <span class="mc-q">다문화가정 <span class="muted">(해당 시 체크 · 선택)</span></span>
+        </label>
+      `);
+    });
+    if (rows.length === 0) {
+      el.innerHTML = '';
+      return;
+    }
+    el.innerHTML = `
+      <div class="mc-card">
+        <div class="mc-title">다문화 우대 안내 입력 <span class="muted">(선택)</span></div>
+        <div class="mc-desc">다문화 우대 프로그램에 신청한 학생만 보여요. 해당 시 체크해 주세요.</div>
+        ${rows.join('')}
+      </div>
+    `;
+    el.querySelectorAll('input.mc-cb[data-sid]').forEach(cb => {
       cb.addEventListener('change', (e) => {
         const sid = Number(e.target.dataset.sid);
         const s = students.find(x => x.id === sid);

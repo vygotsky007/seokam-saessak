@@ -288,7 +288,8 @@ router.post('/apply', async (req, res) => {
           continue;
         }
 
-        const isMulticulturalRow = p.program_type === 'multicultural' ? !!s.is_multicultural : false;
+        const isMulticulturalProgram = p.is_type_multicultural === true || p.program_type === 'multicultural';
+        const isMulticulturalRow = isMulticulturalProgram ? !!s.is_multicultural : false;
 
         const { data: inserted, error: iErr } = await supabase
           .from('saessak_applications')

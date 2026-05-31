@@ -83,13 +83,25 @@
     const [c, l] = map[s] || ['badge', s];
     return `<span class="${c}">${l}</span>`;
   }
-  function typeLabel(t) {
-    return { general: '일반형', multicultural: '다문화 우대', sibling: '형제 우대' }[t] || '일반형';
+  function typesOf(p) {
+    const m = (typeof p.is_type_multicultural === 'boolean') ? p.is_type_multicultural : (p.program_type === 'multicultural');
+    const s = (typeof p.is_type_sibling === 'boolean')       ? p.is_type_sibling       : (p.program_type === 'sibling');
+    return { multicultural: m, sibling: s };
   }
-  function typeBadge(t) {
-    if (t === 'multicultural') return '<span class="badge tag-multicultural">다문화 우대</span>';
-    if (t === 'sibling') return '<span class="badge tag-sibling">형제 우대</span>';
-    return '<span class="badge">일반형</span>';
+  function typeLabel(p) {
+    const { multicultural, sibling } = typesOf(p);
+    const parts = [];
+    if (multicultural) parts.push('다문화 우대');
+    if (sibling)       parts.push('형제 우대');
+    return parts.length === 0 ? '일반형' : parts.join(' · ');
+  }
+  function typeBadges(p) {
+    const { multicultural, sibling } = typesOf(p);
+    const out = [];
+    if (multicultural) out.push('<span class="badge tag-multicultural">다문화 우대</span>');
+    if (sibling)       out.push('<span class="badge tag-sibling">형제 우대</span>');
+    if (out.length === 0) return '<span class="badge">일반형</span>';
+    return out.join(' ');
   }
   function siblingShort(id) {
     if (!id) return '';
@@ -134,6 +146,7 @@
     if (name === 'dashboard') loadDashboard();
     else if (name === 'programs') loadProgramsTab();
     else if (name === 'applicants') loadApplicantsTab();
+    else if (name === 'schedule') loadScheduleTab();
     else if (name === 'export') loadExportTab();
   }
 
@@ -156,7 +169,7 @@
         : d.programs.map(p => `
           <tr>
             <td>${esc(p.title)}</td>
-            <td>${typeBadge(p.program_type)}</td>
+            <td>${typeBadges(p)}</td>
             <td>${p.applied}<br><span class="muted" style="font-size:11px;">대기 ${p.waitlisted || 0}</span></td>
             <td>${p.selected}</td>
             <td>${p.capacity}<br><span class="muted" style="font-size:11px;">대기 ${p.waitlist_capacity ?? 10}</span></td>
@@ -209,7 +222,8 @@
   }
 
   function renderPreferenceProgress(p) {
-    if (p.program_type === 'multicultural') {
+    const t = typesOf(p);
+    if (t.multicultural) {
       if (p.multicultural_min == null) {
         return `<span class="muted">최소 보장 미설정</span>`;
       }
@@ -222,7 +236,7 @@
         <span class="pref-track"><span class="pref-fill" style="width:${pct}%"></span></span>
       </div>`;
     }
-    if (p.program_type === 'sibling') {
+    if (t.sibling) {
       return `<span class="muted">형제 우대 (수동 판단)</span>`;
     }
     return '<span class="muted">—</span>';
@@ -238,7 +252,7 @@
         : programs.map(p => `
           <tr data-id="${p.id}">
             <td><b>${esc(p.title)}</b></td>
-            <td>${typeBadge(p.program_type)}${p.program_type === 'multicultural' && p.multicultural_min != null ? `<div class="muted" style="font-size:11px; margin-top:2px;">최소 ${p.multicultural_min}명</div>` : ''}</td>
+            <td>${typeBadges(p)}${typesOf(p).multicultural && p.multicultural_min != null ? `<div class="muted" style="font-size:11px; margin-top:2px;">최소 ${p.multicultural_min}명</div>` : ''}</td>
             <td>${esc(formatSchedule(p))}</td>
             <td>${esc(p.location || '')}</td>
             <td>${formatGradesLabel(p.grades)}</td>
@@ -300,13 +314,16 @@
         form.capacity.value = p.capacity || 20;
         form.waitlist_capacity.value = p.waitlist_capacity ?? 10;
         form.instructors.value = p.instructors || '';
-        form.program_type.value = p.program_type || 'general';
+        const t = typesOf(p);
+        $('#type-multicultural').checked = !!t.multicultural;
+        $('#type-sibling').checked       = !!t.sibling;
         form.multicultural_min.value = p.multicultural_min ?? '';
         form.recruit_status.value = recruitStatusOf(p);
         loadScheduleBuilderFrom(p);
       }
     } else {
-      form.program_type.value = 'general';
+      $('#type-multicultural').checked = false;
+      $('#type-sibling').checked       = false;
       form.multicultural_min.value = '';
       form.recruit_status.value = 'hidden'; // 신규는 숨김으로 시작
       loadScheduleBuilderFrom(null);
@@ -431,17 +448,17 @@
   });
 
   function updateMulticulturalMinVisibility() {
-    const t = $('#program-type-select').value;
-    const show = t === 'multicultural';
+    const show = $('#type-multicultural').checked;
     $('#multi-min-label').hidden = !show;
     $('#multi-min-row').hidden = !show;
   }
-  $('#program-type-select').addEventListener('change', updateMulticulturalMinVisibility);
+  $('#type-multicultural').addEventListener('change', updateMulticulturalMinVisibility);
 
   $('#program-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
-    const ptype = form.program_type.value;
+    const tMulti = $('#type-multicultural').checked;
+    const tSib   = $('#type-sibling').checked;
     const grades = readGradeChecks(form);
     if (grades.length === 0) {
       toast('대상 학년을 1개 이상 선택하세요.');
@@ -469,8 +486,9 @@
       capacity: Number(form.capacity.value),
       waitlist_capacity: Math.max(0, Number(form.waitlist_capacity.value) || 0),
       instructors: form.instructors.value.trim(),
-      program_type: ptype,
-      multicultural_min: ptype === 'multicultural' && form.multicultural_min.value !== ''
+      is_type_multicultural: tMulti,
+      is_type_sibling: tSib,
+      multicultural_min: tMulti && form.multicultural_min.value !== ''
         ? Number(form.multicultural_min.value) : null,
       session_dates: sessionDates,
       start_time: startTime,
@@ -764,6 +782,122 @@
     if (onlySel) params.set('only_selected', '1');
     const url = API + '/export' + (params.toString() ? '?' + params.toString() : '');
     location.href = url;
+  });
+
+  // ===== 일정 달력 탭 (보기 전용) =====
+  // 6월 2026 중심. session_dates 가 있는 프로그램만 표시.
+  let scheduleYear = 2026;
+  let scheduleMonth = 5; // 0-indexed → June
+
+  function programColor(p) {
+    const id = String(p.id || p.title || '');
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 360;
+    return `hsl(${h}, 62%, 44%)`;
+  }
+  function isoOf(y, m, d) {
+    return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+
+  async function loadScheduleTab() {
+    try {
+      const j = await api('/programs');
+      programs = j.data || [];
+      renderScheduleCalendar();
+    } catch (err) { toast(err.message); }
+  }
+
+  function renderScheduleCalendar() {
+    const grid = $('#cal-grid');
+    const label = $('#sched-month-label');
+    if (!grid || !label) return;
+    label.textContent = `${scheduleYear}년 ${scheduleMonth + 1}월`;
+
+    const firstDow = new Date(scheduleYear, scheduleMonth, 1).getDay();
+    const daysInMonth = new Date(scheduleYear, scheduleMonth + 1, 0).getDate();
+    const daysInPrev   = new Date(scheduleYear, scheduleMonth, 0).getDate();
+
+    const cells = [];
+    for (let i = 0; i < 42; i++) {
+      const offset = i - firstDow;
+      let y, m, d, other;
+      if (offset < 0) {
+        m = scheduleMonth === 0 ? 11 : scheduleMonth - 1;
+        y = scheduleMonth === 0 ? scheduleYear - 1 : scheduleYear;
+        d = daysInPrev + offset + 1;
+        other = true;
+      } else if (offset >= daysInMonth) {
+        m = scheduleMonth === 11 ? 0 : scheduleMonth + 1;
+        y = scheduleMonth === 11 ? scheduleYear + 1 : scheduleYear;
+        d = offset - daysInMonth + 1;
+        other = true;
+      } else {
+        y = scheduleYear; m = scheduleMonth; d = offset + 1; other = false;
+      }
+      cells.push({ y, m, d, other });
+    }
+
+    const withSessions = programs.filter(p => Array.isArray(p.session_dates) && p.session_dates.length > 0);
+    const eventsByDate = {};
+    withSessions.forEach(p => {
+      const color = programColor(p);
+      p.session_dates.forEach(iso => {
+        (eventsByDate[iso] = eventsByDate[iso] || []).push({ p, color });
+      });
+    });
+
+    const now = new Date();
+    const todayIso = isoOf(now.getFullYear(), now.getMonth(), now.getDate());
+
+    grid.innerHTML = cells.map(c => {
+      const iso = isoOf(c.y, c.m, c.d);
+      const isToday = iso === todayIso;
+      const evs = eventsByDate[iso] || [];
+      const evHtml = evs.map(({ p, color }) => {
+        const time = (p.start_time && p.end_time) ? `${p.start_time}~${p.end_time}` : (p.start_time || '');
+        const inst = p.instructors || '';
+        const tip = `${p.title}${time ? ' · ' + time : ''}${inst ? ' · ' + inst : ''}`;
+        return `<div class="cal-event" style="background:${color}" title="${esc(tip)}">
+          <div class="ev-title">${esc(p.title)}</div>
+          ${time ? `<div class="ev-time">${esc(time)}</div>` : ''}
+          ${inst ? `<div class="ev-inst">${esc(inst)}</div>` : ''}
+        </div>`;
+      }).join('');
+      const cls = ['cal-cell'];
+      if (c.other) cls.push('other-month');
+      if (isToday) cls.push('today');
+      return `<div class="${cls.join(' ')}"><div class="cal-day-num">${c.d}</div>${evHtml}</div>`;
+    }).join('');
+
+    // 범례: 이번 달에 일정이 있는 프로그램만
+    const monthIso = (iso) => {
+      const [y, m] = iso.split('-').map(Number);
+      return y === scheduleYear && m === scheduleMonth + 1;
+    };
+    const monthPrograms = withSessions.filter(p => p.session_dates.some(monthIso));
+    $('#cal-legend').innerHTML = monthPrograms.length === 0
+      ? '<span class="muted">이 달에는 일정이 있는 프로그램이 없습니다.</span>'
+      : monthPrograms.map(p =>
+          `<span class="lg"><span class="lg-color" style="background:${programColor(p)}"></span>${esc(p.title)}</span>`
+        ).join('');
+  }
+
+  // 월 이동
+  document.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'sched-prev') {
+      if (scheduleMonth === 0) { scheduleMonth = 11; scheduleYear--; }
+      else scheduleMonth--;
+      renderScheduleCalendar();
+    } else if (e.target && e.target.id === 'sched-next') {
+      if (scheduleMonth === 11) { scheduleMonth = 0; scheduleYear++; }
+      else scheduleMonth++;
+      renderScheduleCalendar();
+    } else if (e.target && e.target.id === 'sched-today') {
+      const n = new Date();
+      scheduleYear = n.getFullYear();
+      scheduleMonth = n.getMonth();
+      renderScheduleCalendar();
+    }
   });
 
   // ===== Common =====
