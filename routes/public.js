@@ -48,8 +48,10 @@ router.get('/programs', async (req, res) => {
       const wRemaining = Math.max(0, (p.waitlist_capacity || 0) - waiting);
       const isCapacityFull = remaining <= 0;
       const isFullyClosed = isCapacityFull && wRemaining <= 0;
+      // organization 은 관리자 전용 — 공개 응답에서 제거.
+      const { organization, ...publicFields } = p;
       return {
-        ...p,
+        ...publicFields,
         applied_count: applied,
         waitlist_count: waiting,
         remaining,

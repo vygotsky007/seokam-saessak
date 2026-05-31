@@ -98,6 +98,7 @@ router.post('/programs', async (req, res) => {
       session_dates, start_time, end_time,
       recruit_status,
       is_type_multicultural, is_type_sibling,
+      organization,
     } = req.body || {};
 
     if (!title || !String(title).trim()) {
@@ -127,6 +128,7 @@ router.post('/programs', async (req, res) => {
       waitlist_capacity: waitlist_capacity === undefined || waitlist_capacity === null || waitlist_capacity === ''
         ? 10 : Math.max(0, Number(waitlist_capacity) || 0),
       instructors: instructors ? String(instructors).trim() : null,
+      organization: organization ? String(organization).trim() : null,
       recruit_status: status,
       is_open: status === 'recruiting',
       program_type: ptype,
@@ -159,7 +161,8 @@ router.put('/programs/:id', async (req, res) => {
       'program_type', 'multicultural_min',
       'session_dates', 'start_time', 'end_time',
       'recruit_status',
-      'is_type_multicultural', 'is_type_sibling'];
+      'is_type_multicultural', 'is_type_sibling',
+      'organization'];
     const patch = {};
     for (const k of allowed) {
       if (k in req.body) patch[k] = req.body[k];
@@ -211,6 +214,10 @@ router.put('/programs/:id', async (req, res) => {
     if ('session_dates' in patch) patch.session_dates = normalizeSessionDates(patch.session_dates);
     if ('start_time' in patch) patch.start_time = normalizeTime(patch.start_time);
     if ('end_time' in patch) patch.end_time = normalizeTime(patch.end_time);
+    if ('organization' in patch) {
+      const o = patch.organization;
+      patch.organization = (o === null || o === undefined || String(o).trim() === '') ? null : String(o).trim();
+    }
 
     const { data, error } = await supabase
       .from('saessak_programs')

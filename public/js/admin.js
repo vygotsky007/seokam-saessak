@@ -314,6 +314,7 @@
         form.capacity.value = p.capacity || 20;
         form.waitlist_capacity.value = p.waitlist_capacity ?? 10;
         form.instructors.value = p.instructors || '';
+        form.organization.value = p.organization || '';
         const t = typesOf(p);
         $('#type-multicultural').checked = !!t.multicultural;
         $('#type-sibling').checked       = !!t.sibling;
@@ -486,6 +487,7 @@
       capacity: Number(form.capacity.value),
       waitlist_capacity: Math.max(0, Number(form.waitlist_capacity.value) || 0),
       instructors: form.instructors.value.trim(),
+      organization: form.organization.value.trim() || null,
       is_type_multicultural: tMulti,
       is_type_sibling: tSib,
       multicultural_min: tMulti && form.multicultural_min.value !== ''
@@ -875,11 +877,13 @@
       const evHtml = evs.map(({ p, color }) => {
         const time = (p.start_time && p.end_time) ? `${p.start_time}~${p.end_time}` : (p.start_time || '');
         const inst = p.instructors || '';
-        const tip = `${p.title}${time ? ' · ' + time : ''}${inst ? ' · ' + inst : ''}`;
+        const org  = p.organization || '';
+        const teacherLine = [inst, org].filter(Boolean).join(' · ');
+        const tip = `${p.title}${time ? ' · ' + time : ''}${inst ? ' · ' + inst : ''}${org ? ' · ' + org : ''}`;
         return `<div class="cal-event" style="background:${color.bg}; color:${color.fg}; border-color:${color.fg}33" title="${esc(tip)}">
           <div class="ev-title">${esc(p.title)}</div>
           ${time ? `<div class="ev-time">${esc(time)}</div>` : ''}
-          ${inst ? `<div class="ev-inst">${esc(inst)}</div>` : ''}
+          ${teacherLine ? `<div class="ev-inst">${esc(teacherLine)}</div>` : ''}
         </div>`;
       }).join('');
       const cls = ['cal-cell'];
