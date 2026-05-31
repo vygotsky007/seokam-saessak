@@ -6,6 +6,19 @@
   const CLASS_COUNT = { 1: 7, 2: 7, 3: 8, 4: 7, 5: 7, 6: 7 };
   const GRADE_LIST = Object.keys(CLASS_COUNT).map(Number).sort((a, b) => a - b);
 
+  // 모집 상태 4단계
+  const RECRUIT_STATUSES = [
+    { value: 'recruiting', label: '모집중',   short: '모집중' },
+    { value: 'upcoming',   label: '모집예정', short: '예정' },
+    { value: 'closed',     label: '모집완료', short: '완료' },
+    { value: 'hidden',     label: '모집숨김', short: '숨김' },
+  ];
+  function recruitStatusOf(p) {
+    if (p && p.recruit_status) return p.recruit_status;
+    // 옛 데이터 fallback
+    return p && p.is_open ? 'recruiting' : 'hidden';
+  }
+
   let programs = [];
   let applications = [];
   let currentTab = 'dashboard';
@@ -233,10 +246,9 @@
             <td>${p.applied_count} / ${p.capacity}${(p.waitlist_count || 0) > 0 ? `<br><span class="muted" style="font-size:11px;">대기 ${p.waitlist_count} / ${p.waitlist_capacity ?? 10}</span>` : ''}</td>
             <td>${esc(p.instructors || '')}</td>
             <td>
-              <label class="toggle-switch">
-                <input type="checkbox" data-toggle="${p.id}" ${p.is_open ? 'checked' : ''}>
-                <span class="slider"></span>
-              </label>
+              <select class="recruit-status-sel rs-${recruitStatusOf(p)}" data-status-pid="${p.id}">
+                ${RECRUIT_STATUSES.map(s => `<option value="${s.value}" ${recruitStatusOf(p) === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}
+              </select>
             </td>
             <td class="cell-actions">
               <button class="btn small" data-edit="${p.id}">수정</button>
@@ -245,14 +257,18 @@
           </tr>
         `).join('');
 
-      $$('[data-toggle]').forEach(el => {
+      $$('[data-status-pid]').forEach(el => {
         el.addEventListener('change', async () => {
-          const id = el.dataset.toggle;
+          const id = el.dataset.statusPid;
+          const next = el.value;
           try {
-            await api(`/programs/${id}/toggle`, { method: 'PATCH' });
+            await api(`/programs/${id}/status`, {
+              method: 'PATCH',
+              body: JSON.stringify({ recruit_status: next }),
+            });
             toast('모집 상태가 변경되었습니다');
             loadProgramsTab();
-          } catch (err) { toast(err.message); }
+          } catch (err) { toast(err.message); loadProgramsTab(); }
         });
       });
       $$('[data-edit]').forEach(el => el.addEventListener('click', () => openProgramDialog(el.dataset.edit)));
@@ -286,11 +302,13 @@
         form.instructors.value = p.instructors || '';
         form.program_type.value = p.program_type || 'general';
         form.multicultural_min.value = p.multicultural_min ?? '';
+        form.recruit_status.value = recruitStatusOf(p);
         loadScheduleBuilderFrom(p);
       }
     } else {
       form.program_type.value = 'general';
       form.multicultural_min.value = '';
+      form.recruit_status.value = 'hidden'; // 신규는 숨김으로 시작
       loadScheduleBuilderFrom(null);
     }
     updateMulticulturalMinVisibility();
@@ -441,6 +459,7 @@
         end_time: endTime,
       });
     }
+    const recruitStatus = form.recruit_status.value;
     const payload = {
       title: form.title.value.trim(),
       description: form.description.value.trim(),
@@ -456,14 +475,13 @@
       session_dates: sessionDates,
       start_time: startTime,
       end_time: endTime,
+      recruit_status: recruitStatus,
     };
-    // 모집 열기/닫기는 목록의 토글로만 관리. 폼 제출은 is_open을 건드리지 않음.
-    // 신규 생성은 명시적으로 false(닫힘)로 시작.
     try {
       if (form.dataset.editId) {
         await api(`/programs/${form.dataset.editId}`, { method: 'PUT', body: JSON.stringify(payload) });
       } else {
-        await api('/programs', { method: 'POST', body: JSON.stringify({ ...payload, is_open: false }) });
+        await api('/programs', { method: 'POST', body: JSON.stringify(payload) });
       }
       $('#program-dialog').classList.remove('open');
       toast('저장됨');
@@ -483,10 +501,11 @@
       if (programs.length === 0) {
         sel.innerHTML = '<option value="">— 등록된 프로그램이 없습니다 —</option>';
       } else {
+        const stateEmoji = { recruiting: '🟢', upcoming: '🔴', closed: '⚫', hidden: '⚪' };
         sel.innerHTML = '<option value="">— 프로그램 선택 —</option>' +
           programs.map(p => {
-            const stateTag = p.is_open ? '🟢' : '⚪';
-            return `<option value="${p.id}" ${p.id === currentProgramId ? 'selected' : ''}>${stateTag} ${esc(p.title)} (${p.applied_count}/${p.capacity})</option>`;
+            const tag = stateEmoji[recruitStatusOf(p)] || '⚪';
+            return `<option value="${p.id}" ${p.id === currentProgramId ? 'selected' : ''}>${tag} ${esc(p.title)} (${p.applied_count}/${p.capacity})</option>`;
           }).join('');
       }
       if (currentProgramId && programs.some(p => p.id === currentProgramId)) {

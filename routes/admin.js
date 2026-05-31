@@ -4,6 +4,11 @@ const ExcelJS = require('exceljs');
 const supabase = require('../utils/supabase');
 const { normalizeMobile } = require('../utils/phone');
 
+const RECRUIT_STATUSES = ['recruiting', 'upcoming', 'closed', 'hidden'];
+function normalizeRecruitStatus(v) {
+  return RECRUIT_STATUSES.includes(v) ? v : null;
+}
+
 router.get('/me', (req, res) => {
   res.json({ ok: true, isAdmin: true, loggedAt: req.session.loggedAt });
 });
@@ -91,6 +96,7 @@ router.post('/programs', async (req, res) => {
       grades, capacity, waitlist_capacity, instructors, is_open,
       program_type, multicultural_min,
       session_dates, start_time, end_time,
+      recruit_status,
     } = req.body || {};
 
     if (!title || !String(title).trim()) {
@@ -101,6 +107,7 @@ router.post('/programs', async (req, res) => {
       return res.status(400).json({ ok: false, error: '대상 학년을 1개 이상 선택하세요.' });
     }
     const ptype = ['general', 'multicultural', 'sibling'].includes(program_type) ? program_type : 'general';
+    const status = normalizeRecruitStatus(recruit_status) || 'hidden';
     const payload = {
       title: String(title).trim(),
       description: description ? String(description).trim() : null,
@@ -111,7 +118,9 @@ router.post('/programs', async (req, res) => {
       waitlist_capacity: waitlist_capacity === undefined || waitlist_capacity === null || waitlist_capacity === ''
         ? 10 : Math.max(0, Number(waitlist_capacity) || 0),
       instructors: instructors ? String(instructors).trim() : null,
-      is_open: is_open === true || is_open === 'true',
+      recruit_status: status,
+      // is_open 은 호환을 위해 recruiting 일 때만 true 로 동기화
+      is_open: status === 'recruiting',
       program_type: ptype,
       multicultural_min: ptype === 'multicultural'
         ? (multicultural_min === '' || multicultural_min === null || multicultural_min === undefined ? null : Number(multicultural_min))
@@ -138,7 +147,8 @@ router.put('/programs/:id', async (req, res) => {
     const allowed = ['title', 'description', 'schedule', 'location',
       'grades', 'capacity', 'waitlist_capacity', 'instructors', 'is_open',
       'program_type', 'multicultural_min',
-      'session_dates', 'start_time', 'end_time'];
+      'session_dates', 'start_time', 'end_time',
+      'recruit_status'];
     const patch = {};
     for (const k of allowed) {
       if (k in req.body) patch[k] = req.body[k];
@@ -152,7 +162,14 @@ router.put('/programs/:id', async (req, res) => {
     }
     if ('capacity' in patch) patch.capacity = Number(patch.capacity);
     if ('waitlist_capacity' in patch) patch.waitlist_capacity = Math.max(0, Number(patch.waitlist_capacity) || 0);
-    if ('is_open' in patch) patch.is_open = patch.is_open === true || patch.is_open === 'true';
+    if ('recruit_status' in patch) {
+      const s = normalizeRecruitStatus(patch.recruit_status);
+      if (!s) return res.status(400).json({ ok: false, error: '유효하지 않은 모집 상태' });
+      patch.recruit_status = s;
+      patch.is_open = s === 'recruiting'; // 호환 동기화
+    } else if ('is_open' in patch) {
+      patch.is_open = patch.is_open === true || patch.is_open === 'true';
+    }
     if ('program_type' in patch) {
       if (!['general', 'multicultural', 'sibling'].includes(patch.program_type)) {
         patch.program_type = 'general';
@@ -183,24 +200,20 @@ router.put('/programs/:id', async (req, res) => {
   }
 });
 
-router.patch('/programs/:id/toggle', async (req, res) => {
+router.patch('/programs/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
-    const { data: cur, error: e1 } = await supabase
-      .from('saessak_programs')
-      .select('is_open')
-      .eq('id', id)
-      .single();
-    if (e1) throw e1;
+    const status = normalizeRecruitStatus((req.body || {}).recruit_status);
+    if (!status) return res.status(400).json({ ok: false, error: '유효하지 않은 모집 상태' });
     const { data, error } = await supabase
       .from('saessak_programs')
-      .update({ is_open: !cur.is_open })
+      .update({ recruit_status: status, is_open: status === 'recruiting' })
       .eq('id', id)
       .select();
     if (error) throw error;
     res.json({ ok: true, data: data[0] });
   } catch (err) {
-    console.error('[PATCH admin/programs/:id/toggle]', err.message);
+    console.error('[PATCH admin/programs/:id/status]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

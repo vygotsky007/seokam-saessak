@@ -3,6 +3,11 @@
   const CLASS_COUNT = { 1: 7, 2: 7, 3: 8, 4: 7, 5: 7, 6: 7 };
   const GRADE_LIST = Object.keys(CLASS_COUNT).map(Number).sort((a, b) => a - b);
 
+  function recruitStatusOf(p) {
+    if (p && p.recruit_status) return p.recruit_status;
+    return p && p.is_open ? 'recruiting' : 'hidden';
+  }
+
   // === 운영 문구 ===
   const PRIVACY_TEXT = {
     intro: '다음 개인정보 수집·이용 및 초상권에 동의하십니까?',
@@ -138,14 +143,14 @@
     });
   }
   function reconcileSelections() {
-    // 모든 학생에 대해 자기 학년 안 맞는 program_id를 selected에서 제거
+    // 자기 학년에 안 맞거나 모집중이 아닌 program_id를 selected에서 제거
     students.forEach((s, i) => {
       const g = effGradeForStudent(i);
-      if (g == null) return;
       for (const pid of Array.from(s.selected)) {
         const p = programs.find(x => x.id === pid);
         if (!p) { s.selected.delete(pid); continue; }
-        if (!gradeIncluded(p, g)) s.selected.delete(pid);
+        if (recruitStatusOf(p) !== 'recruiting') { s.selected.delete(pid); continue; }
+        if (g != null && !gradeIncluded(p, g)) s.selected.delete(pid);
       }
     });
   }
@@ -168,14 +173,28 @@
       return;
     }
     detailListEl.innerHTML = list.map(p => {
+      const status = recruitStatusOf(p);
       const isFull = !!p.is_fully_closed;
+      const isRecruiting = status === 'recruiting';
+      const cardDisabled = !isRecruiting || isFull;
       const meta = [];
       const schedText = (window.SaessakSchedule && window.SaessakSchedule.format(p)) || p.schedule || '';
       if (schedText)     meta.push(`<span class="meta-item"><span class="meta-ic">📅</span>${esc(schedText)}</span>`);
       if (p.location)    meta.push(`<span class="meta-item"><span class="meta-ic">📍</span>${esc(p.location)}</span>`);
       if (p.instructors) meta.push(`<span class="meta-item"><span class="meta-ic">🧑‍🏫</span>${esc(p.instructors)}</span>`);
+
+      let statusBadge;
+      if (status === 'upcoming')      statusBadge = '<span class="badge upcoming">⏰ 모집예정</span>';
+      else if (status === 'closed')   statusBadge = '<span class="badge closed-admin">모집완료</span>';
+      else if (isFull)                statusBadge = '<span class="badge full">모집 마감</span>';
+      else                            statusBadge = '<span class="badge open">모집중</span>';
+
       let seatsLine;
-      if (p.is_fully_closed) {
+      if (status === 'upcoming') {
+        seatsLine = `<span class="seats-upcoming">곧 모집이 열려요 — 잠시만 기다려 주세요</span>`;
+      } else if (status === 'closed') {
+        seatsLine = `<span class="seats-closed">모집이 종료되었습니다</span>`;
+      } else if (p.is_fully_closed) {
         seatsLine = `<span class="seats-full">정원·대기 모두 마감</span>`;
       } else if (p.remaining > 0) {
         seatsLine = `남은 자리 <strong>${p.remaining}명</strong> / 정원 ${p.capacity}명`;
@@ -187,10 +206,10 @@
         ? `<details class="pc-details"><summary><span class="pc-toggle-text"></span></summary><div class="pc-body">${esc(desc)}</div></details>`
         : '';
       return `
-        <article class="program-card ${isFull ? 'disabled' : ''}">
+        <article class="program-card ${cardDisabled ? 'disabled' : ''} status-${status}">
           <div class="pc-inner">
             <div class="pc-tags">
-              ${isFull ? '<span class="badge full">모집 마감</span>' : '<span class="badge open">모집중</span>'}
+              ${statusBadge}
               ${typeBadge(p.program_type)}
               <span class="grade-badge">👶 ${formatGradesLabel(p.grades)}</span>
             </div>
@@ -320,28 +339,33 @@
     }
 
     programsArea.innerHTML = list.map(p => {
+      const status = recruitStatusOf(p);
+      const isRecruiting = status === 'recruiting';
       const isFull = !!p.is_fully_closed;
-      const isWaitOnly = !isFull && p.remaining <= 0;
-      const tags = [
-        typeBadge(p.program_type),
-        isFull ? '<span class="badge full">마감</span>'
-          : (isWaitOnly ? '<span class="badge waiting">대기 가능</span>'
-            : '<span class="badge open">모집중</span>'),
-      ].filter(Boolean).join(' ');
+      const isWaitOnly = isRecruiting && !isFull && p.remaining <= 0;
+      const cardBlocked = !isRecruiting || isFull;
+      let statusTag;
+      if (status === 'upcoming')      statusTag = '<span class="badge upcoming">⏰ 모집예정</span>';
+      else if (status === 'closed')   statusTag = '<span class="badge closed-admin">모집완료</span>';
+      else if (isFull)                statusTag = '<span class="badge full">마감</span>';
+      else if (isWaitOnly)            statusTag = '<span class="badge waiting">대기 가능</span>';
+      else                            statusTag = '<span class="badge open">모집중</span>';
+      const tags = [typeBadge(p.program_type), statusTag].filter(Boolean).join(' ');
 
-      // 자격 학생 인덱스 (학년 + 시간충돌 모두 만족)
-      // 이미 p를 선택한 학생은 그대로 자격자로 본다(현재 상태 유지).
+      // 자격 학생 인덱스 (학년 + 시간충돌 모두 만족, recruiting 일 때만)
       const eligibleIdxs = [];
-      students.forEach((s, i) => {
-        const eff = effGradeForStudent(i);
-        if (eff == null || !gradeIncluded(p, eff)) return;
-        if (s.selected.has(p.id)) { eligibleIdxs.push(i); return; }
-        if (!conflictForStudent(p, s)) eligibleIdxs.push(i);
-      });
+      if (isRecruiting) {
+        students.forEach((s, i) => {
+          const eff = effGradeForStudent(i);
+          if (eff == null || !gradeIncluded(p, eff)) return;
+          if (s.selected.has(p.id)) { eligibleIdxs.push(i); return; }
+          if (!conflictForStudent(p, s)) eligibleIdxs.push(i);
+        });
+      }
       const allEligibleSelected = eligibleIdxs.length > 0 &&
         eligibleIdxs.every(i => students[i].selected.has(p.id));
       const selectAllLabel = allEligibleSelected ? '전체 해제' : '신청 가능한 학생 모두 선택';
-      const selectAllDisabled = isFull || eligibleIdxs.length === 0;
+      const selectAllDisabled = cardBlocked || eligibleIdxs.length === 0;
 
       let body;
       if (noStudentInfo) {
@@ -350,18 +374,19 @@
         const studentRows = students.map((s, i) => {
           const eff = effGradeForStudent(i);
           const gradeOk = eff != null && gradeIncluded(p, eff);
-          const checked = s.selected.has(p.id);
-          // 시간 충돌은 "현재 선택되지 않은 경우"에만 신규 선택을 막는다.
-          const conflictWith = (!checked && gradeOk) ? conflictForStudent(p, s) : null;
-          const disabled = isFull || !gradeOk || !!conflictWith;
+          const checked = isRecruiting && s.selected.has(p.id);
+          const conflictWith = (isRecruiting && !checked && gradeOk) ? conflictForStudent(p, s) : null;
+          const disabled = cardBlocked || !gradeOk || !!conflictWith;
           const cls = ['s2-row'];
           if (checked) cls.push('selected');
           if (disabled) cls.push('disabled');
           const noGrade = eff == null;
           let reason = '';
-          if (noGrade) reason = '<span class="s2-note">학년 입력 후 선택 가능</span>';
-          else if (!gradeOk) reason = '<span class="s2-note bad">대상 학년 아님</span>';
-          else if (conflictWith) reason = `<span class="s2-note bad">"${esc(conflictWith.title)}"과 시간이 겹쳐요</span>`;
+          if (status === 'upcoming')   reason = '<span class="s2-note bad">아직 모집 전이라 신청할 수 없어요</span>';
+          else if (status === 'closed') reason = '<span class="s2-note bad">모집이 종료된 프로그램이에요</span>';
+          else if (noGrade)            reason = '<span class="s2-note">학년 입력 후 선택 가능</span>';
+          else if (!gradeOk)           reason = '<span class="s2-note bad">대상 학년 아님</span>';
+          else if (conflictWith)       reason = `<span class="s2-note bad">"${esc(conflictWith.title)}"과 시간이 겹쳐요</span>`;
           return `
             <label class="${cls.join(' ')}">
               <input type="checkbox" data-pid="${esc(p.id)}" data-sid="${s.id}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
@@ -379,7 +404,7 @@
       }
 
       return `
-        <div class="step2-card ${isFull ? 'disabled' : ''}">
+        <div class="step2-card ${cardBlocked ? 'disabled' : ''} status-${status}">
           <header class="s2-head">
             <div class="s2-title">${esc(p.title)} ${tags}</div>
             <div class="s2-meta">

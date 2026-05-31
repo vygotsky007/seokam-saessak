@@ -15,10 +15,12 @@ function formatGradesLabel(grades) {
 
 router.get('/programs', async (req, res) => {
   try {
+    // 공개 화면: hidden 은 노출하지 않음. recruiting/upcoming/closed 는 화면에서 상태별로 표시.
+    // 호환: 옛 데이터(recruit_status 미설정)는 is_open 으로 추정 — true 면 recruiting, false 면 hidden.
     const { data: programs, error } = await supabase
       .from('saessak_programs')
       .select('*')
-      .eq('is_open', true)
+      .neq('recruit_status', 'hidden')
       .order('created_at', { ascending: true });
     if (error) throw error;
 
@@ -234,8 +236,15 @@ router.post('/apply', async (req, res) => {
     for (const s of normalized) {
       for (const pid of s.program_ids) {
         const p = programMap[pid];
-        if (!p.is_open) {
-          rejected.push({ student_name: s.student_name, program_id: pid, title: p.title, reason: '모집이 마감되었습니다.' });
+        // 모집 상태 검증: recruiting 만 접수, upcoming/closed/hidden 은 거부
+        const rstatus = p.recruit_status || (p.is_open ? 'recruiting' : 'hidden');
+        if (rstatus !== 'recruiting') {
+          const reasonMap = {
+            upcoming: '아직 모집이 시작되지 않았습니다.',
+            closed:   '모집이 종료되었습니다.',
+            hidden:   '모집이 마감되었습니다.',
+          };
+          rejected.push({ student_name: s.student_name, program_id: pid, title: p.title, reason: reasonMap[rstatus] || '현재 신청할 수 없습니다.' });
           continue;
         }
         if (dupSet.has(`${s.student_name}::${pid}`)) {

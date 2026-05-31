@@ -643,6 +643,30 @@ body.public-page {
   color: #9D174D;
 }
 
+/* 모집 상태 배지 (공개 화면) */
+.badge.upcoming {
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-weight: 700;
+}
+.badge.closed-admin {
+  background: #E2E8F0;
+  color: #475569;
+  font-weight: 600;
+}
+
+/* 모집예정/완료 카드 안내문 */
+.pc-seats-line .seats-upcoming { color: var(--danger); font-weight: 600; }
+.pc-seats-line .seats-closed   { color: #475569;       font-weight: 600; }
+
+/* 모집예정 카드 좌측 띠 */
+.program-card.status-upcoming::before {
+  background: linear-gradient(90deg, var(--danger) 0%, #FCA5A5 100%);
+}
+.program-card.status-closed::before {
+  background: linear-gradient(90deg, #94A3B8 0%, #CBD5E1 100%);
+}
+
 .cart {
   margin-top: 8px;
   margin-bottom: 24px;
