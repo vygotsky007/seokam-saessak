@@ -120,8 +120,12 @@
       <div class="form-row">
         <label>학년 / 반</label>
         <div class="pair">
-          <input type="number" class="f-grade" required min="1" max="6" placeholder="학년">
-          <input type="number" class="f-class" required min="1" max="30" placeholder="반">
+          <select class="f-grade" required>
+            <option value="">학년 선택</option>
+          </select>
+          <select class="f-class" required disabled>
+            <option value="">학년 먼저 선택</option>
+          </select>
         </div>
       </div>
       <div class="student-actions">
@@ -140,8 +144,12 @@
     </div>
     <div class="sibling-fields">
       <input type="text" class="f-name sib-name" required maxlength="20" placeholder="학생 이름">
-      <input type="number" class="f-grade sib-grade" required min="1" max="6" placeholder="학년">
-      <input type="number" class="f-class sib-class" required min="1" max="30" placeholder="반">
+      <select class="f-grade sib-grade" required>
+        <option value="">학년</option>
+      </select>
+      <select class="f-class sib-class" required disabled>
+        <option value="">반</option>
+      </select>
     </div>
     <div class="student-actions">
       <button type="button" class="add-sibling-inline" hidden>+ 형제·자매 추가</button>

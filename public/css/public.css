@@ -454,17 +454,19 @@ body.public-page {
 .sibling-title { font-size: 13.5px; }
 .sibling-fields {
   display: grid;
-  grid-template-columns: 1fr 80px 80px;
+  grid-template-columns: 1fr 90px 90px;
   gap: 8px;
 }
-.sibling-fields input {
+.sibling-fields input, .sibling-fields select {
   width: 100%;
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   padding: 8px 10px;
   font-size: 14px;
   font-family: inherit;
+  background: #fff;
 }
+.sibling-fields select:disabled { background: #F1F5F9; color: var(--muted); cursor: not-allowed; }
 .sibling-block .student-actions { margin-top: 10px; }
 @media (max-width: 540px) {
   .sibling-fields {
@@ -545,16 +547,19 @@ body.public-page {
 .form { margin-top: 22px; display: flex; flex-direction: column; gap: 14px; }
 .form-row { display: grid; grid-template-columns: 110px 1fr; gap: 10px; align-items: center; }
 .form-row label { font-size: 13px; color: var(--ink); font-weight: 500; }
-.form-row input, .form-row textarea {
+.form-row input, .form-row textarea, .form-row select {
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   padding: 8px 10px;
   font-size: 14px;
   width: 100%;
+  font-family: inherit;
+  background: #fff;
 }
+.form-row select:disabled { background: #F1F5F9; color: var(--muted); cursor: not-allowed; }
 .form-row textarea { min-height: 70px; resize: vertical; }
 .form-row .pair { display: flex; gap: 8px; }
-.form-row .pair input { flex: 1; }
+.form-row .pair input, .form-row .pair select { flex: 1; }
 .agree {
   display: flex; align-items: flex-start; gap: 8px;
   background: #F8FAFC;

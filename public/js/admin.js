@@ -2,6 +2,10 @@
   const ADMIN_BASE = location.pathname.replace(/\/$/, '');
   const API = ADMIN_BASE + '/api';
 
+  // 학년별 반 개수 (반 개수 바뀌면 이 한 곳만 수정)
+  const CLASS_COUNT = { 1: 7, 2: 7, 3: 8, 4: 7, 5: 7, 6: 7 };
+  const GRADE_LIST = Object.keys(CLASS_COUNT).map(Number).sort((a, b) => a - b);
+
   let programs = [];
   let applications = [];
   let currentTab = 'dashboard';
@@ -610,6 +614,28 @@
 
   $('#add-applicant-btn').addEventListener('click', () => openApplicantDialog(null));
 
+  function fillAppGradeOptions(currentVal) {
+    const sel = $('#app-grade-select');
+    sel.innerHTML = '<option value="">학년</option>' +
+      GRADE_LIST.map(g => `<option value="${g}">${g}학년</option>`).join('');
+    sel.value = (currentVal && CLASS_COUNT[Number(currentVal)]) ? String(currentVal) : '';
+  }
+  function fillAppClassOptions(grade, currentVal) {
+    const sel = $('#app-class-select');
+    const count = CLASS_COUNT[Number(grade)] || 0;
+    if (!count) {
+      sel.innerHTML = '<option value="">학년 먼저 선택</option>';
+      sel.value = '';
+      sel.disabled = true;
+      return;
+    }
+    let html = '<option value="">반 선택</option>';
+    for (let i = 1; i <= count; i++) html += `<option value="${i}">${i}반</option>`;
+    sel.innerHTML = html;
+    sel.value = (currentVal && Number(currentVal) >= 1 && Number(currentVal) <= count) ? String(currentVal) : '';
+    sel.disabled = false;
+  }
+
   function openApplicantDialog(id) {
     const dlg = $('#applicant-dialog');
     const form = $('#applicant-form');
@@ -625,8 +651,8 @@
       if (a) {
         psel.value = a.program_id;
         form.student_name.value = a.student_name || '';
-        form.grade.value = a.grade ?? '';
-        form.class_no.value = a.class_no ?? '';
+        fillAppGradeOptions(a.grade);
+        fillAppClassOptions(a.grade, a.class_no);
         form.guardian_name.value = a.guardian_name || '';
         form.guardian_phone.value = a.guardian_phone || '';
         form.student_phone.value = a.student_phone || '';
@@ -637,11 +663,17 @@
       }
     } else {
       psel.value = currentProgramId || (programs[0] && programs[0].id) || '';
+      fillAppGradeOptions('');
+      fillAppClassOptions('', '');
       form.is_multicultural.checked = false;
       form.sibling_group_id.value = '';
     }
     dlg.classList.add('open');
   }
+
+  $('#app-grade-select').addEventListener('change', (e) => {
+    fillAppClassOptions(e.target.value, '');
+  });
 
   $('#applicant-form').addEventListener('submit', async (e) => {
     e.preventDefault();

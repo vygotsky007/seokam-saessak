@@ -247,8 +247,13 @@
         <label>학생 이름*</label><input type="text" name="student_name" required>
         <label>학년/반</label>
         <div class="row">
-          <input type="number" name="grade" min="1" max="6" style="width:80px;"> /
-          <input type="number" name="class_no" min="1" max="30" style="width:80px;">
+          <select name="grade" id="app-grade-select" style="width:110px;">
+            <option value="">학년</option>
+          </select>
+          /
+          <select name="class_no" id="app-class-select" style="width:110px;" disabled>
+            <option value="">학년 먼저 선택</option>
+          </select>
         </div>
         <label>보호자</label><input type="text" name="guardian_name">
         <label>보호자 연락처</label><input type="text" name="guardian_phone">

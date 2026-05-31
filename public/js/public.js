@@ -1,4 +1,8 @@
 (() => {
+  // 학년별 반 개수 (반 개수 바뀌면 이 한 곳만 수정)
+  const CLASS_COUNT = { 1: 7, 2: 7, 3: 8, 4: 7, 5: 7, 6: 7 };
+  const GRADE_LIST = Object.keys(CLASS_COUNT).map(Number).sort((a, b) => a - b);
+
   // === 운영 문구 ===
   const PRIVACY_TEXT = {
     intro: '다음 개인정보 수집·이용 및 초상권에 동의하십니까?',
@@ -87,6 +91,33 @@
   const submitBtn = document.getElementById('submit-btn');
   const resultArea = document.getElementById('result-area');
   const studentTpl = document.getElementById('student-block-tpl');
+
+  // === 학년/반 드롭다운 옵션 ===
+  function populateGradeOptions(sel, currentVal) {
+    const opts = ['<option value="">학년 선택</option>']
+      .concat(GRADE_LIST.map(g => `<option value="${g}">${g}학년</option>`));
+    sel.innerHTML = opts.join('');
+    if (currentVal && CLASS_COUNT[currentVal]) sel.value = String(currentVal);
+    else sel.value = '';
+  }
+  function populateClassOptions(sel, grade, currentVal) {
+    const count = CLASS_COUNT[Number(grade)] || 0;
+    if (!count) {
+      sel.innerHTML = '<option value="">학년 먼저 선택</option>';
+      sel.value = '';
+      sel.disabled = true;
+      return;
+    }
+    const opts = ['<option value="">반 선택</option>'];
+    for (let i = 1; i <= count; i++) opts.push(`<option value="${i}">${i}반</option>`);
+    sel.innerHTML = opts.join('');
+    if (currentVal && Number(currentVal) >= 1 && Number(currentVal) <= count) {
+      sel.value = String(currentVal);
+    } else {
+      sel.value = '';
+    }
+    sel.disabled = false;
+  }
 
   // === 학생/학년 계산 ===
   function gradeOf(s) { return s && s.cache.grade ? s.cache.grade : ''; }
@@ -198,26 +229,29 @@
       }
 
       const nameInput = node.querySelector('.f-name');
-      const gradeInput = node.querySelector('.f-grade');
-      const classInput = node.querySelector('.f-class');
+      const gradeSel = node.querySelector('.f-grade');
+      const classSel = node.querySelector('.f-class');
 
       nameInput.value = s.cache.name || '';
-      gradeInput.value = s.cache.grade || '';
-      classInput.value = s.cache.class_no || '';
+      populateGradeOptions(gradeSel, s.cache.grade);
+      populateClassOptions(classSel, s.cache.grade, s.cache.class_no);
 
       nameInput.addEventListener('input', (e) => {
         s.cache.name = e.target.value.trim();
         renderStep2();
         renderSummary();
       });
-      gradeInput.addEventListener('input', () => {
-        s.cache.grade = gradeInput.value;
+      gradeSel.addEventListener('change', () => {
+        s.cache.grade = gradeSel.value;
+        // 학년 바꾸면 반 선택값 초기화하고 새 학년의 반 목록으로 갱신
+        s.cache.class_no = '';
+        populateClassOptions(classSel, s.cache.grade, '');
         reconcileSelections();
         renderStep2();
         renderSummary();
       });
-      classInput.addEventListener('input', () => {
-        s.cache.class_no = classInput.value;
+      classSel.addEventListener('change', () => {
+        s.cache.class_no = classSel.value;
         renderStep2();
         renderSummary();
       });
