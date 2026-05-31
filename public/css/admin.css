@@ -262,6 +262,17 @@ tbody tr:hover { background: #F8FAFC; }
 .badge.tag-sibling       { background: #FCE7F3; color: #9D174D; }
 .badge.name-conflict     { background: #FEF3C7; color: #92400E; font-weight: 700; cursor: help; }
 
+/* 대시보드 - 마감 임박 (모집중 + 남은자리 ≤ 3) */
+.dash-remaining-low { color: var(--danger); font-weight: 700; }
+.dash-remaining-low b { font-size: 14px; }
+.badge.dash-closing-soon {
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-weight: 700;
+  font-size: 10.5px;
+  margin-left: 2px;
+}
+
 .pref-bar {
   display: flex; align-items: center; gap: 8px;
   font-size: 12px;

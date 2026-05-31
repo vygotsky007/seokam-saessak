@@ -173,7 +173,11 @@
             <td>${p.applied}<br><span class="muted" style="font-size:11px;">대기 ${p.waitlisted || 0}</span></td>
             <td>${p.selected}</td>
             <td>${p.capacity}<br><span class="muted" style="font-size:11px;">대기 ${p.waitlist_capacity ?? 10}</span></td>
-            <td>${p.remaining}<br><span class="muted" style="font-size:11px;">대기여유 ${p.waitlist_remaining || 0}</span></td>
+            <td>${
+              p.is_open && p.remaining > 0 && p.remaining <= 3
+                ? `<span class="dash-remaining-low"><b>${p.remaining}</b> <span class="badge dash-closing-soon">마감 임박</span></span>`
+                : p.remaining
+            }<br><span class="muted" style="font-size:11px;">대기여유 ${p.waitlist_remaining || 0}</span></td>
             <td>${renderPreferenceProgress(p)}</td>
             <td>${p.is_open ? '<span class="badge open">모집중</span>' : '<span class="badge closed">마감</span>'}</td>
           </tr>
@@ -190,8 +194,6 @@
         </div>`;
       }).join('');
       $('#dash-grades').innerHTML = gradesHtml;
-      $('#dash-low').textContent = `저학년(1~2): ${d.gradeStats.low}`;
-      $('#dash-high').textContent = `고학년(3~6): ${d.gradeStats.high}`;
 
       $('#dash-multi').innerHTML = d.multiStudents.length === 0
         ? `<tr><td colspan="4" class="empty-state">중복 신청자가 없습니다.</td></tr>`
