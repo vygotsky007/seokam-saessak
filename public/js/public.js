@@ -81,6 +81,7 @@
   const students = [];
   let counter = 0;
   const MAX_STUDENTS = 4;
+  let activeGradeFilter = null; // null = 전체
 
   // === DOM ===
   const detailListEl = document.getElementById('program-detail-list');
@@ -149,19 +150,29 @@
     });
   }
 
+  // === 학년 필터 ===
+  function filteredPrograms() {
+    if (activeGradeFilter == null) return programs;
+    return programs.filter(p => gradeIncluded(p, activeGradeFilter));
+  }
+
   // === 상단: 안내 카드 ===
   function renderDetailList() {
     if (!programs.length) {
       detailListEl.innerHTML = '<div class="empty-state">현재 모집 중인 프로그램이 없습니다.</div>';
       return;
     }
-    detailListEl.innerHTML = programs.map(p => {
+    const list = filteredPrograms();
+    if (!list.length) {
+      detailListEl.innerHTML = `<div class="empty-state">선택한 학년이 신청 가능한 프로그램이 없습니다.</div>`;
+      return;
+    }
+    detailListEl.innerHTML = list.map(p => {
       const isFull = !!p.is_fully_closed;
       const meta = [];
       const schedText = (window.SaessakSchedule && window.SaessakSchedule.format(p)) || p.schedule || '';
       if (schedText)     meta.push(`<span class="meta-item"><span class="meta-ic">📅</span>${esc(schedText)}</span>`);
       if (p.location)    meta.push(`<span class="meta-item"><span class="meta-ic">📍</span>${esc(p.location)}</span>`);
-      meta.push(`<span class="meta-item"><span class="meta-ic">🎯</span>${formatGradesLabel(p.grades)}</span>`);
       if (p.instructors) meta.push(`<span class="meta-item"><span class="meta-ic">🧑‍🏫</span>${esc(p.instructors)}</span>`);
       let seatsLine;
       if (p.is_fully_closed) {
@@ -171,17 +182,22 @@
       } else {
         seatsLine = `정원 마감 · 대기 신청 가능 <strong>(대기 ${p.waitlist_count || 0}/${p.waitlist_capacity ?? 10}명)</strong>`;
       }
+      const desc = (p.description || '').trim();
+      const descBlock = desc
+        ? `<details class="pc-details"><summary><span class="pc-toggle-text"></span></summary><div class="pc-body">${esc(desc)}</div></details>`
+        : '';
       return `
         <article class="program-card ${isFull ? 'disabled' : ''}">
           <div class="pc-inner">
             <div class="pc-tags">
               ${isFull ? '<span class="badge full">모집 마감</span>' : '<span class="badge open">모집중</span>'}
               ${typeBadge(p.program_type)}
+              <span class="grade-badge">👶 ${formatGradesLabel(p.grades)}</span>
             </div>
             <h3 class="pc-title">${esc(p.title)}</h3>
             <div class="pc-meta-row">${meta.join('')}</div>
             <div class="pc-seats-line">${seatsLine}</div>
-            ${p.description ? `<div class="pc-body">${esc(p.description)}</div>` : ''}
+            ${descBlock}
           </div>
         </article>
       `;
@@ -297,8 +313,13 @@
       return;
     }
     const noStudentInfo = allStudentsEmpty();
+    const list = filteredPrograms();
+    if (!list.length) {
+      programsArea.innerHTML = `<div class="empty-state muted">선택한 학년이 신청 가능한 프로그램이 없습니다. 상단에서 다른 학년을 선택해 주세요.</div>`;
+      return;
+    }
 
-    programsArea.innerHTML = programs.map(p => {
+    programsArea.innerHTML = list.map(p => {
       const isFull = !!p.is_fully_closed;
       const isWaitOnly = !isFull && p.remaining <= 0;
       const tags = [
@@ -414,16 +435,40 @@
     });
   }
 
+  function getTotalSelected() {
+    return students.reduce((acc, s) => acc + s.selected.size, 0);
+  }
   function updateSubmitState(totalCount) {
     const hint = document.getElementById('submit-hint');
     const countEl = document.getElementById('submit-bar-count');
     if (countEl) countEl.innerHTML = `총 <strong>${totalCount}</strong>건 신청 예정`;
+    if (!hint) {
+      submitBtn.disabled = totalCount === 0;
+      return;
+    }
+    // 진행 상태 요약: 학생 수 · 프로그램 수 · 보호자 상태
+    const studentCount = students.filter(s => (s.cache.name || '').trim()).length;
+    const guardianName = (document.getElementById('guardian_name')?.value || '').trim();
+    const guardianPhone = (document.getElementById('guardian_phone')?.value || '').trim();
+    const phoneOk = isValidPhone(guardianPhone);
+    const guardianOk = !!guardianName && phoneOk;
+
     if (totalCount === 0) {
       submitBtn.disabled = true;
-      if (hint) hint.style.display = '';
+      hint.className = 'submit-bar-hint warn';
+      hint.textContent = '신청할 프로그램을 1개 이상 선택해 주세요';
+      return;
+    }
+    submitBtn.disabled = false;
+    if (!guardianOk) {
+      hint.className = 'submit-bar-hint warn';
+      const missing = !guardianName
+        ? '보호자 이름을 입력해 주세요'
+        : '보호자 연락처를 정확히 입력해 주세요';
+      hint.innerHTML = `학생 ${studentCount}명<span class="sep">·</span>프로그램 ${totalCount}개<span class="sep">·</span>${esc(missing)}`;
     } else {
-      submitBtn.disabled = false;
-      if (hint) hint.style.display = 'none';
+      hint.className = 'submit-bar-hint ok';
+      hint.innerHTML = `학생 ${studentCount}명<span class="sep">·</span>프로그램 ${totalCount}개<span class="sep">·</span>보호자 ✓ 신청 준비 완료`;
     }
   }
 
@@ -636,13 +681,15 @@
     if (accepted.length === 0 && rejected.length === 0) {
       html += '<div class="item">접수 결과가 없습니다.</div>';
     }
-    html += '<div class="item" style="margin-top:14px; background:var(--primary-soft); padding:12px; border-radius:8px;">';
-    html += '<b>접수·대기는 확정이 아닙니다.</b><br><span class="sub">최종 선정된 학생에게만 담당 선생님이 개별 연락드립니다.</span>';
+    html += '<div class="result-notice">';
+    html += '<b>접수·대기는 확정이 아닙니다.</b><br>';
+    html += '<span class="sub">선정 결과는 각 프로그램 시작 <b>1주일 전쯤</b> 선정된 분께 보호자 연락처로 개별 안내드립니다.</span>';
     html += '</div>';
-    html += '<div class="item" style="margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px;">';
-    html += '🔎 내 신청은 상단 <a href="/me"><b>내 신청 확인</b></a> 메뉴에서 <b>보호자 연락처와 학생 이름</b>으로 조회·취소할 수 있어요.';
+    html += '<div class="result-me-cta">';
+    html += '🔎 내 신청은 <b>보호자 연락처와 학생 이름</b>으로 언제든 조회·취소할 수 있어요.';
+    html += '<a class="btn primary result-me-btn" href="/me">내 신청 확인 / 취소하기</a>';
     html += '</div>';
-    html += '<div class="submit-row"><a class="btn" href="/me">내 신청 확인</a><button class="btn" onclick="location.reload()">다른 신청 하기</button></div>';
+    html += '<div class="result-actions"><button type="button" class="btn" onclick="location.reload()">다른 학생 추가 신청</button></div>';
     html += '</div>';
     resultArea.innerHTML = html;
     form.style.display = 'none';
@@ -650,8 +697,41 @@
     if (bar) bar.style.display = 'none';
   }
 
+  // === 학년 필터 칩 와이어링 ===
+  function wireGradeFilter() {
+    const filterEl = document.getElementById('grade-filter');
+    if (!filterEl) return;
+    filterEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('.chip');
+      if (!btn || !filterEl.contains(btn)) return;
+      const raw = btn.dataset.grade;
+      const next = (raw === '' || raw == null) ? null : Number(raw);
+      if (next === activeGradeFilter) return;
+      activeGradeFilter = next;
+      filterEl.querySelectorAll('.chip').forEach(c => {
+        const isActive = c === btn;
+        c.classList.toggle('active', isActive);
+        c.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+      renderDetailList();
+      renderStep2();
+    });
+  }
+
+  // === 보호자 입력 → 진행 요약 갱신 ===
+  function wireGuardianInputs() {
+    const ids = ['guardian_name', 'guardian_phone'];
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('input', () => updateSubmitState(getTotalSelected()));
+    });
+  }
+
   // === 초기화 ===
   renderPrivacyText();
   attachPhoneFormatter(document.getElementById('guardian_phone'));
+  wireGradeFilter();
+  wireGuardianInputs();
   loadPrograms();
 })();

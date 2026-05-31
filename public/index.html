@@ -15,6 +15,14 @@
     <p class="sub">2026학년도 디지털새싹 교실 프로그램 신청 페이지입니다.</p>
   </div>
 
+  <div class="flow-guide" aria-label="신청 흐름">
+    <span class="flow-step"><b>①</b> 학생 정보</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step"><b>②</b> 프로그램 선택</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step"><b>③</b> 신청 완료</span>
+  </div>
+
   <div class="me-cta-row">
     <a class="me-cta-link" href="/me">🔎 이미 신청한 분은 여기서 조회·수정·취소</a>
   </div>
@@ -38,6 +46,15 @@
   </div>
 
   <div class="section-title">📚 모집 중인 프로그램 안내</div>
+  <div class="grade-filter" id="grade-filter" role="tablist" aria-label="학년 필터">
+    <button type="button" class="chip active" data-grade="" role="tab" aria-selected="true">전체</button>
+    <button type="button" class="chip" data-grade="1" role="tab">1학년</button>
+    <button type="button" class="chip" data-grade="2" role="tab">2학년</button>
+    <button type="button" class="chip" data-grade="3" role="tab">3학년</button>
+    <button type="button" class="chip" data-grade="4" role="tab">4학년</button>
+    <button type="button" class="chip" data-grade="5" role="tab">5학년</button>
+    <button type="button" class="chip" data-grade="6" role="tab">6학년</button>
+  </div>
   <div id="program-detail-list" class="program-list">
     <div class="empty-state muted">불러오는 중…</div>
   </div>
