@@ -3,6 +3,66 @@
   margin: 0 auto;
   padding: 20px 24px 80px;
 }
+
+/* === 일정 입력 빌더 === */
+.schedule-builder {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #FAFBFC;
+}
+.schedule-builder .sb-range-row,
+.schedule-builder .sb-time-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.schedule-builder .sb-lbl {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-right: 2px;
+}
+.schedule-builder .sb-hint {
+  font-size: 11.5px;
+  margin-bottom: 6px;
+}
+.schedule-builder .sb-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+  min-height: 4px;
+}
+.schedule-builder .sb-day {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12.5px;
+  cursor: pointer;
+  user-select: none;
+}
+.schedule-builder .sb-day.on {
+  background: var(--primary-soft, #E0F2FE);
+  border-color: var(--primary, #0EA5E9);
+  color: var(--primary-ink, #075985);
+}
+.schedule-builder .sb-day input {
+  margin: 0;
+}
+.schedule-builder .sb-preview {
+  font-size: 12.5px;
+  background: #fff;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  min-height: 24px;
+}
 .admin-header {
   display: flex;
   align-items: center;

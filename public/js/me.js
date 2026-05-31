@@ -110,7 +110,10 @@
             <div class="app-main">
               <div class="app-title">${esc(program.title || '(프로그램)')} ${statusLabel(r.status)} ${isCancelled ? '' : autoSlotLabel(r)}</div>
               <div class="app-meta">
-                ${program.schedule ? `📅 ${esc(program.schedule)}` : ''}
+                ${(() => {
+                  const sched = (window.SaessakSchedule && window.SaessakSchedule.format(program)) || program.schedule || '';
+                  return sched ? `📅 ${esc(sched)}` : '';
+                })()}
                 ${program.location ? ` · 📍 ${esc(program.location)}` : ''}
                 <br>접수시각: ${fmtTime(r.submitted_at)}
               </div>

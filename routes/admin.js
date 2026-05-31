@@ -62,12 +62,35 @@ function normalizeGrades(input) {
   return out.length > 0 ? out : null;
 }
 
+function normalizeSessionDates(input) {
+  if (!Array.isArray(input)) return null;
+  const out = Array.from(new Set(
+    input
+      .map(v => String(v || '').trim())
+      .filter(v => /^\d{4}-\d{2}-\d{2}$/.test(v))
+  )).sort();
+  return out.length > 0 ? out : null;
+}
+
+function normalizeTime(input) {
+  if (input === null || input === undefined) return null;
+  const s = String(input).trim();
+  if (!s) return null;
+  // HH:MM 또는 HH:MM:SS 허용 → HH:MM 으로 통일
+  const m = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (!m) return null;
+  const hh = String(Math.min(23, Math.max(0, Number(m[1])))).padStart(2, '0');
+  const mm = String(Math.min(59, Math.max(0, Number(m[2])))).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
 router.post('/programs', async (req, res) => {
   try {
     const {
       title, description, schedule, location,
       grades, capacity, waitlist_capacity, instructors, is_open,
       program_type, multicultural_min,
+      session_dates, start_time, end_time,
     } = req.body || {};
 
     if (!title || !String(title).trim()) {
@@ -93,6 +116,9 @@ router.post('/programs', async (req, res) => {
       multicultural_min: ptype === 'multicultural'
         ? (multicultural_min === '' || multicultural_min === null || multicultural_min === undefined ? null : Number(multicultural_min))
         : null,
+      session_dates: normalizeSessionDates(session_dates),
+      start_time: normalizeTime(start_time),
+      end_time: normalizeTime(end_time),
     };
     const { data, error } = await supabase
       .from('saessak_programs')
@@ -111,7 +137,8 @@ router.put('/programs/:id', async (req, res) => {
     const { id } = req.params;
     const allowed = ['title', 'description', 'schedule', 'location',
       'grades', 'capacity', 'waitlist_capacity', 'instructors', 'is_open',
-      'program_type', 'multicultural_min'];
+      'program_type', 'multicultural_min',
+      'session_dates', 'start_time', 'end_time'];
     const patch = {};
     for (const k of allowed) {
       if (k in req.body) patch[k] = req.body[k];
@@ -139,6 +166,9 @@ router.put('/programs/:id', async (req, res) => {
     if (patch.program_type && patch.program_type !== 'multicultural') {
       patch.multicultural_min = null;
     }
+    if ('session_dates' in patch) patch.session_dates = normalizeSessionDates(patch.session_dates);
+    if ('start_time' in patch) patch.start_time = normalizeTime(patch.start_time);
+    if ('end_time' in patch) patch.end_time = normalizeTime(patch.end_time);
 
     const { data, error } = await supabase
       .from('saessak_programs')

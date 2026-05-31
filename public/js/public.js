@@ -117,7 +117,8 @@
     detailListEl.innerHTML = programs.map(p => {
       const isFull = !!p.is_fully_closed;
       const meta = [];
-      if (p.schedule)    meta.push(`<span class="meta-item"><span class="meta-ic">📅</span>${esc(p.schedule)}</span>`);
+      const schedText = (window.SaessakSchedule && window.SaessakSchedule.format(p)) || p.schedule || '';
+      if (schedText)     meta.push(`<span class="meta-item"><span class="meta-ic">📅</span>${esc(schedText)}</span>`);
       if (p.location)    meta.push(`<span class="meta-item"><span class="meta-ic">📍</span>${esc(p.location)}</span>`);
       meta.push(`<span class="meta-item"><span class="meta-ic">🎯</span>${formatGradesLabel(p.grades)}</span>`);
       if (p.instructors) meta.push(`<span class="meta-item"><span class="meta-ic">🧑‍🏫</span>${esc(p.instructors)}</span>`);
@@ -568,9 +569,10 @@
         const headLine = isWait
           ? `🕓 ${esc(a.title)} ${stateLabel}<br><span class="sub">대기로 접수되었습니다 (대기 ${slot ?? ''}번)</span>`
           : `✓ ${esc(a.title)} ${stateLabel}<br><span class="sub">접수되었습니다 (${slot ?? ''}번째 접수)</span>`;
+        const schedLine = (window.SaessakSchedule && window.SaessakSchedule.format(a)) || a.schedule || '';
         html += `<div class="item">
           ${headLine}
-          <div class="sub">${esc(a.schedule || '')} · 접수시각: ${fmtTime(a.submitted_at)}</div>
+          <div class="sub">${esc(schedLine)} · 접수시각: ${fmtTime(a.submitted_at)}</div>
         </div>`;
       });
       g.rejected.forEach(r => {

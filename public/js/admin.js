@@ -24,6 +24,12 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
+  function formatSchedule(p) {
+    if (window.SaessakSchedule && typeof window.SaessakSchedule.format === 'function') {
+      return window.SaessakSchedule.format(p) || '';
+    }
+    return p && p.schedule ? p.schedule : '';
+  }
   function formatGradesLabel(grades) {
     if (!Array.isArray(grades) || grades.length === 0) return '';
     const sorted = [...new Set(grades.map(Number))].sort((a, b) => a - b);
@@ -216,7 +222,7 @@
           <tr data-id="${p.id}">
             <td><b>${esc(p.title)}</b></td>
             <td>${typeBadge(p.program_type)}${p.program_type === 'multicultural' && p.multicultural_min != null ? `<div class="muted" style="font-size:11px; margin-top:2px;">최소 ${p.multicultural_min}명</div>` : ''}</td>
-            <td>${esc(p.schedule || '')}</td>
+            <td>${esc(formatSchedule(p))}</td>
             <td>${esc(p.location || '')}</td>
             <td>${formatGradesLabel(p.grades)}</td>
             <td>${p.capacity}<br><span class="muted" style="font-size:11px;">대기 ${p.waitlist_capacity ?? 10}</span></td>
@@ -269,7 +275,6 @@
       if (p) {
         form.title.value = p.title || '';
         form.description.value = p.description || '';
-        form.schedule.value = p.schedule || '';
         form.location.value = p.location || '';
         setGradeChecks(form, p.grades);
         form.capacity.value = p.capacity || 20;
@@ -277,14 +282,131 @@
         form.instructors.value = p.instructors || '';
         form.program_type.value = p.program_type || 'general';
         form.multicultural_min.value = p.multicultural_min ?? '';
+        loadScheduleBuilderFrom(p);
       }
     } else {
       form.program_type.value = 'general';
       form.multicultural_min.value = '';
+      loadScheduleBuilderFrom(null);
     }
     updateMulticulturalMinVisibility();
     dlg.classList.add('open');
   }
+
+  // ===== Schedule Builder =====
+  // dialog DOM: #sb-start-date, #sb-end-date, #sb-start-time, #sb-end-time,
+  //             #sb-apply-range, #sb-days, #sb-preview
+  // 내부 상태: 각 행마다 <label class="sb-day on"><input type=checkbox value="YYYY-MM-DD" checked> M/D(요일)</label>
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+  function toISO(d) { return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+  function fromISO(s) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s||''));
+    return m ? new Date(Number(m[1]), Number(m[2])-1, Number(m[3])) : null;
+  }
+  const SB_WEEK = ['일','월','화','수','목','금','토'];
+
+  function buildDayChip(iso, checked) {
+    const d = fromISO(iso);
+    if (!d) return '';
+    const label = `${d.getMonth()+1}/${d.getDate()}(${SB_WEEK[d.getDay()]})`;
+    return `<label class="sb-day ${checked ? 'on' : ''}" data-iso="${iso}">
+      <input type="checkbox" class="sb-day-cb" value="${iso}" ${checked ? 'checked' : ''}>
+      <span>${label}</span>
+    </label>`;
+  }
+
+  function renderDays(items) {
+    // items: [{iso, checked}]
+    const wrap = $('#sb-days');
+    wrap.innerHTML = items.map(it => buildDayChip(it.iso, it.checked)).join('');
+    wrap.querySelectorAll('.sb-day-cb').forEach(cb => {
+      cb.addEventListener('change', () => {
+        cb.closest('.sb-day').classList.toggle('on', cb.checked);
+        updateSchedulePreview();
+      });
+    });
+    updateSchedulePreview();
+  }
+
+  function readSelectedDates() {
+    return Array.from(document.querySelectorAll('#sb-days .sb-day-cb'))
+      .filter(cb => cb.checked)
+      .map(cb => cb.value)
+      .sort();
+  }
+  function readAllListedDates() {
+    return Array.from(document.querySelectorAll('#sb-days .sb-day-cb'))
+      .map(cb => cb.value)
+      .sort();
+  }
+
+  function applyRangeFromInputs() {
+    const sIso = $('#sb-start-date').value;
+    const eIso = $('#sb-end-date').value;
+    const s = fromISO(sIso);
+    const e = fromISO(eIso);
+    if (!s || !e) { toast('시작일과 종료일을 선택하세요.'); return; }
+    if (s.getTime() > e.getTime()) { toast('종료일이 시작일보다 빠릅니다.'); return; }
+    const items = [];
+    // 기존 체크 해제 상태는 사용자가 한 번 더 만들 때마다 초기화(다 체크된 상태로).
+    for (let d = new Date(s); d.getTime() <= e.getTime(); d.setDate(d.getDate() + 1)) {
+      items.push({ iso: toISO(d), checked: true });
+    }
+    renderDays(items);
+  }
+
+  function updateSchedulePreview() {
+    const sessionDates = readSelectedDates();
+    const st = $('#sb-start-time').value || null;
+    const et = $('#sb-end-time').value || null;
+    const text = window.SaessakSchedule.format({
+      session_dates: sessionDates,
+      start_time: st,
+      end_time: et,
+    });
+    $('#sb-preview').textContent = text ? `미리보기: ${text}` : '미리보기: (날짜를 선택하면 표시됩니다)';
+  }
+
+  function loadScheduleBuilderFrom(p) {
+    const sd = (p && Array.isArray(p.session_dates)) ? p.session_dates.slice() : [];
+    const startTime = (p && p.start_time) || '';
+    const endTime = (p && p.end_time) || '';
+    $('#sb-start-time').value = startTime;
+    $('#sb-end-time').value = endTime;
+    if (sd.length === 0) {
+      $('#sb-start-date').value = '';
+      $('#sb-end-date').value = '';
+      $('#sb-days').innerHTML = '';
+      updateSchedulePreview();
+      return;
+    }
+    const sorted = sd.slice().sort();
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    $('#sb-start-date').value = first;
+    $('#sb-end-date').value = last;
+    // 시작~종료 범위를 모두 펼친 후, 기존 session_dates 에 들어 있는 날짜만 체크
+    const set = new Set(sorted);
+    const items = [];
+    const s = fromISO(first);
+    const e = fromISO(last);
+    for (let d = new Date(s); d.getTime() <= e.getTime(); d.setDate(d.getDate() + 1)) {
+      const iso = toISO(d);
+      items.push({ iso, checked: set.has(iso) });
+    }
+    renderDays(items);
+  }
+
+  // 이벤트 바인딩 (DOM 로딩 후 모듈 IIFE 시점에 한 번만)
+  document.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'sb-apply-range') applyRangeFromInputs();
+  });
+  document.addEventListener('change', (e) => {
+    if (e.target && (e.target.id === 'sb-start-time' || e.target.id === 'sb-end-time')) {
+      updateSchedulePreview();
+    }
+  });
 
   function updateMulticulturalMinVisibility() {
     const t = $('#program-type-select').value;
@@ -303,10 +425,22 @@
       toast('대상 학년을 1개 이상 선택하세요.');
       return;
     }
+    const sessionDates = readSelectedDates();
+    const startTime = $('#sb-start-time').value || null;
+    const endTime = $('#sb-end-time').value || null;
+    // 기존 schedule 텍스트 호환: 새 입력이 있으면 자동 포맷한 결과를 schedule 에도 같이 저장(레거시 화면 안전망).
+    let autoSchedule = '';
+    if (sessionDates.length > 0) {
+      autoSchedule = window.SaessakSchedule.format({
+        session_dates: sessionDates,
+        start_time: startTime,
+        end_time: endTime,
+      });
+    }
     const payload = {
       title: form.title.value.trim(),
       description: form.description.value.trim(),
-      schedule: form.schedule.value.trim(),
+      schedule: autoSchedule || null,
       location: form.location.value.trim(),
       grades,
       capacity: Number(form.capacity.value),
@@ -315,6 +449,9 @@
       program_type: ptype,
       multicultural_min: ptype === 'multicultural' && form.multicultural_min.value !== ''
         ? Number(form.multicultural_min.value) : null,
+      session_dates: sessionDates,
+      start_time: startTime,
+      end_time: endTime,
     };
     // 모집 열기/닫기는 목록의 토글로만 관리. 폼 제출은 is_open을 건드리지 않음.
     // 신규 생성은 명시적으로 false(닫힘)로 시작.
