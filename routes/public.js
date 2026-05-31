@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const router = express.Router();
 const supabase = require('../utils/supabase');
 const { normalizeMobile, isValidMobile } = require('../utils/phone');
+const { programsConflict } = require('../public/js/schedule-conflict');
 
 function formatGradesLabel(grades) {
   if (!Array.isArray(grades) || grades.length === 0) return '';
@@ -186,6 +187,29 @@ router.post('/apply', async (req, res) => {
     if (eErr) throw eErr;
     (existingApps || []).forEach(r => dupSet.add(`${r.student_name}::${r.program_id}`));
 
+    // 충돌 검사용: 같은 보호자+학생의 모든 비취소 신청(program_id 포함). 부족한 program 데이터는 추가 로드.
+    const { data: existingForConflict, error: ceErr } = await supabase
+      .from('saessak_applications')
+      .select('id, program_id, student_name')
+      .eq('guardian_phone', guardianPhone)
+      .in('student_name', studentNames)
+      .neq('status', 'cancelled');
+    if (ceErr) throw ceErr;
+    const needIds = Array.from(new Set(
+      (existingForConflict || []).map(r => r.program_id).filter(pid => !programMap[pid])
+    ));
+    if (needIds.length > 0) {
+      const { data: more, error: mErr } = await supabase
+        .from('saessak_programs').select('*').in('id', needIds);
+      if (mErr) throw mErr;
+      (more || []).forEach(p => { programMap[p.id] = p; });
+    }
+    // student_name → Set<program_id> (이 학생이 현재 시점에 묶여 있는 모든 프로그램)
+    const studentLockedPrograms = {};
+    (existingForConflict || []).forEach(r => {
+      (studentLockedPrograms[r.student_name] = studentLockedPrograms[r.student_name] || new Set()).add(r.program_id);
+    });
+
     // 실시간 카운트 (자동 접수와 자동 대기를 분리해서 센다)
     const { data: allApps, error: cErr } = await supabase
       .from('saessak_applications')
@@ -216,6 +240,22 @@ router.post('/apply', async (req, res) => {
         }
         if (dupSet.has(`${s.student_name}::${pid}`)) {
           rejected.push({ student_name: s.student_name, program_id: pid, title: p.title, reason: '이미 신청한 프로그램입니다.' });
+          continue;
+        }
+        // 시간 충돌 (이 학생이 이미 신청 중이거나 같은 제출에서 이미 접수된 프로그램들 중)
+        const lockedSet = studentLockedPrograms[s.student_name]
+          = studentLockedPrograms[s.student_name] || new Set();
+        let conflictWith = null;
+        for (const otherPid of lockedSet) {
+          if (otherPid === pid) continue;
+          const other = programMap[otherPid];
+          if (other && programsConflict(p, other)) { conflictWith = other; break; }
+        }
+        if (conflictWith) {
+          rejected.push({
+            student_name: s.student_name, program_id: pid, title: p.title,
+            reason: `이미 신청한 "${conflictWith.title}"과 시간이 겹칩니다.`,
+          });
           continue;
         }
         const aCount = appliedLive[pid] || 0;
@@ -283,6 +323,8 @@ router.post('/apply', async (req, res) => {
         });
         if (isWait) waitlistLive[pid] = wCount + 1;
         else appliedLive[pid] = aCount + 1;
+        // 같은 제출 안에서 같은 학생의 다음 프로그램 충돌 검사를 위해 잠금에 추가
+        lockedSet.add(pid);
       }
     }
 

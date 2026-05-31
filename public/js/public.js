@@ -60,6 +60,16 @@
   function gradeIncluded(p, g) {
     return Array.isArray(p.grades) && p.grades.map(Number).includes(Number(g));
   }
+  // 학생 s 가 이미 선택한 다른 프로그램 중 p 와 시간이 충돌하는 것 (있으면 그 프로그램 객체, 없으면 null)
+  function conflictForStudent(p, s) {
+    if (!window.SaessakConflict) return null;
+    for (const otherPid of s.selected) {
+      if (otherPid === p.id) continue;
+      const other = programs.find(x => x.id === otherPid);
+      if (other && window.SaessakConflict.programsConflict(p, other)) return other;
+    }
+    return null;
+  }
 
   // === 상태 ===
   let programs = [];
@@ -264,11 +274,14 @@
             : '<span class="badge open">모집중</span>'),
       ].filter(Boolean).join(' ');
 
-      // 자격 학생 인덱스
+      // 자격 학생 인덱스 (학년 + 시간충돌 모두 만족)
+      // 이미 p를 선택한 학생은 그대로 자격자로 본다(현재 상태 유지).
       const eligibleIdxs = [];
       students.forEach((s, i) => {
         const eff = effGradeForStudent(i);
-        if (eff != null && gradeIncluded(p, eff)) eligibleIdxs.push(i);
+        if (eff == null || !gradeIncluded(p, eff)) return;
+        if (s.selected.has(p.id)) { eligibleIdxs.push(i); return; }
+        if (!conflictForStudent(p, s)) eligibleIdxs.push(i);
       });
       const allEligibleSelected = eligibleIdxs.length > 0 &&
         eligibleIdxs.every(i => students[i].selected.has(p.id));
@@ -282,14 +295,18 @@
         const studentRows = students.map((s, i) => {
           const eff = effGradeForStudent(i);
           const gradeOk = eff != null && gradeIncluded(p, eff);
-          const disabled = isFull || !gradeOk;
           const checked = s.selected.has(p.id);
+          // 시간 충돌은 "현재 선택되지 않은 경우"에만 신규 선택을 막는다.
+          const conflictWith = (!checked && gradeOk) ? conflictForStudent(p, s) : null;
+          const disabled = isFull || !gradeOk || !!conflictWith;
           const cls = ['s2-row'];
           if (checked) cls.push('selected');
           if (disabled) cls.push('disabled');
           const noGrade = eff == null;
-          const reason = noGrade ? '<span class="s2-note">학년 입력 후 선택 가능</span>'
-            : (!gradeOk ? '<span class="s2-note bad">대상 학년 아님</span>' : '');
+          let reason = '';
+          if (noGrade) reason = '<span class="s2-note">학년 입력 후 선택 가능</span>';
+          else if (!gradeOk) reason = '<span class="s2-note bad">대상 학년 아님</span>';
+          else if (conflictWith) reason = `<span class="s2-note bad">"${esc(conflictWith.title)}"과 시간이 겹쳐요</span>`;
           return `
             <label class="${cls.join(' ')}">
               <input type="checkbox" data-pid="${esc(p.id)}" data-sid="${s.id}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
@@ -340,7 +357,7 @@
       });
     });
 
-    // 일괄 선택 버튼 이벤트
+    // 일괄 선택 버튼 이벤트 (학년 + 시간충돌 모두 통과한 학생만 대상)
     programsArea.querySelectorAll('button.s2-select-all').forEach(btn => {
       btn.addEventListener('click', () => {
         const pid = btn.dataset.pid;
@@ -349,7 +366,9 @@
         const eligible = [];
         students.forEach((s, i) => {
           const eff = effGradeForStudent(i);
-          if (eff != null && gradeIncluded(p, eff)) eligible.push(s);
+          if (eff == null || !gradeIncluded(p, eff)) return;
+          if (s.selected.has(pid)) { eligible.push(s); return; }
+          if (!conflictForStudent(p, s)) eligible.push(s);
         });
         if (eligible.length === 0) return;
         const allChecked = eligible.every(s => s.selected.has(pid));
