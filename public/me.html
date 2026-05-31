@@ -13,7 +13,7 @@
 <div class="page">
   <div class="header">
     <h1>🔎 내 신청 확인·취소</h1>
-    <p class="sub">보호자 연락처로 우리 집 신청 내역을 한 번에 확인할 수 있어요.</p>
+    <p class="sub">보호자 연락처와 이름으로 우리 집 신청 내역을 확인할 수 있어요.</p>
     <div style="margin-top:10px;">
       <a class="btn small" href="/">← 신청 페이지로</a>
     </div>
@@ -24,6 +24,10 @@
     <div class="form-row">
       <label for="lookup_phone">보호자 연락처</label>
       <input type="tel" id="lookup_phone" required placeholder="010-1234-5678">
+    </div>
+    <div class="form-row">
+      <label for="lookup_guardian_name">보호자 이름</label>
+      <input type="text" id="lookup_guardian_name" required maxlength="20" placeholder="신청 시 입력한 보호자 이름">
     </div>
     <div class="submit-row">
       <button type="submit" class="btn primary">조회</button>

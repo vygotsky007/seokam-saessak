@@ -671,6 +671,10 @@
         submitBtn.textContent = '신청하기';
         return;
       }
+      // 추가 신청 시 보호자 정보 자동 채움용으로 보존
+      try {
+        sessionStorage.setItem('saessak_guardian', JSON.stringify({ phone: guardianPhone, name: guardianName }));
+      } catch {}
       renderResult(j, payload);
       window.scrollTo({ top: resultArea.offsetTop - 20, behavior: 'smooth' });
     } catch (err) {
@@ -767,10 +771,24 @@
     });
   }
 
+  // === 보호자 정보 자동 채움 (이전 조회/신청에서 sessionStorage 에 저장된 값) ===
+  function prefillGuardianFromSession() {
+    let saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem('saessak_guardian') || 'null'); } catch {}
+    if (!saved) return;
+    const nameEl = document.getElementById('guardian_name');
+    const phoneEl = document.getElementById('guardian_phone');
+    if (nameEl && saved.name && !nameEl.value) nameEl.value = saved.name;
+    if (phoneEl && saved.phone && !phoneEl.value) phoneEl.value = saved.phone;
+    // 제출 바 진행요약 갱신
+    updateSubmitState(getTotalSelected());
+  }
+
   // === 초기화 ===
   renderPrivacyText();
   attachPhoneFormatter(document.getElementById('guardian_phone'));
   wireGradeFilter();
   wireGuardianInputs();
+  prefillGuardianFromSession();
   loadPrograms();
 })();

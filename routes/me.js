@@ -18,17 +18,22 @@ const ownerLimiter = rateLimit({
 
 router.post('/lookup', async (req, res) => {
   try {
-    const { guardian_phone } = req.body || {};
+    const { guardian_phone, guardian_name } = req.body || {};
     const phone = normalizeMobile(guardian_phone);
     if (!isValidMobile(phone)) {
       return res.status(400).json({ ok: false, error: '올바른 보호자 연락처를 입력해 주세요(010-XXXX-XXXX).' });
     }
+    const gname = String(guardian_name || '').trim();
+    if (!gname) {
+      return res.status(400).json({ ok: false, error: '보호자 이름을 입력해 주세요.' });
+    }
 
-    // 보호자 연락처로 모든 자녀의 신청을 한 번에 조회
+    // 보호자 연락처 + 보호자 이름 둘 다 일치해야 조회
     const { data: own, error: e1 } = await supabase
       .from('saessak_applications')
       .select('*, program:saessak_programs(id, title, schedule, location, program_type, capacity, waitlist_capacity, session_dates, start_time, end_time)')
-      .eq('guardian_phone', phone);
+      .eq('guardian_phone', phone)
+      .eq('guardian_name', gname);
     if (e1) throw e1;
 
     const list = (own || []).slice().sort((a, b) => {
@@ -37,7 +42,7 @@ router.post('/lookup', async (req, res) => {
     });
 
     if (list.length === 0) {
-      return res.json({ ok: true, data: [], message: '이 연락처로 신청된 내역이 없습니다. 연락처를 다시 확인해 주세요.' });
+      return res.json({ ok: true, data: [], message: '입력하신 보호자 정보로 신청된 내역이 없습니다. 연락처와 이름을 다시 확인해 주세요.' });
     }
 
     // 각 신청의 접수/대기 순번(slot_number)을 그 program 안에서 계산
@@ -69,21 +74,22 @@ router.post('/lookup', async (req, res) => {
   }
 });
 
-// 본인 확인: 요청 본문의 guardian_phone 이 해당 신청행과 일치해야 통과.
+// 본인 확인: 요청 본문의 guardian_phone + guardian_name 둘 다 해당 신청행과 일치해야 통과.
 async function verifyOwnership(applicationId, body) {
   const phone = normalizeMobile((body || {}).guardian_phone);
-  if (!isValidMobile(phone)) {
-    return { ok: false, status: 400, error: '본인 확인 정보(보호자 연락처)가 올바르지 않습니다.' };
+  const gname = String(((body || {}).guardian_name) || '').trim();
+  if (!isValidMobile(phone) || !gname) {
+    return { ok: false, status: 400, error: '본인 확인 정보(보호자 연락처/이름)가 올바르지 않습니다.' };
   }
   const { data, error } = await supabase
     .from('saessak_applications')
-    .select('id, guardian_phone, student_name, status, program_id, sibling_group_id')
+    .select('id, guardian_phone, guardian_name, student_name, status, program_id, sibling_group_id')
     .eq('id', applicationId)
     .single();
   if (error || !data) {
     return { ok: false, status: 404, error: '신청을 찾을 수 없습니다.' };
   }
-  if (data.guardian_phone !== phone) {
+  if (data.guardian_phone !== phone || String(data.guardian_name || '').trim() !== gname) {
     return { ok: false, status: 401, error: '본인 확인 정보가 일치하지 않습니다.' };
   }
   return { ok: true, row: data };

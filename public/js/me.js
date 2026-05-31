@@ -55,17 +55,21 @@
 
   let lastList = [];
   let lastPhone = '';
+  let lastGuardianName = '';
 
   attachPhoneFormatter(document.getElementById('lookup_phone'));
 
   document.getElementById('lookup-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const phone = document.getElementById('lookup_phone').value.trim();
+    const gname = document.getElementById('lookup_guardian_name').value.trim();
     if (!isValidPhone(phone)) {
       alert('올바른 보호자 연락처를 입력해 주세요(010-XXXX-XXXX).');
       return;
     }
+    if (!gname) { alert('보호자 이름을 입력해 주세요.'); return; }
     lastPhone = phone;
+    lastGuardianName = gname;
     await loadLookup();
   });
 
@@ -74,11 +78,15 @@
       const res = await fetch('/api/public/lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ guardian_phone: lastPhone }),
+        body: JSON.stringify({ guardian_phone: lastPhone, guardian_name: lastGuardianName }),
       });
       const j = await res.json();
       if (!j.ok) { alert(j.error || '조회 실패'); return; }
       lastList = j.data || [];
+      // 추가 신청 시 보호자 정보 자동 채움용으로 보존
+      try {
+        sessionStorage.setItem('saessak_guardian', JSON.stringify({ phone: lastPhone, name: lastGuardianName }));
+      } catch {}
       renderResult(j);
     } catch (err) { alert('서버 오류: ' + err.message); }
   }
@@ -140,7 +148,7 @@
         <strong>안내</strong>
         <ul>
           <li>여기에 보이는 상태는 <b>접수/대기/취소</b>만 표시돼요. <b>접수·대기는 확정이 아니며</b>, 최종 선정 결과는 담당 선생님이 별도로 안내드립니다.</li>
-          <li>취소·수정은 <b>조회에 사용한 보호자 연락처</b>로 본인 확인됩니다.</li>
+          <li>취소·수정은 <b>조회에 사용한 보호자 연락처와 이름</b>으로 본인 확인됩니다.</li>
         </ul>
       </div>
     `;
@@ -149,9 +157,9 @@
     el.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => onEditClick(b.dataset.edit)));
   }
 
-  // 본인 확인 키: 조회에 사용한 보호자 연락처. 신청 행의 guardian_phone 과 일치만 보면 됨.
+  // 본인 확인 키: 조회에 사용한 보호자 연락처 + 보호자 이름. 둘 다 신청 행과 일치해야 통과.
   function ownerKeyFor(_row) {
-    return { guardian_phone: lastPhone };
+    return { guardian_phone: lastPhone, guardian_name: lastGuardianName };
   }
 
   // ===== 취소 =====
@@ -224,9 +232,14 @@
       toast('수정되었습니다.');
       document.getElementById('edit-dialog').classList.remove('open');
       editingId = null; editingRow = null;
-      // 보호자 연락처가 바뀌었으면 다음 조회 기준도 새 값으로
+      // 보호자 연락처/이름이 바뀌었으면 다음 조회 기준도 새 값으로 갱신
       const newPhone = patch.guardian_phone;
       if (newPhone && newPhone !== lastPhone) lastPhone = newPhone;
+      const newGuardianName = (patch.guardian_name || '').trim();
+      if (newGuardianName && newGuardianName !== lastGuardianName) lastGuardianName = newGuardianName;
+      try {
+        sessionStorage.setItem('saessak_guardian', JSON.stringify({ phone: lastPhone, name: lastGuardianName }));
+      } catch {}
       await loadLookup();
     } catch (err) { alert('서버 오류: ' + err.message); }
   });
