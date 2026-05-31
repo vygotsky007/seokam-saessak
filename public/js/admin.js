@@ -789,11 +789,27 @@
   let scheduleYear = 2026;
   let scheduleMonth = 5; // 0-indexed → June
 
+  // 프로그램 블록 색 팔레트 — 차분한 파스텔 + 진한 텍스트(가독성).
+  // id 해시로 안정 배정(같은 프로그램은 항상 같은 색).
+  const PROGRAM_PALETTE = [
+    { bg: '#A7F0E8', fg: '#0F766E' }, // 청록
+    { bg: '#FECACA', fg: '#9F1239' }, // 코랄
+    { bg: '#DDD6FE', fg: '#5B21B6' }, // 보라
+    { bg: '#FDE68A', fg: '#92400E' }, // 앰버
+    { bg: '#BFDBFE', fg: '#1E3A8A' }, // 블루
+    { bg: '#FBCFE8', fg: '#9D174D' }, // 핑크
+    { bg: '#D9F99D', fg: '#365314' }, // 라임
+    { bg: '#A7F3D0', fg: '#065F46' }, // 민트
+    { bg: '#E9D5FF', fg: '#6B21A8' }, // 라벤더
+    { bg: '#FED7AA', fg: '#9A3412' }, // 살구
+    { bg: '#BAE6FD', fg: '#0C4A6E' }, // 스카이
+    { bg: '#FDD3D8', fg: '#881337' }, // 로즈
+  ];
   function programColor(p) {
     const id = String(p.id || p.title || '');
     let h = 0;
-    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 360;
-    return `hsl(${h}, 62%, 44%)`;
+    for (let i = 0; i < id.length; i++) h = ((h * 31) + id.charCodeAt(i)) >>> 0;
+    return PROGRAM_PALETTE[h % PROGRAM_PALETTE.length];
   }
   function isoOf(y, m, d) {
     return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -857,7 +873,7 @@
         const time = (p.start_time && p.end_time) ? `${p.start_time}~${p.end_time}` : (p.start_time || '');
         const inst = p.instructors || '';
         const tip = `${p.title}${time ? ' · ' + time : ''}${inst ? ' · ' + inst : ''}`;
-        return `<div class="cal-event" style="background:${color}" title="${esc(tip)}">
+        return `<div class="cal-event" style="background:${color.bg}; color:${color.fg}; border-color:${color.fg}33" title="${esc(tip)}">
           <div class="ev-title">${esc(p.title)}</div>
           ${time ? `<div class="ev-time">${esc(time)}</div>` : ''}
           ${inst ? `<div class="ev-inst">${esc(inst)}</div>` : ''}
@@ -878,7 +894,10 @@
     $('#cal-legend').innerHTML = monthPrograms.length === 0
       ? '<span class="muted">이 달에는 일정이 있는 프로그램이 없습니다.</span>'
       : monthPrograms.map(p =>
-          `<span class="lg"><span class="lg-color" style="background:${programColor(p)}"></span>${esc(p.title)}</span>`
+          (() => {
+            const c = programColor(p);
+            return `<span class="lg" style="background:${c.bg}; color:${c.fg}"><span class="lg-color" style="background:${c.fg}"></span>${esc(p.title)}</span>`;
+          })()
         ).join('');
   }
 
