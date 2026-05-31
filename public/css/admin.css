@@ -260,6 +260,7 @@ tbody tr:hover { background: #F8FAFC; }
 
 .badge.tag-multicultural { background: #E0F2FE; color: #075985; }
 .badge.tag-sibling       { background: #FCE7F3; color: #9D174D; }
+.badge.name-conflict     { background: #FEF3C7; color: #92400E; font-weight: 700; cursor: help; }
 
 .pref-bar {
   display: flex; align-items: center; gap: 8px;

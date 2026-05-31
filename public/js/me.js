@@ -55,21 +55,17 @@
 
   let lastList = [];
   let lastPhone = '';
-  let lastName = '';
 
   attachPhoneFormatter(document.getElementById('lookup_phone'));
 
   document.getElementById('lookup-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const phone = document.getElementById('lookup_phone').value.trim();
-    const name = document.getElementById('lookup_name').value.trim();
     if (!isValidPhone(phone)) {
       alert('올바른 보호자 연락처를 입력해 주세요(010-XXXX-XXXX).');
       return;
     }
-    if (!name) { alert('학생 이름을 입력해 주세요.'); return; }
     lastPhone = phone;
-    lastName = name;
     await loadLookup();
   });
 
@@ -78,7 +74,7 @@
       const res = await fetch('/api/public/lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ guardian_phone: lastPhone, student_name: lastName }),
+        body: JSON.stringify({ guardian_phone: lastPhone }),
       });
       const j = await res.json();
       if (!j.ok) { alert(j.error || '조회 실패'); return; }
@@ -136,11 +132,15 @@
     el.innerHTML = `
       <div class="section-title" style="margin-top: 24px;">📋 신청 내역</div>
       <div class="panel result-panel">${blocks}</div>
+      <div class="more-apply-cta">
+        <div class="more-apply-text">다른 프로그램도 같은 보호자 연락처로 추가 신청할 수 있어요.</div>
+        <a class="btn primary more-apply-btn" href="/">+ 프로그램 더 신청하기</a>
+      </div>
       <div class="notice" style="margin-top:14px;">
         <strong>안내</strong>
         <ul>
           <li>여기에 보이는 상태는 <b>접수/대기/취소</b>만 표시돼요. <b>접수·대기는 확정이 아니며</b>, 최종 선정 결과는 담당 선생님이 별도로 안내드립니다.</li>
-          <li>취소·수정은 본인 확인을 위해 <b>조회에 사용한 보호자 연락처와 학생 이름</b>이 신청 정보와 일치해야 가능합니다.</li>
+          <li>취소·수정은 <b>조회에 사용한 보호자 연락처</b>로 본인 확인됩니다.</li>
         </ul>
       </div>
     `;
@@ -149,11 +149,9 @@
     el.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => onEditClick(b.dataset.edit)));
   }
 
-  // 본인 확인 키는 조회에 사용한 (guardian_phone + student_name) 그대로 사용.
-  // 단, 신청 행의 student_name이 조회 입력값과 달라지면(형제 신청에 다른 학생도 들어 있는 경우)
-  // 해당 행의 student_name을 본인 확인 키로 보낸다.
-  function ownerKeyFor(row) {
-    return { guardian_phone: lastPhone, student_name: row ? row.student_name : lastName };
+  // 본인 확인 키: 조회에 사용한 보호자 연락처. 신청 행의 guardian_phone 과 일치만 보면 됨.
+  function ownerKeyFor(_row) {
+    return { guardian_phone: lastPhone };
   }
 
   // ===== 취소 =====

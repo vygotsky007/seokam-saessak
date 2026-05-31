@@ -270,7 +270,28 @@ router.get('/applications', async (req, res) => {
     if (program_id) q = q.eq('program_id', program_id);
     const { data, error } = await q;
     if (error) throw error;
-    res.json({ ok: true, data });
+
+    // 동명이인 의심: 같은 (guardian_phone, student_name) 인데 (grade, class_no) 가 둘 이상.
+    // 신청 자체를 막진 않고, 관리자에게 경고 배지만 띄움.
+    const { data: allApps, error: aErr } = await supabase
+      .from('saessak_applications')
+      .select('student_name, guardian_phone, grade, class_no, status');
+    if (aErr) throw aErr;
+    const buckets = {};
+    (allApps || []).forEach(a => {
+      if (!a.student_name || !a.guardian_phone) return;
+      if (a.status === 'cancelled') return;
+      const k = `${a.guardian_phone}::${a.student_name}`;
+      (buckets[k] = buckets[k] || new Set()).add(`${a.grade ?? '?'}-${a.class_no ?? '?'}`);
+    });
+    const conflictKeys = new Set();
+    Object.entries(buckets).forEach(([k, set]) => { if (set.size >= 2) conflictKeys.add(k); });
+
+    const out = (data || []).map(a => ({
+      ...a,
+      name_conflict: conflictKeys.has(`${a.guardian_phone}::${a.student_name}`),
+    }));
+    res.json({ ok: true, data: out });
   } catch (err) {
     console.error('[GET admin/applications]', err.message);
     res.status(500).json({ ok: false, error: err.message });

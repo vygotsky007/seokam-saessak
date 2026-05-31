@@ -847,47 +847,35 @@ body.public-page {
   cursor: not-allowed;
 }
 
-/* ② 다문화 우대 신청한 학생 입력 (학생당 1개) */
-#multicultural-area:empty { display: none; }
-.mc-card {
-  margin-top: 12px;
+/* 가정 단위 다문화 체크박스 (보호자 영역, 조건부) */
+.household-mc {
   background: #F0F9FF;
   border: 1px solid #BAE6FD;
   border-radius: 10px;
   padding: 12px 14px;
 }
-.mc-title {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: #075985;
-  margin-bottom: 4px;
-}
-.mc-desc {
-  font-size: 12px;
-  color: var(--muted);
-  margin-bottom: 8px;
-  line-height: 1.5;
-}
-.mc-row {
+.household-mc[hidden] { display: none; }
+.household-mc-label {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
-  margin-top: 4px;
-  background: #fff;
-  border: 1px solid #E0F2FE;
-  border-radius: 8px;
-  font-size: 13.5px;
-  min-height: 44px;
+  font-size: 14px;
   cursor: pointer;
+  min-height: 36px;
 }
-.mc-row input[type="checkbox"] {
-  width: 18px; height: 18px;
+.household-mc-label input[type="checkbox"] {
+  width: 20px; height: 20px;
   accent-color: #0EA5E9;
   flex-shrink: 0;
 }
-.mc-row .mc-name { font-weight: 600; }
-.mc-row .mc-q { color: #075985; }
+.household-mc-label b { color: #075985; }
+.household-mc-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+  margin-left: 30px;
+  line-height: 1.5;
+}
 
 /* ② 프로그램 카드 - 학생 미입력 안내 */
 .s2-empty-hint {
@@ -947,12 +935,31 @@ body.public-page {
   font-size: 15px;
   font-weight: 700;
 }
-.result-actions {
-  margin-top: 14px;
+.result-more-cta {
+  margin-top: 10px;
+  background: #F1F8E9;
+  border: 1px dashed #AED581;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  line-height: 1.6;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
 }
-.result-actions .btn { min-height: 44px; padding: 10px 18px; }
+.result-more-text { color: var(--primary-ink); }
+.result-more-btn {
+  align-self: stretch;
+  justify-content: center;
+  min-height: 48px;
+  font-size: 15px;
+  font-weight: 700;
+  background: #fff;
+  border: 1.5px solid var(--primary);
+  color: var(--primary-ink);
+}
+.result-more-btn:hover { background: var(--primary-soft); }
 
 @media (max-width: 540px) {
   .form-row { grid-template-columns: 1fr; gap: 6px; }

@@ -584,6 +584,9 @@
       if (a.sibling_group_id) {
         badges.push(`<span class="badge" style="background:${siblingColor(a.sibling_group_id)}; color:#0F172A;">형제 ${esc(siblingShort(a.sibling_group_id))}</span>`);
       }
+      if (a.name_conflict) {
+        badges.push('<span class="badge name-conflict" title="같은 이름·다른 학년/반으로 신청된 다른 행이 있어요 (동명이인 의심)">⚠ 확인 필요</span>');
+      }
       return `
       <tr data-id="${a.id}">
         <td>${i + 1}</td>

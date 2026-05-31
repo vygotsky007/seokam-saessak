@@ -512,7 +512,7 @@
     if (students.length === 0) {
       summaryArea.innerHTML = '<div class="empty">먼저 위에서 학생과 프로그램을 선택해 주세요.</div>';
       updateSubmitState(0);
-      renderMulticulturalArea();
+      updateHouseholdMcVisibility();
       return;
     }
     const totalCount = students.reduce((acc, s) => acc + s.selected.size, 0);
@@ -544,50 +544,24 @@
       <div class="summary-total">총 <strong>${totalCount}</strong>건 신청 예정</div>
     `;
 
-    renderMulticulturalArea();
+    updateHouseholdMcVisibility();
   }
 
-  // === 2단계 하단: 다문화 우대형 신청한 학생에게만 다문화 입력 노출 (학생당 1개) ===
-  function renderMulticulturalArea() {
-    const el = document.getElementById('multicultural-area');
-    if (!el) return;
-    const rows = [];
-    students.forEach((s, i) => {
-      const hasMc = Array.from(s.selected).some(pid => {
-        const p = programs.find(x => x.id === pid);
-        return p && isMulticulturalProgram(p);
-      });
-      if (!hasMc) {
-        s.cache.is_multicultural = false;
-        return;
-      }
-      const name = (s.cache.name || '').trim() || `학생 ${i + 1}`;
-      rows.push(`
-        <label class="mc-row">
-          <input type="checkbox" class="mc-cb" data-sid="${s.id}" ${s.cache.is_multicultural ? 'checked' : ''}>
-          <span class="mc-name">${esc(name)}</span>
-          <span class="mc-q">다문화가정 <span class="muted">(해당 시 체크 · 선택)</span></span>
-        </label>
-      `);
-    });
-    if (rows.length === 0) {
-      el.innerHTML = '';
-      return;
-    }
-    el.innerHTML = `
-      <div class="mc-card">
-        <div class="mc-title">다문화 우대 안내 입력 <span class="muted">(선택)</span></div>
-        <div class="mc-desc">다문화 우대 프로그램에 신청한 학생만 보여요. 해당 시 체크해 주세요.</div>
-        ${rows.join('')}
-      </div>
-    `;
-    el.querySelectorAll('input.mc-cb[data-sid]').forEach(cb => {
-      cb.addEventListener('change', (e) => {
-        const sid = Number(e.target.dataset.sid);
-        const s = students.find(x => x.id === sid);
-        if (s) s.cache.is_multicultural = e.target.checked;
-      });
-    });
+  // === 가정 단위 다문화 입력 (보호자 영역) ===
+  // 선택된 프로그램 중 다문화 우대형이 하나라도 있으면 보호자 영역에 체크박스 노출.
+  function anyMulticulturalSelected() {
+    return students.some(s => Array.from(s.selected).some(pid => {
+      const p = programs.find(x => x.id === pid);
+      return p && isMulticulturalProgram(p);
+    }));
+  }
+  function updateHouseholdMcVisibility() {
+    const el = document.getElementById('household-mc');
+    const cb = document.getElementById('household_multicultural');
+    if (!el || !cb) return;
+    const show = anyMulticulturalSelected();
+    el.hidden = !show;
+    if (!show) cb.checked = false;
   }
 
   // === 데이터 로드 ===
@@ -625,13 +599,15 @@
     const studentsPayload = [];
     let validationErr = null;
     const guardianMotivation = (document.getElementById('guardian_motivation').value || '').trim() || null;
+    // 다문화는 가정 단위 1회 — 다문화 우대형 선택이 있는 경우에만 노출되는 체크박스.
+    const householdMc = !!(document.getElementById('household_multicultural') &&
+                           document.getElementById('household_multicultural').checked);
 
     students.forEach((s, i) => {
       if (validationErr) return;
       const name = (s.cache.name || '').trim();
       const grade = Number(effGradeForStudent(i));
       const cls = Number(s.cache.class_no);
-      const isMc = !!s.cache.is_multicultural;
       const program_ids = Array.from(s.selected);
 
       if (!name) { validationErr = `학생 ${i + 1}의 이름을 입력해 주세요.`; return; }
@@ -653,7 +629,7 @@
         grade, class_no: cls,
         motivation: guardianMotivation,
         program_ids,
-        is_multicultural: isMc,
+        is_multicultural: householdMc, // 가정 단위 1회 (서버에서 다문화 우대형 행에만 적용)
       });
     });
 
@@ -746,10 +722,13 @@
     html += '<span class="sub">선정 결과는 각 프로그램 시작 <b>1주일 전쯤</b> 선정된 분께 보호자 연락처로 개별 안내드립니다.</span>';
     html += '</div>';
     html += '<div class="result-me-cta">';
-    html += '🔎 내 신청은 <b>보호자 연락처와 학생 이름</b>으로 언제든 조회·취소할 수 있어요.';
+    html += '🔎 내 신청은 <b>보호자 연락처</b>로 언제든 조회·취소할 수 있어요.';
     html += '<a class="btn primary result-me-btn" href="/me">내 신청 확인 / 취소하기</a>';
     html += '</div>';
-    html += '<div class="result-actions"><button type="button" class="btn" onclick="location.reload()">다른 학생 추가 신청</button></div>';
+    html += '<div class="result-more-cta">';
+    html += '<div class="result-more-text">다른 프로그램도 같은 보호자 연락처로 추가 신청할 수 있어요.</div>';
+    html += '<a class="btn result-more-btn" href="/">+ 프로그램 더 신청하기</a>';
+    html += '</div>';
     html += '</div>';
     resultArea.innerHTML = html;
     form.style.display = 'none';

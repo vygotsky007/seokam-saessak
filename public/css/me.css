@@ -81,6 +81,30 @@
 
 .err-text { color: var(--danger); font-size: 12.5px; margin-top: 6px; min-height: 16px; }
 
+.more-apply-cta {
+  margin-top: 14px;
+  background: #F1F8E9;
+  border: 1px dashed #AED581;
+  padding: 14px 16px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+.more-apply-text {
+  font-size: 13.5px;
+  color: var(--primary-ink, #2E7D32);
+  line-height: 1.5;
+}
+.more-apply-btn {
+  align-self: stretch;
+  justify-content: center;
+  min-height: 48px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
 .toast {
   position: fixed;
   bottom: 24px;
