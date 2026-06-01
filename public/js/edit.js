@@ -268,8 +268,8 @@
   let rosterRows = [];   // 현재 표시 중인 명단(수정 시 행 조회용)
   let editingId = null;  // 수정 중인 수동신청 id (null 이면 신규 추가 모드)
 
-  // 학년별 반 개수 (공개/관리자 폼과 동일 규칙 — 3학년 8반, 나머지 7반)
-  const CLASS_COUNT = { 1: 7, 2: 7, 3: 8, 4: 7, 5: 7, 6: 7 };
+  // 학년별 반 개수 (공개/관리자 폼과 동일 규칙 — 4학년만 8반, 나머지 전 학년 7반)
+  const CLASS_COUNT = { 1: 7, 2: 7, 3: 7, 4: 8, 5: 7, 6: 7 };
   function populateMClassOptions(grade, currentVal) {
     const sel = $('#m-class');
     const count = CLASS_COUNT[Number(grade)] || 0;
