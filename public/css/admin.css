@@ -126,6 +126,13 @@ th {
 tbody tr:hover { background: #F8FAFC; }
 .cell-actions { white-space: nowrap; display: flex; gap: 4px; }
 
+/* 강사 수정 권한 컬럼 */
+.btn.xsmall { padding: 3px 7px; font-size: 11px; }
+.cell-tedit { white-space: nowrap; }
+.cell-tedit .te-toggle { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer; }
+.cell-tedit .te-toggle input { cursor: pointer; }
+.cell-tedit .te-btns { display: flex; gap: 4px; margin-top: 4px; }
+
 .input, .select {
   border: 1px solid var(--border-strong);
   border-radius: 7px;

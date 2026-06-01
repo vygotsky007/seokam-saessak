@@ -259,7 +259,7 @@
       const j = await api('/programs');
       programs = j.data || [];
       $('#programs-tbody').innerHTML = programs.length === 0
-        ? `<tr><td colspan="10" class="empty-state">등록된 프로그램이 없습니다.</td></tr>`
+        ? `<tr><td colspan="11" class="empty-state">등록된 프로그램이 없습니다.</td></tr>`
         : programs.map(p => `
           <tr data-id="${p.id}">
             <td><b>${esc(p.title)}</b></td>
@@ -274,6 +274,13 @@
               <select class="recruit-status-sel rs-${recruitStatusOf(p)}" data-status-pid="${p.id}">
                 ${RECRUIT_STATUSES.map(s => `<option value="${s.value}" ${recruitStatusOf(p) === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}
               </select>
+            </td>
+            <td class="cell-tedit">
+              <label class="te-toggle"><input type="checkbox" class="te-enable" data-te-pid="${p.id}" ${p.edit_enabled ? 'checked' : ''}> 허용</label>
+              <div class="te-btns">
+                <button class="btn xsmall" data-te-copy="${p.id}">링크복사</button>
+                <button class="btn xsmall" data-te-regen="${p.id}">토큰재발급</button>
+              </div>
             </td>
             <td class="cell-actions">
               <button class="btn small" data-edit="${p.id}">수정</button>
@@ -302,9 +309,60 @@
         try { await api(`/programs/${el.dataset.del}`, { method: 'DELETE' }); toast('삭제됨'); loadProgramsTab(); }
         catch (err) { toast(err.message); }
       }));
+
+      // 강사 수정 권한 on/off
+      $$('[data-te-pid]').forEach(el => el.addEventListener('change', async () => {
+        const id = el.dataset.tePid;
+        try {
+          await api(`/programs/${id}/edit-permission`, { method: 'PATCH', body: JSON.stringify({ edit_enabled: el.checked }) });
+          const p = programs.find(x => x.id === id); if (p) p.edit_enabled = el.checked;
+          toast(el.checked ? '강사 수정 권한을 켰습니다' : '강사 수정 권한을 껐습니다');
+        } catch (err) { toast(err.message); el.checked = !el.checked; }
+      }));
+      // 강사용 링크 복사
+      $$('[data-te-copy]').forEach(el => el.addEventListener('click', () => {
+        const p = programs.find(x => x.id === el.dataset.teCopy);
+        if (!p || !p.edit_token) { toast('토큰이 없습니다. 토큰을 재발급해 주세요.'); return; }
+        const url = `${location.origin}/edit/${p.edit_token}`;
+        copyText(url);
+      }));
+      // 토큰 재발급(기존 링크 무효화)
+      $$('[data-te-regen]').forEach(el => el.addEventListener('click', async () => {
+        if (!confirm('새 토큰을 발급하면 기존 강사 링크는 즉시 사용할 수 없게 됩니다. 계속할까요?')) return;
+        try {
+          const j = await api(`/programs/${el.dataset.teRegen}/regenerate-token`, { method: 'POST' });
+          const p = programs.find(x => x.id === el.dataset.teRegen);
+          if (p && j.edit_token) p.edit_token = j.edit_token;
+          toast('토큰을 재발급했습니다');
+        } catch (err) { toast(err.message); }
+      }));
     } catch (err) {
       toast(err.message);
     }
+  }
+
+  // 클립보드 복사: navigator.clipboard → textarea fallback → prompt
+  function copyText(text) {
+    const done = () => toast('강사용 링크를 복사했습니다');
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+    } else {
+      fallbackCopy(text, done);
+    }
+  }
+  function fallbackCopy(text, done) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok) { done(); return; }
+    } catch (e) { /* ignore */ }
+    window.prompt('아래 링크를 복사하세요:', text);
   }
 
   $('#new-program-btn').addEventListener('click', () => openProgramDialog(null));

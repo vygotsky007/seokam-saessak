@@ -1,8 +1,14 @@
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const ExcelJS = require('exceljs');
 const supabase = require('../utils/supabase');
 const { normalizeMobile } = require('../utils/phone');
+
+// 강사용 수정 링크 토큰: 48자 hex(24바이트) — 추측 불가능한 길이.
+function genEditToken() {
+  return crypto.randomBytes(24).toString('hex');
+}
 
 const RECRUIT_STATUSES = ['recruiting', 'upcoming', 'full', 'closed', 'hidden'];
 function normalizeRecruitStatus(v) {
@@ -143,6 +149,8 @@ router.post('/programs', async (req, res) => {
       session_dates: normalizeSessionDates(session_dates),
       start_time: normalizeTime(start_time),
       end_time: normalizeTime(end_time),
+      edit_token: genEditToken(),   // 강사용 수정 링크 토큰 자동 발급
+      edit_enabled: false,          // 강사 수정 권한 기본 off
     };
     const { data, error } = await supabase
       .from('saessak_programs')
@@ -166,6 +174,7 @@ router.put('/programs/:id', async (req, res) => {
       'recruit_status',
       'is_type_multicultural', 'is_type_sibling',
       'type_custom',
+      'edit_enabled',
       'organization'];
     const patch = {};
     for (const k of allowed) {
@@ -226,6 +235,9 @@ router.put('/programs/:id', async (req, res) => {
       const tc = patch.type_custom;
       patch.type_custom = (tc === null || tc === undefined || String(tc).trim() === '') ? null : String(tc).trim();
     }
+    if ('edit_enabled' in patch) {
+      patch.edit_enabled = patch.edit_enabled === true || patch.edit_enabled === 'true';
+    }
 
     const { data, error } = await supabase
       .from('saessak_programs')
@@ -270,6 +282,42 @@ router.delete('/programs/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[DELETE admin/programs/:id]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 강사 수정 권한 on/off 토글
+router.patch('/programs/:id/edit-permission', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const enabled = (req.body || {}).edit_enabled === true || (req.body || {}).edit_enabled === 'true';
+    const { data, error } = await supabase
+      .from('saessak_programs')
+      .update({ edit_enabled: enabled })
+      .eq('id', id)
+      .select();
+    if (error) throw error;
+    res.json({ ok: true, data: data[0] });
+  } catch (err) {
+    console.error('[PATCH admin/programs/:id/edit-permission]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 강사용 토큰 재발급(기존 링크 즉시 무효화)
+router.post('/programs/:id/regenerate-token', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const token = genEditToken();
+    const { data, error } = await supabase
+      .from('saessak_programs')
+      .update({ edit_token: token })
+      .eq('id', id)
+      .select();
+    if (error) throw error;
+    res.json({ ok: true, data: data[0], edit_token: token });
+  } catch (err) {
+    console.error('[POST admin/programs/:id/regenerate-token]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

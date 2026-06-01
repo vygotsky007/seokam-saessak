@@ -72,8 +72,12 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 app.get('/me', (req, res) => res.sendFile(path.join(__dirname, 'public', 'me.html')));
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
+// 강사용 토큰 수정 페이지 — 토큰별 프로그램 1개만 수정(관리자 인증 없이 토큰+권한으로 게이트).
+app.get('/edit/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'edit.html')));
+
 app.use('/api/public', require('./routes/public'));
 app.use('/api/public', require('./routes/me'));
+app.use('/api/edit', require('./routes/edit'));
 
 app.get(ADMIN_PATH + '/login', (req, res) => {
   if (req.session && req.session.isAdmin) {
