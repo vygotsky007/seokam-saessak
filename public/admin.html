@@ -293,12 +293,9 @@
         </div>
         <label>보호자</label><input type="text" name="guardian_name">
         <label>보호자 연락처</label><input type="text" name="guardian_phone">
-        <label>학생 연락처</label><input type="text" name="student_phone">
-        <label>신청동기</label><textarea name="motivation"></textarea>
-        <label>다문화가정</label>
-        <label class="row"><input type="checkbox" name="is_multicultural"> 해당 시 체크 (다문화 우대형 프로그램일 때만 의미 있음)</label>
-        <label>형제 묶음 ID</label>
-        <input type="text" name="sibling_group_id" placeholder="UUID (없으면 비워두세요)">
+        <label>신청동기</label><textarea name="motivation" placeholder="선택 입력"></textarea>
+        <label id="app-mc-label" hidden>다문화가정</label>
+        <label class="row" id="app-mc-row" hidden><input type="checkbox" name="is_multicultural"> 다문화가정인 경우 체크</label>
         <label>상태</label>
         <select name="status">
           <option value="applied">신청</option>

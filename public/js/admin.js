@@ -867,6 +867,20 @@
     sel.disabled = false;
   }
 
+  // 다문화가정 체크는 선택한 프로그램이 다문화 우대형일 때만 노출(강사/공개 폼과 동일 조건).
+  function selectedProgramIsMulticultural() {
+    const pid = $('#applicant-form').program_id.value;
+    const p = programs.find(x => String(x.id) === String(pid));
+    if (!p) return false;
+    return p.is_type_multicultural === true || p.program_type === 'multicultural';
+  }
+  function updateAppMcVisibility() {
+    const show = selectedProgramIsMulticultural();
+    $('#app-mc-label').hidden = !show;
+    $('#app-mc-row').hidden = !show;
+    if (!show) $('#applicant-form').is_multicultural.checked = false;
+  }
+
   function openApplicantDialog(id) {
     const dlg = $('#applicant-dialog');
     const form = $('#applicant-form');
@@ -886,11 +900,9 @@
         fillAppClassOptions(a.grade, a.class_no);
         form.guardian_name.value = a.guardian_name || '';
         form.guardian_phone.value = a.guardian_phone || '';
-        form.student_phone.value = a.student_phone || '';
         form.motivation.value = a.motivation || '';
         form.status.value = a.status || 'applied';
         form.is_multicultural.checked = !!a.is_multicultural;
-        form.sibling_group_id.value = a.sibling_group_id || '';
       }
     } else {
       // 전체 보기(currentProgramId === ALL_PROGRAMS) 상태에서는 실제 프로그램이 아니므로 첫 프로그램으로.
@@ -899,14 +911,16 @@
       fillAppGradeOptions('');
       fillAppClassOptions('', '');
       form.is_multicultural.checked = false;
-      form.sibling_group_id.value = '';
     }
+    updateAppMcVisibility();
     dlg.classList.add('open');
   }
 
   $('#app-grade-select').addEventListener('change', (e) => {
     fillAppClassOptions(e.target.value, '');
   });
+  // 프로그램 변경 시 다문화 체크 노출 갱신(select 엘리먼트는 유지되고 옵션만 바뀌므로 1회 바인딩)
+  $('#applicant-form').program_id.addEventListener('change', updateAppMcVisibility);
 
   $('#applicant-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -918,11 +932,10 @@
       class_no: form.class_no.value ? Number(form.class_no.value) : null,
       guardian_name: form.guardian_name.value.trim(),
       guardian_phone: form.guardian_phone.value.trim(),
-      student_phone: form.student_phone.value.trim(),
       motivation: form.motivation.value.trim(),
       status: form.status.value,
+      // 다문화 우대형 프로그램일 때만 의미. 숨겨진 경우 체크 해제 상태이므로 false.
       is_multicultural: form.is_multicultural.checked,
-      sibling_group_id: form.sibling_group_id.value.trim() || null,
     };
     try {
       if (form.dataset.editId) {
