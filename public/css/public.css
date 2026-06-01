@@ -41,17 +41,11 @@ body.public-page {
 /* === 학년 필터 칩 (모바일 가로 스크롤) === */
 .grade-filter {
   display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  flex-wrap: wrap;            /* 좁은 화면에서 다음 줄로 넘김(잘림 방지). PC 넓은 화면은 한 줄 유지 */
+  gap: 8px;                   /* 줄바꿈 시 행 간격(row-gap)도 함께 적용 */
   padding: 4px 2px 10px;
-  margin: 0 -14px 8px;
-  padding-left: 14px;
-  padding-right: 14px;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  margin: 0 0 8px;
 }
-.grade-filter::-webkit-scrollbar { display: none; }
 .grade-filter .chip {
   flex: 0 0 auto;
   min-height: 40px;
