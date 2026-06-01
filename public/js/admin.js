@@ -25,6 +25,7 @@
   let currentTab = 'dashboard';
   let currentProgramId = null;
   let currentSort = 'order';
+  const ALL_PROGRAMS = '__all__'; // 신청자 탭 "전체 보기" sentinel
 
   const $ = sel => document.querySelector(sel);
   const $$ = sel => document.querySelectorAll(sel);
@@ -622,12 +623,15 @@
       } else {
         const stateEmoji = { recruiting: '🟢', upcoming: '🔴', closed: '⚫', hidden: '⚪' };
         sel.innerHTML = '<option value="">— 프로그램 선택 —</option>' +
+          `<option value="${ALL_PROGRAMS}" ${currentProgramId === ALL_PROGRAMS ? 'selected' : ''}>📋 전체 보기</option>` +
           programs.map(p => {
             const tag = stateEmoji[recruitStatusOf(p)] || '⚪';
             return `<option value="${p.id}" ${p.id === currentProgramId ? 'selected' : ''}>${tag} ${esc(p.title)} (${p.applied_count}/${p.capacity})</option>`;
           }).join('');
       }
-      if (currentProgramId && programs.some(p => p.id === currentProgramId)) {
+      if (currentProgramId === ALL_PROGRAMS) {
+        await loadApplications(ALL_PROGRAMS);
+      } else if (currentProgramId && programs.some(p => p.id === currentProgramId)) {
         await loadApplications(currentProgramId);
       } else {
         currentProgramId = null;
@@ -639,7 +643,7 @@
   $('#app-program-select').addEventListener('change', async (e) => {
     currentProgramId = e.target.value || null;
     if (currentProgramId) await loadApplications(currentProgramId);
-    else $('#applicants-tbody').innerHTML = `<tr><td colspan="9" class="empty-state">프로그램을 선택하세요.</td></tr>`;
+    else $('#applicants-tbody').innerHTML = `<tr><td colspan="10" class="empty-state">프로그램을 선택하세요.</td></tr>`;
   });
   $('#app-sort').addEventListener('change', (e) => {
     currentSort = e.target.value;
@@ -648,53 +652,49 @@
 
   async function loadApplications(pid) {
     try {
-      const j = await api(`/applications?program_id=${encodeURIComponent(pid)}`);
+      // 전체 보기는 program_id 없이 전체 신청을 가져온다(서버가 program 조인 포함).
+      const url = (pid === ALL_PROGRAMS) ? '/applications' : `/applications?program_id=${encodeURIComponent(pid)}`;
+      const j = await api(url);
       applications = j.data || [];
       renderApplications();
     } catch (err) { toast(err.message); }
   }
 
-  function renderApplications() {
-    const tbody = $('#applicants-tbody');
-    let list = applications.slice();
-    if (currentSort === 'submitted') list.sort((a, b) => new Date(a.submitted_at) - new Date(b.submitted_at));
-    else if (currentSort === 'grade') list.sort((a, b) => (a.grade || 0) - (b.grade || 0) || (a.class_no || 0) - (b.class_no || 0));
-    else if (currentSort === 'name') list.sort((a, b) => (a.student_name || '').localeCompare(b.student_name || ''));
-    else {
-      list.sort((a, b) => {
-        const ao = a.display_order ?? null;
-        const bo = b.display_order ?? null;
-        if (ao !== null && bo !== null) return ao - bo;
-        if (ao !== null) return -1;
-        if (bo !== null) return 1;
-        return new Date(a.submitted_at) - new Date(b.submitted_at);
-      });
-    }
+  function applicationComparator(a, b) {
+    if (currentSort === 'submitted') return new Date(a.submitted_at) - new Date(b.submitted_at);
+    if (currentSort === 'grade') return (a.grade || 0) - (b.grade || 0) || (a.class_no || 0) - (b.class_no || 0);
+    if (currentSort === 'name') return (a.student_name || '').localeCompare(b.student_name || '');
+    const ao = a.display_order ?? null;
+    const bo = b.display_order ?? null;
+    if (ao !== null && bo !== null) return ao - bo;
+    if (ao !== null) return -1;
+    if (bo !== null) return 1;
+    return new Date(a.submitted_at) - new Date(b.submitted_at);
+  }
 
-    $('#app-count').textContent = `${list.length}명`;
-    if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" class="empty-state">신청자가 없습니다.</td></tr>`;
-      return;
+  // 신청자 1명 → (메인행 + 문의사항행) HTML.
+  // allView 면 순서이동(▲▼) 버튼을 숨긴다(전체 보기에서는 프로그램 교차 reorder 가 무의미·위험).
+  function applicantRowHtml(a, displayIndex, allView) {
+    const badges = [];
+    if (a.is_waitlist) badges.push('<span class="badge" style="background:#FEF3C7; color:#92400E;">자동대기</span>');
+    else badges.push('<span class="badge" style="background:#DCFCE7; color:#166534;">자동접수</span>');
+    if (a.is_multicultural) badges.push('<span class="badge tag-multicultural">다문화</span>');
+    if (a.sibling_group_id) {
+      badges.push(`<span class="badge" style="background:${siblingColor(a.sibling_group_id)}; color:#0F172A;">형제 ${esc(siblingShort(a.sibling_group_id))}</span>`);
     }
-    tbody.innerHTML = list.map((a, i) => {
-      const badges = [];
-      // 접수 순번 자동 구분 (관리자 status 판정과는 별개 레이어)
-      if (a.is_waitlist) badges.push('<span class="badge" style="background:#FEF3C7; color:#92400E;">자동대기</span>');
-      else badges.push('<span class="badge" style="background:#DCFCE7; color:#166534;">자동접수</span>');
-      if (a.is_multicultural) badges.push('<span class="badge tag-multicultural">다문화</span>');
-      if (a.sibling_group_id) {
-        badges.push(`<span class="badge" style="background:${siblingColor(a.sibling_group_id)}; color:#0F172A;">형제 ${esc(siblingShort(a.sibling_group_id))}</span>`);
-      }
-      if (a.name_conflict) {
-        badges.push('<span class="badge name-conflict" title="같은 이름·다른 학년/반으로 신청된 다른 행이 있어요 (동명이인 의심)">⚠ 확인 필요</span>');
-      }
-      const memo = (a.motivation && String(a.motivation).trim()) ? String(a.motivation).trim() : '';
-      const memoRow = memo
-        ? `<tr class="memo-row"><td colspan="10" style="background:#FFFBEB; color:#92400E; font-size:12.5px; white-space:normal; padding:4px 10px;">💬 <b>문의사항</b> · ${esc(memo)}</td></tr>`
-        : '';
-      return `
+    if (a.name_conflict) {
+      badges.push('<span class="badge name-conflict" title="같은 이름·다른 학년/반으로 신청된 다른 행이 있어요 (동명이인 의심)">⚠ 확인 필요</span>');
+    }
+    const memo = (a.motivation && String(a.motivation).trim()) ? String(a.motivation).trim() : '';
+    const memoRow = memo
+      ? `<tr class="memo-row"><td colspan="10" style="background:#FFFBEB; color:#92400E; font-size:12.5px; white-space:normal; padding:4px 10px;">💬 <b>문의사항</b> · ${esc(memo)}</td></tr>`
+      : '';
+    const reorderBtns = allView ? '' :
+      `<button class="btn small" data-up="${a.id}" title="위로">▲</button>
+          <button class="btn small" data-down="${a.id}" title="아래로">▼</button>`;
+    return `
       <tr data-id="${a.id}">
-        <td>${i + 1}</td>
+        <td>${displayIndex}</td>
         <td><b>${esc(a.student_name)}</b></td>
         <td>${a.grade ?? '?'}-${a.class_no ?? '?'}</td>
         <td>${esc(a.guardian_name || '')}<br><span class="muted">${esc(a.guardian_phone || '')}</span></td>
@@ -711,16 +711,15 @@
         <td>${a.source === 'manual' ? '<span class="badge">수동</span>' : '<span class="badge">온라인</span>'}</td>
         <td>${fmtTime(a.submitted_at)}</td>
         <td class="cell-actions">
-          <button class="btn small" data-up="${a.id}" title="위로">▲</button>
-          <button class="btn small" data-down="${a.id}" title="아래로">▼</button>
+          ${reorderBtns}
           <button class="btn small" data-copy="${a.id}">복사</button>
           <button class="btn small" data-edit-app="${a.id}">수정</button>
           <button class="btn small danger" data-del-app="${a.id}">삭제</button>
         </td>
-      </tr>${memoRow}
-    `;
-    }).join('');
+      </tr>${memoRow}`;
+  }
 
+  function bindApplicationRowEvents() {
     $$('[data-status]').forEach(el => el.addEventListener('change', async (e) => {
       try {
         await api(`/applications/${el.dataset.status}/status`, {
@@ -740,6 +739,45 @@
       try { await api(`/applications/${el.dataset.delApp}`, { method: 'DELETE' }); toast('삭제됨'); await loadApplications(currentProgramId); }
       catch (err) { toast(err.message); }
     }));
+  }
+
+  function renderApplications() {
+    const tbody = $('#applicants-tbody');
+    const allView = (currentProgramId === ALL_PROGRAMS);
+
+    $('#app-count').textContent = `${applications.length}명`;
+    if (applications.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" class="empty-state">신청자가 없습니다.</td></tr>`;
+      return;
+    }
+
+    if (allView) {
+      // 프로그램별로 묶어서 표시. 그룹 순서는 programs 목록 순서를 따른다.
+      const groups = new Map(); // program_id → { title, rows }
+      applications.forEach(a => {
+        const pid = a.program_id;
+        if (!groups.has(pid)) {
+          groups.set(pid, { title: (a.program && a.program.title) || '(삭제된 프로그램)', rows: [] });
+        }
+        groups.get(pid).rows.push(a);
+      });
+      const order = programs.map(p => p.id).filter(id => groups.has(id));
+      groups.forEach((_, pid) => { if (!order.includes(pid)) order.push(pid); });
+
+      let html = '';
+      order.forEach(pid => {
+        const g = groups.get(pid);
+        const rows = g.rows.slice().sort(applicationComparator);
+        html += `<tr class="group-row"><td colspan="10" style="background:#EEF2FF; color:#3730A3; font-weight:800; padding:6px 10px;">📚 ${esc(g.title)} <span class="muted" style="font-weight:600;">· ${rows.length}명</span></td></tr>`;
+        html += rows.map((a, i) => applicantRowHtml(a, i + 1, true)).join('');
+      });
+      tbody.innerHTML = html;
+    } else {
+      const list = applications.slice().sort(applicationComparator);
+      tbody.innerHTML = list.map((a, i) => applicantRowHtml(a, i + 1, false)).join('');
+    }
+
+    bindApplicationRowEvents();
   }
 
   async function moveRow(id, dir) {
@@ -807,7 +845,9 @@
         form.sibling_group_id.value = a.sibling_group_id || '';
       }
     } else {
-      psel.value = currentProgramId || (programs[0] && programs[0].id) || '';
+      // 전체 보기(currentProgramId === ALL_PROGRAMS) 상태에서는 실제 프로그램이 아니므로 첫 프로그램으로.
+      const presetPid = (currentProgramId && currentProgramId !== ALL_PROGRAMS) ? currentProgramId : (programs[0] && programs[0].id);
+      psel.value = presetPid || '';
       fillAppGradeOptions('');
       fillAppClassOptions('', '');
       form.is_multicultural.checked = false;
