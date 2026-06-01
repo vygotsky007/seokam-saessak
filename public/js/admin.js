@@ -10,7 +10,8 @@
   const RECRUIT_STATUSES = [
     { value: 'recruiting', label: '모집중',   short: '모집중' },
     { value: 'upcoming',   label: '모집예정', short: '예정' },
-    { value: 'closed',     label: '모집완료', short: '완료' },
+    { value: 'full',       label: '모집마감', short: '마감' },
+    { value: 'closed',     label: '모집종료', short: '종료' },
     { value: 'hidden',     label: '모집숨김', short: '숨김' },
   ];
   function recruitStatusOf(p) {

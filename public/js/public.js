@@ -184,7 +184,8 @@
     }
     detailListEl.innerHTML = list.map(p => {
       const status = recruitStatusOf(p);
-      const isFull = !!p.is_fully_closed;
+      // 마감: 관리자가 수동으로 건 full 또는 정원+대기 자동 소진(is_fully_closed) — 동일 도장 표시
+      const isFull = status === 'full' || !!p.is_fully_closed;
       const isRecruiting = status === 'recruiting';
       const cardDisabled = !isRecruiting || isFull;
       const meta = [];
@@ -204,8 +205,8 @@
         seatsLine = `<span class="seats-upcoming">곧 모집이 열려요 — 잠시만 기다려 주세요</span>`;
       } else if (status === 'closed') {
         seatsLine = `<span class="seats-closed">모집이 종료되었습니다</span>`;
-      } else if (p.is_fully_closed) {
-        seatsLine = `<span class="seats-full">정원·대기 모두 마감</span>`;
+      } else if (isFull) {
+        seatsLine = `<span class="seats-full">${p.is_fully_closed ? '정원·대기 모두 마감' : '정원이 마감되었습니다'}</span>`;
       } else if (p.remaining > 0) {
         seatsLine = `남은 자리 <strong>${p.remaining}명</strong> / 정원 ${p.capacity}명`;
       } else {
@@ -216,7 +217,8 @@
         ? `<details class="pc-details"><summary><span class="pc-toggle-text"></span></summary><div class="pc-body">${esc(desc)}</div></details>`
         : '';
       return `
-        <article class="program-card ${cardDisabled ? 'disabled' : ''} status-${status}">
+        <article class="program-card ${cardDisabled ? 'disabled' : ''} ${isFull ? 'is-full' : ''} status-${status}">
+          ${isFull ? '<div class="pc-stamp" aria-label="모집마감">마감</div>' : ''}
           <div class="pc-inner">
             <div class="pc-tags">
               ${statusBadge}
@@ -351,7 +353,8 @@
     programsArea.innerHTML = list.map(p => {
       const status = recruitStatusOf(p);
       const isRecruiting = status === 'recruiting';
-      const isFull = !!p.is_fully_closed;
+      // 마감: 수동 full 또는 자동마감(정원+대기 소진) — 동일 도장 표시
+      const isFull = status === 'full' || !!p.is_fully_closed;
       const isWaitOnly = isRecruiting && !isFull && p.remaining <= 0;
       const cardBlocked = !isRecruiting || isFull;
       let statusTag;
@@ -414,13 +417,14 @@
       }
 
       return `
-        <div class="step2-card ${cardBlocked ? 'disabled' : ''} status-${status}">
+        <div class="step2-card ${cardBlocked ? 'disabled' : ''} ${isFull ? 'is-full' : ''} status-${status}">
+          ${isFull ? '<div class="pc-stamp pc-stamp-sm" aria-label="모집마감">마감</div>' : ''}
           <header class="s2-head">
             <div class="s2-title">${esc(p.title)} ${tags}</div>
             <div class="s2-meta">
               👶 ${formatGradesLabel(p.grades)} · ${
                 isFull
-                  ? '<span class="seats-full">정원·대기 마감</span>'
+                  ? `<span class="seats-full">${p.is_fully_closed ? '정원·대기 마감' : '정원 마감'}</span>`
                   : (p.remaining > 0
                       ? `남은자리 <strong>${p.remaining}</strong>/${p.capacity}`
                       : `대기 <strong>${p.waitlist_count || 0}</strong>/${p.waitlist_capacity ?? 10}`)

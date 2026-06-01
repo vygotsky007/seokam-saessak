@@ -666,6 +666,55 @@ body.public-page {
 .program-card.status-closed::before {
   background: linear-gradient(90deg, #94A3B8 0%, #CBD5E1 100%);
 }
+/* full(모집마감) 카드 좌측 띠 — 빨강 */
+.program-card.status-full::before {
+  background: linear-gradient(90deg, var(--danger) 0%, #FCA5A5 100%);
+}
+
+/* ===== 모집마감 도장 (full / 자동마감 공용) =====
+   카드 상단 가운데에 빨간 원 테두리 + "마감" 글자, 살짝 기울여 도장 느낌.
+   도장은 선명하게 두고 카드 내용만 흐리게 해서 '신청 불가' 느낌을 준다. */
+.program-card, .step2-card { position: relative; }
+
+.pc-stamp {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-13deg);
+  z-index: 3;
+  width: 74px;
+  height: 74px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--danger);
+  border-radius: 50%;
+  color: var(--danger);
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  padding-left: 3px; /* letter-spacing 보정(가운데 정렬) */
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.12), 0 2px 6px rgba(220, 38, 38, 0.12);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+  opacity: 0.92;
+}
+.pc-stamp.pc-stamp-sm {
+  top: 10px;
+  width: 56px;
+  height: 56px;
+  font-size: 16px;
+  letter-spacing: 2px;
+  padding-left: 2px;
+  border-width: 2.5px;
+}
+
+/* 마감 카드: 도장은 선명하게(opacity 1), 내용만 흐리게 */
+.program-card.is-full { opacity: 1; }
+.program-card.is-full .pc-inner { opacity: 0.55; }
+.step2-card.is-full { opacity: 1; }
+.step2-card.is-full > *:not(.pc-stamp) { opacity: 0.55; }
 
 .cart {
   margin-top: 8px;

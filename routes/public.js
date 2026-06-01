@@ -238,11 +238,12 @@ router.post('/apply', async (req, res) => {
     for (const s of normalized) {
       for (const pid of s.program_ids) {
         const p = programMap[pid];
-        // 모집 상태 검증: recruiting 만 접수, upcoming/closed/hidden 은 거부
+        // 모집 상태 검증: recruiting 만 접수, upcoming/full/closed/hidden 은 거부
         const rstatus = p.recruit_status || (p.is_open ? 'recruiting' : 'hidden');
         if (rstatus !== 'recruiting') {
           const reasonMap = {
             upcoming: '아직 모집이 시작되지 않았습니다.',
+            full:     '정원이 마감되었습니다.',
             closed:   '모집이 종료되었습니다.',
             hidden:   '모집이 마감되었습니다.',
           };

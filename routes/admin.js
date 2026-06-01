@@ -4,7 +4,7 @@ const ExcelJS = require('exceljs');
 const supabase = require('../utils/supabase');
 const { normalizeMobile } = require('../utils/phone');
 
-const RECRUIT_STATUSES = ['recruiting', 'upcoming', 'closed', 'hidden'];
+const RECRUIT_STATUSES = ['recruiting', 'upcoming', 'full', 'closed', 'hidden'];
 function normalizeRecruitStatus(v) {
   return RECRUIT_STATUSES.includes(v) ? v : null;
 }
