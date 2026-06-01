@@ -27,6 +27,11 @@
   .edit-card .form-grid textarea { min-height: 64px; }
   .edit-card .form-grid label { font-size: 13px; }
   @media (max-width: 560px) { .edit-card .form-grid { grid-template-columns: 1fr; } }
+  .roster-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .roster-table th, .roster-table td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; white-space: nowrap; }
+  .roster-table th { background: var(--primary-soft); font-weight: 700; }
+  .roster-table .badge-wait { color: var(--danger); font-weight: 700; }
+  .roster-table .badge-ok { color: var(--primary); font-weight: 700; }
 </style>
 </head>
 <body>
@@ -112,10 +117,69 @@
         </div>
       </div>
       <div class="actions" style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
+        <button type="button" class="btn" id="roster-btn">이 프로그램 신청자 보기</button>
         <button type="submit" class="btn primary">저장</button>
         <button type="button" class="btn danger" id="delete-btn">프로그램 삭제</button>
       </div>
     </form>
+  </div>
+
+  <!-- 신청자 명단 + 수동입력 (강사 비번 통과 후 노출) -->
+  <div class="edit-card" id="state-roster" hidden style="margin-top:14px;">
+    <div class="priv-note" style="background:#fff4f4; color:var(--danger);">
+      🔐 <b>명단은 외부 유출 금지</b> — 담당 강사 본인 확인용입니다. 화면 캡처·공유·메신저 전송을 삼가 주세요.
+    </div>
+
+    <!-- 비밀번호 입력 -->
+    <div id="roster-auth">
+      <div class="form-grid">
+        <label>강사 비밀번호</label>
+        <div style="display:flex; gap:8px;">
+          <input type="password" id="roster-pass" placeholder="공통 강사 비밀번호" style="max-width:220px;">
+          <button type="button" class="btn primary" id="roster-auth-btn">확인</button>
+        </div>
+      </div>
+      <div class="muted" id="roster-auth-msg" style="font-size:12.5px; margin-top:8px;"></div>
+    </div>
+
+    <!-- 명단 본문 (인증 후) -->
+    <div id="roster-body" hidden>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+        <h2 style="font-size:15px; font-weight:800;" id="roster-title">신청자 명단</h2>
+        <span class="muted" id="roster-summary" style="font-size:12.5px;"></span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="roster-table" id="roster-table">
+          <thead>
+            <tr>
+              <th>순번</th><th>상태</th><th>학생</th><th>학년/반</th>
+              <th>보호자</th><th>연락처</th><th>경로</th>
+            </tr>
+          </thead>
+          <tbody id="roster-tbody"></tbody>
+        </table>
+      </div>
+      <div class="muted" id="roster-empty" hidden style="padding:16px; text-align:center;">아직 신청자가 없습니다.</div>
+
+      <!-- 수동 신청 입력 -->
+      <h2 style="font-size:15px; font-weight:800; margin:18px 0 8px;">＋ 수동 신청 입력 (종이 신청서)</h2>
+      <div class="muted" style="font-size:12.5px; margin-bottom:8px;">정원이 차면 자동으로 대기자로 등록됩니다. 대상 학년만 입력 가능합니다.</div>
+      <div class="form-grid">
+        <label>학생 이름*</label><input type="text" id="m-name">
+        <label>학년*</label>
+        <select id="m-grade">
+          <option value="">선택</option>
+          <option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option>
+          <option value="4">4학년</option><option value="5">5학년</option><option value="6">6학년</option>
+        </select>
+        <label>반*</label><input type="number" id="m-class" min="1" max="30" style="width:120px;">
+        <label>보호자 이름</label><input type="text" id="m-guardian">
+        <label>보호자 연락처</label><input type="text" id="m-phone" placeholder="010-0000-0000" style="max-width:220px;">
+      </div>
+      <div class="actions" style="display:flex; gap:8px; margin-top:12px;">
+        <button type="button" class="btn primary" id="m-add-btn">신청자 추가</button>
+      </div>
+    </div>
   </div>
 </div>
 

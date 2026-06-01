@@ -28,6 +28,8 @@
     $('#state-loading').hidden = which !== 'loading';
     $('#state-blocked').hidden = which !== 'blocked';
     $('#state-form').hidden = which !== 'form';
+    // 명단 카드는 폼이 보일 때만 의미가 있고, 토글로 별도 제어한다.
+    if (which !== 'form') $('#state-roster').hidden = true;
   }
   function blocked(msg, icon) {
     $('#blocked-msg').innerHTML = `<span class="big">${icon || '🔒'}</span>${esc(msg)}`;
@@ -257,6 +259,122 @@
       blocked('프로그램이 삭제되었습니다.', '✅');
     } catch (err) {
       toast('서버 오류로 삭제하지 못했습니다.');
+    }
+  });
+
+  // ===== 신청자 명단 + 수동입력 =====
+  // 인증된 강사 비번을 메모리에만 보관(요청마다 동봉). 새로고침하면 다시 입력.
+  let instructorPass = null;
+
+  function statusBadge(r) {
+    return r.is_waitlist
+      ? '<span class="badge-wait">대기</span>'
+      : '<span class="badge-ok">접수</span>';
+  }
+  function sourceLabel(s) { return s === 'manual' ? '수동' : '온라인'; }
+
+  function renderRoster(payload) {
+    const tbody = $('#roster-tbody');
+    const list = payload.data || [];
+    tbody.innerHTML = list.map(r => `
+      <tr>
+        <td>${r.seq}</td>
+        <td>${statusBadge(r)}</td>
+        <td>${esc(r.student_name)}</td>
+        <td>${esc(r.grade ?? '')}학년 ${esc(r.class_no ?? '')}반</td>
+        <td>${esc(r.guardian_name || '')}</td>
+        <td>${esc(r.guardian_phone || '')}</td>
+        <td>${esc(sourceLabel(r.source))}</td>
+      </tr>`).join('');
+    const has = list.length > 0;
+    $('#roster-table').hidden = !has;
+    $('#roster-empty').hidden = has;
+    const pr = payload.program || {};
+    $('#roster-summary').textContent =
+      `접수 ${payload.accepted_count}/${pr.capacity ?? '-'} · 대기 ${payload.waitlist_count}/${pr.waitlist_capacity ?? '-'}`;
+    $('#roster-title').textContent = `신청자 명단 — ${pr.title || ''}`;
+  }
+
+  async function fetchRoster() {
+    const res = await fetch(API + '/roster', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: instructorPass }),
+    });
+    const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
+    return { res, j };
+  }
+
+  // "신청자 보기" 토글
+  $('#roster-btn').addEventListener('click', () => {
+    const card = $('#state-roster');
+    card.hidden = !card.hidden;
+    if (!card.hidden && !instructorPass) {
+      $('#roster-pass').focus();
+    }
+  });
+
+  // 강사 비번 확인 → 명단 로드
+  async function authAndLoad() {
+    const pw = $('#roster-pass').value;
+    if (!pw) { $('#roster-auth-msg').textContent = '비밀번호를 입력하세요.'; return; }
+    $('#roster-auth-msg').textContent = '확인 중…';
+    instructorPass = pw;
+    try {
+      const { res, j } = await fetchRoster();
+      if (!j.ok) {
+        instructorPass = null;
+        if (res.status === 503) $('#roster-auth-msg').textContent = j.error || '명단 기능이 설정되지 않았습니다.';
+        else if (res.status === 403) blocked(j.error || '현재 열람이 비활성화되어 있습니다.', '🔒');
+        else $('#roster-auth-msg').textContent = j.error || '확인 실패';
+        return;
+      }
+      $('#roster-auth').hidden = true;
+      $('#roster-body').hidden = false;
+      $('#roster-auth-msg').textContent = '';
+      renderRoster(j);
+    } catch (err) {
+      instructorPass = null;
+      $('#roster-auth-msg').textContent = '서버에 연결하지 못했습니다.';
+    }
+  }
+  $('#roster-auth-btn').addEventListener('click', authAndLoad);
+  $('#roster-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); authAndLoad(); } });
+
+  // 수동 신청 추가
+  $('#m-add-btn').addEventListener('click', async () => {
+    if (!instructorPass) { toast('먼저 강사 비밀번호를 확인하세요.'); return; }
+    const name = $('#m-name').value.trim();
+    const grade = $('#m-grade').value;
+    const classNo = $('#m-class').value;
+    const guardian = $('#m-guardian').value.trim();
+    const phone = $('#m-phone').value.trim();
+    if (!name) { toast('학생 이름을 입력하세요.'); return; }
+    if (!grade) { toast('학년을 선택하세요.'); return; }
+    if (!classNo) { toast('반을 입력하세요.'); return; }
+    try {
+      const res = await fetch(API + '/applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: instructorPass,
+          student_name: name,
+          grade: Number(grade),
+          class_no: Number(classNo),
+          guardian_name: guardian || null,
+          guardian_phone: phone || null,
+        }),
+      });
+      const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
+      if (!j.ok) { toast(j.error || '추가 실패'); return; }
+      toast(j.is_waitlist ? `대기 ${j.slot_number}번으로 추가되었습니다` : `접수 ${j.slot_number}번으로 추가되었습니다`);
+      // 폼 비우고 명단 새로고침
+      $('#m-name').value = ''; $('#m-grade').value = '';
+      $('#m-class').value = ''; $('#m-guardian').value = ''; $('#m-phone').value = '';
+      const { j: rj } = await fetchRoster();
+      if (rj.ok) renderRoster(rj);
+    } catch (err) {
+      toast('서버 오류로 추가하지 못했습니다.');
     }
   });
 

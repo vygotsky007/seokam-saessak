@@ -3,11 +3,66 @@
 // 중요: 신청자 명단·학생/보호자 개인정보는 절대 노출하지 않는다. 프로그램 정보만 다룬다.
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const bcrypt = require('bcryptjs');
 const router = express.Router();
 const supabase = require('../utils/supabase');
+const { normalizeMobile } = require('../utils/phone');
 
 // 토큰은 충분히 길어야 한다(백필 64자 / 신규 48자). 짧은 값은 즉시 거부해 null 매칭 등을 방지.
 const MIN_TOKEN_LEN = 16;
+
+// 강사용 공통 비밀번호(명단 열람·수동입력 게이트). 토큰만으로 개인정보가 새지 않도록 한 단계 더.
+// 미설정이면 명단/수동입력 기능 자체를 잠근다(안전 기본값) — 관리자가 INSTRUCTOR_PASSWORD_HASH 설정 필요.
+function instructorPassConfigured() {
+  return !!(process.env.INSTRUCTOR_PASSWORD_HASH && process.env.INSTRUCTOR_PASSWORD_HASH.trim());
+}
+async function checkInstructorPass(pw) {
+  if (!instructorPassConfigured()) return false;
+  if (!pw || typeof pw !== 'string') return false;
+  try {
+    return await bcrypt.compare(pw, process.env.INSTRUCTOR_PASSWORD_HASH);
+  } catch {
+    return false;
+  }
+}
+// 명단/수동입력 공통 게이트: 토큰 유효 + edit_enabled=true + 강사 비번 일치.
+// 통과 시 프로그램 객체 반환, 실패 시 res 로 응답하고 null 반환.
+async function gateRoster(req, res) {
+  if (!instructorPassConfigured()) {
+    res.status(503).json({ ok: false, error: '강사 명단 기능이 아직 설정되지 않았습니다. 관리자에게 문의하세요.' });
+    return null;
+  }
+  const p = await findByToken(req.params.token);
+  if (!p) {
+    res.status(404).json({ ok: false, error: '유효하지 않은 링크입니다.' });
+    return null;
+  }
+  if (p.edit_enabled !== true) {
+    res.status(403).json({ ok: false, error: '현재 열람이 비활성화되어 있습니다. 관리자에게 문의하세요.' });
+    return null;
+  }
+  const ok = await checkInstructorPass((req.body || {}).password);
+  if (!ok) {
+    res.status(401).json({ ok: false, error: '강사 비밀번호가 올바르지 않습니다.' });
+    return null;
+  }
+  return p;
+}
+
+// 명단 1행을 강사에게 보여줄 필드만 추려서 반환.
+function pickRosterRow(a) {
+  return {
+    student_name: a.student_name,
+    grade: a.grade,
+    class_no: a.class_no,
+    guardian_name: a.guardian_name,
+    guardian_phone: a.guardian_phone,
+    is_waitlist: a.is_waitlist === true,
+    status: a.status,
+    source: a.source,
+    submitted_at: a.submitted_at,
+  };
+}
 
 // 강사 페이지에 노출해도 되는 "프로그램 정보" 컬럼만 골라서 반환(개인정보 차단).
 const PUBLIC_PROGRAM_FIELDS = [
@@ -172,6 +227,153 @@ router.delete('/:token', editLimiter, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[DELETE /api/edit/:token]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 명단/수동입력 비번 시도 제한(브루트포스 방지). 수정 한도와 별개로 더 빡빡하게.
+const rosterLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  keyGenerator: (req) => req.ip,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.' },
+});
+
+// POST /api/edit/:token/roster — 이 프로그램 신청자 명단(개인정보 포함, 내부 강사 전용)
+// body: { password }. 토큰+권한+강사비번 모두 통과해야 응답.
+// 오직 이 토큰의 program_id 신청자만 반환(다른 프로그램은 절대 노출 안 됨).
+router.post('/:token/roster', rosterLimiter, async (req, res) => {
+  try {
+    const p = await gateRoster(req, res);
+    if (!p) return; // gateRoster 가 이미 응답함
+
+    const { data, error } = await supabase
+      .from('saessak_applications')
+      .select('*')
+      .eq('program_id', p.id) // 이 프로그램만
+      .order('is_waitlist', { ascending: true })
+      .order('display_order', { ascending: true, nullsFirst: false })
+      .order('submitted_at', { ascending: true });
+    if (error) throw error;
+
+    // 취소건 제외. 접수/대기 각각 순번 부여.
+    const rows = (data || []).filter(a => a.status !== 'cancelled').map(pickRosterRow);
+    let acceptedNo = 0;
+    let waitlistNo = 0;
+    const list = rows.map(r => ({
+      ...r,
+      seq: r.is_waitlist ? ++waitlistNo : ++acceptedNo,
+    }));
+
+    res.json({
+      ok: true,
+      program: { title: p.title || '', capacity: p.capacity || 0, waitlist_capacity: p.waitlist_capacity || 0, grades: p.grades || [] },
+      accepted_count: acceptedNo,
+      waitlist_count: waitlistNo,
+      data: list,
+    });
+  } catch (err) {
+    console.error('[POST /api/edit/:token/roster]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// POST /api/edit/:token/applications — 종이 신청서 수동 입력(내부 강사 전용)
+// body: { password, student_name, grade, class_no, guardian_name, guardian_phone }
+// 정원/대기 로직·학년 검증은 온라인 신청과 동일. source='manual'.
+router.post('/:token/applications', rosterLimiter, async (req, res) => {
+  try {
+    const p = await gateRoster(req, res);
+    if (!p) return;
+
+    const b = req.body || {};
+    const studentName = b.student_name ? String(b.student_name).trim() : '';
+    if (!studentName) return res.status(400).json({ ok: false, error: '학생 이름을 입력하세요.' });
+
+    const grade = Number(b.grade);
+    if (!Number.isInteger(grade) || grade < 1 || grade > 6) {
+      return res.status(400).json({ ok: false, error: '학년은 1~6 사이로 입력하세요.' });
+    }
+    const classNo = Number(b.class_no);
+    if (!Number.isInteger(classNo) || classNo < 1 || classNo > 30) {
+      return res.status(400).json({ ok: false, error: '반은 1~30 사이로 입력하세요.' });
+    }
+    // 대상 학년 검증
+    const grades = Array.isArray(p.grades) ? p.grades : [];
+    if (!grades.includes(grade)) {
+      return res.status(400).json({ ok: false, error: `이 프로그램은 ${grades.join(',')}학년 대상입니다.` });
+    }
+
+    const guardianName = b.guardian_name ? String(b.guardian_name).trim() : null;
+    const guardianPhone = b.guardian_phone ? normalizeMobile(b.guardian_phone) : null;
+
+    // 현재 접수/대기 카운트 (취소 제외)
+    const { data: apps, error: cErr } = await supabase
+      .from('saessak_applications')
+      .select('*')
+      .eq('program_id', p.id);
+    if (cErr) throw cErr;
+    let aCount = 0, wCount = 0;
+    (apps || []).forEach(a => {
+      if (a.status === 'cancelled') return;
+      if (a.is_waitlist) wCount++; else aCount++;
+    });
+
+    // 중복 체크: 같은 학생이름+보호자연락처가 이미 이 프로그램에 등록되어 있으면 거부.
+    const dup = (apps || []).some(a =>
+      a.status !== 'cancelled' &&
+      a.student_name === studentName &&
+      (guardianPhone ? a.guardian_phone === guardianPhone : true)
+    );
+    if (dup) {
+      return res.status(409).json({ ok: false, error: '이미 이 프로그램에 등록된 학생입니다.' });
+    }
+
+    const cap = Number(p.capacity) || 0;
+    const wcap = Number(p.waitlist_capacity) || 0;
+    let isWait, slotNumber;
+    if (aCount < cap) {
+      isWait = false; slotNumber = aCount + 1;
+    } else if (wCount < wcap) {
+      isWait = true; slotNumber = wCount + 1;
+    } else {
+      return res.status(409).json({ ok: false, error: '정원과 대기 인원이 모두 찼습니다.' });
+    }
+
+    const isMulticulturalProgram = p.is_type_multicultural === true || p.program_type === 'multicultural';
+
+    const { data: inserted, error: iErr } = await supabase
+      .from('saessak_applications')
+      .insert([{
+        program_id: p.id,
+        student_name: studentName,
+        grade,
+        class_no: classNo,
+        guardian_name: guardianName,
+        guardian_phone: guardianPhone,
+        student_phone: null,
+        motivation: null,
+        privacy_agreed: true,
+        status: 'applied',
+        source: 'manual',
+        submitted_at: new Date().toISOString(),
+        is_multicultural: false, // 강사 수동입력은 다문화 표기 미지정(관리자가 필요시 조정)
+        sibling_group_id: null,
+        is_waitlist: isWait,
+      }])
+      .select();
+    if (iErr) throw iErr;
+
+    res.json({
+      ok: true,
+      is_waitlist: isWait,
+      slot_number: slotNumber,
+      data: pickRosterRow(inserted[0]),
+    });
+  } catch (err) {
+    console.error('[POST /api/edit/:token/applications]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
