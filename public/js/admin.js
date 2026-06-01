@@ -1048,18 +1048,23 @@
     // 표시 필터 UI(전체 프로그램 기준)와 실제 표시 대상(체크된 것만) 분리
     renderScheduleFilter(withSessions);
     const visiblePrograms = withSessions.filter(p => !scheduleHiddenIds.has(String(p.id)));
+    // "HH:MM"(24시간제) → 분. 시간 없으면 맨 뒤로(Infinity).
+    const toMin = (s) => {
+      const m = /^(\d{1,2}):(\d{2})/.exec(String(s || '').trim());
+      return m ? Number(m[1]) * 60 + Number(m[2]) : Infinity;
+    };
     const eventsByDate = {};
     visiblePrograms.forEach(p => {
       const color = programColor(p);
       const mainTime = (p.start_time && p.end_time) ? `${p.start_time}~${p.end_time}` : (p.start_time || '');
       (Array.isArray(p.session_dates) ? p.session_dates : []).forEach(iso => {
-        (eventsByDate[iso] = eventsByDate[iso] || []).push({ p, color, time: mainTime, extra: false });
+        (eventsByDate[iso] = eventsByDate[iso] || []).push({ p, color, time: mainTime, extra: false, startMin: toMin(p.start_time) });
       });
       // 보충 회차도 블록으로 표시(개별 시간, 보충 표기)
       (Array.isArray(p.extra_sessions) ? p.extra_sessions : []).forEach(x => {
         if (!x || !x.date) return;
         const t = (x.start && x.end) ? `${x.start}~${x.end}` : (x.start || '');
-        (eventsByDate[x.date] = eventsByDate[x.date] || []).push({ p, color, time: t, extra: true });
+        (eventsByDate[x.date] = eventsByDate[x.date] || []).push({ p, color, time: t, extra: true, startMin: toMin(x.start) });
       });
     });
 
@@ -1069,7 +1074,9 @@
     grid.innerHTML = cells.map(c => {
       const iso = isoOf(c.y, c.m, c.d);
       const isToday = iso === todayIso;
-      const evs = eventsByDate[iso] || [];
+      // 렌더 직전 정렬: 같은 날 블록을 시작 시각(분) 오름차순으로. 같은 시각이면 보충을 뒤로.
+      const evs = (eventsByDate[iso] || []).slice().sort((a, b) =>
+        (a.startMin - b.startMin) || (Number(a.extra) - Number(b.extra)));
       const evHtml = evs.map(({ p, color, time, extra }) => {
         const inst = p.instructors || '';
         const org  = p.organization || '';
