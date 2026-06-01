@@ -126,6 +126,16 @@ th {
 tbody tr:hover { background: #F8FAFC; }
 .cell-actions { white-space: nowrap; display: flex; gap: 4px; }
 
+/* 프로그램 목록 표: 열이 많아 칸이 좁으면 글자가 세로로 쪼개지므로,
+   짧은 열은 nowrap(쪼개짐 방지)·긴 열은 min-width 주고 자연 줄바꿈,
+   전체 min-width 로 좁은 화면에선 .table-wrap 의 가로 스크롤이 동작하게 한다. */
+#programs-table { min-width: 1180px; }
+#programs-table th, #programs-table td { white-space: nowrap; }
+#programs-table td:nth-child(1) { white-space: normal; min-width: 150px; } /* 프로그램명 */
+#programs-table td:nth-child(3) { white-space: normal; min-width: 200px; } /* 일정 */
+#programs-table td:nth-child(4) { white-space: normal; min-width: 90px; }  /* 장소 */
+#programs-table td:nth-child(8) { white-space: normal; min-width: 90px; }  /* 강사 */
+
 /* 강사 수정 권한 컬럼 */
 .btn.xsmall { padding: 3px 7px; font-size: 11px; }
 .cell-tedit { white-space: nowrap; }

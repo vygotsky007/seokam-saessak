@@ -990,21 +990,27 @@
 
   // 프로그램 블록 색 팔레트 — 차분한 파스텔 + 진한 텍스트(가독성).
   // id 해시로 안정 배정(같은 프로그램은 항상 같은 색).
+  // 인접 항목이 서로 충분히 다른 색이 되도록 색상환을 번갈아 배치(청록↔코랄↔블루↔앰버…).
+  // 초록 계열(라임·민트)은 멀리 떨어뜨려, 프로그램 10개 안에선 초록이 1개만 쓰이게 한다.
   const PROGRAM_PALETTE = [
-    { bg: '#A7F0E8', fg: '#0F766E' }, // 청록
-    { bg: '#FECACA', fg: '#9F1239' }, // 코랄
-    { bg: '#DDD6FE', fg: '#5B21B6' }, // 보라
-    { bg: '#FDE68A', fg: '#92400E' }, // 앰버
-    { bg: '#BFDBFE', fg: '#1E3A8A' }, // 블루
-    { bg: '#FBCFE8', fg: '#9D174D' }, // 핑크
-    { bg: '#D9F99D', fg: '#365314' }, // 라임
-    { bg: '#A7F3D0', fg: '#065F46' }, // 민트
-    { bg: '#E9D5FF', fg: '#6B21A8' }, // 라벤더
-    { bg: '#FED7AA', fg: '#9A3412' }, // 살구
-    { bg: '#BAE6FD', fg: '#0C4A6E' }, // 스카이
-    { bg: '#FDD3D8', fg: '#881337' }, // 로즈
+    { bg: '#A7F0E8', fg: '#0F766E' }, // 0 청록
+    { bg: '#FECACA', fg: '#9F1239' }, // 1 코랄
+    { bg: '#BFDBFE', fg: '#1E3A8A' }, // 2 블루
+    { bg: '#FDE68A', fg: '#92400E' }, // 3 앰버
+    { bg: '#DDD6FE', fg: '#5B21B6' }, // 4 보라
+    { bg: '#D9F99D', fg: '#365314' }, // 5 라임
+    { bg: '#FBCFE8', fg: '#9D174D' }, // 6 핑크
+    { bg: '#FED7AA', fg: '#9A3412' }, // 7 살구
+    { bg: '#BAE6FD', fg: '#0C4A6E' }, // 8 스카이
+    { bg: '#E9D5FF', fg: '#6B21A8' }, // 9 라벤더
+    { bg: '#A7F3D0', fg: '#065F46' }, // 10 민트
+    { bg: '#FDD3D8', fg: '#881337' }, // 11 로즈
   ];
+  // 색 배정: 프로그램 목록(programs) 내 위치 순서대로 팔레트를 부여 → 서로 다른 프로그램은
+  // 항상 다른(인접해도 잘 구분되는) 색을 받는다. 목록에 없으면 해시로 폴백.
   function programColor(p) {
+    const idx = Array.isArray(programs) ? programs.findIndex(x => String(x.id) === String(p.id)) : -1;
+    if (idx >= 0) return PROGRAM_PALETTE[idx % PROGRAM_PALETTE.length];
     const id = String(p.id || p.title || '');
     let h = 0;
     for (let i = 0; i < id.length; i++) h = ((h * 31) + id.charCodeAt(i)) >>> 0;
