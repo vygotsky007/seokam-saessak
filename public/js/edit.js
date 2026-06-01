@@ -265,6 +265,54 @@
   // ===== 신청자 명단 + 수동입력 =====
   // 인증된 강사 비번을 메모리에만 보관(요청마다 동봉). 새로고침하면 다시 입력.
   let instructorPass = null;
+  let rosterRows = [];   // 현재 표시 중인 명단(수정 시 행 조회용)
+  let editingId = null;  // 수정 중인 수동신청 id (null 이면 신규 추가 모드)
+
+  // 학년별 반 개수 (공개/관리자 폼과 동일 규칙 — 3학년 8반, 나머지 7반)
+  const CLASS_COUNT = { 1: 7, 2: 7, 3: 8, 4: 7, 5: 7, 6: 7 };
+  function populateMClassOptions(grade, currentVal) {
+    const sel = $('#m-class');
+    const count = CLASS_COUNT[Number(grade)] || 0;
+    if (!count) {
+      sel.innerHTML = '<option value="">학년 먼저 선택</option>';
+      sel.value = '';
+      sel.disabled = true;
+      return;
+    }
+    let opts = '<option value="">반 선택</option>';
+    for (let i = 1; i <= count; i++) opts += `<option value="${i}">${i}반</option>`;
+    sel.innerHTML = opts;
+    sel.disabled = false;
+    if (currentVal && Number(currentVal) >= 1 && Number(currentVal) <= count) sel.value = String(currentVal);
+    else sel.value = '';
+  }
+  $('#m-grade').addEventListener('change', function () { populateMClassOptions(this.value); });
+
+  // 수동입력 폼: 신규 추가 ↔ 수정 모드 전환
+  function startEdit(row) {
+    editingId = row.id;
+    $('#m-name').value = row.student_name || '';
+    $('#m-grade').value = row.grade ? String(row.grade) : '';
+    populateMClassOptions(row.grade, row.class_no);
+    $('#m-guardian').value = row.guardian_name || '';
+    $('#m-phone').value = row.guardian_phone || '';
+    $('#m-form-title').textContent = '✎ 수동 신청 수정';
+    $('#m-add-btn').textContent = '수정 저장';
+    $('#m-cancel-btn').hidden = false;
+    $('#m-name').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  function resetMForm() {
+    editingId = null;
+    $('#m-name').value = '';
+    $('#m-grade').value = '';
+    populateMClassOptions('', '');
+    $('#m-guardian').value = '';
+    $('#m-phone').value = '';
+    $('#m-form-title').textContent = '＋ 수동 신청 입력 (종이 신청서)';
+    $('#m-add-btn').textContent = '신청자 추가';
+    $('#m-cancel-btn').hidden = true;
+  }
+  $('#m-cancel-btn').addEventListener('click', resetMForm);
 
   function statusBadge(r) {
     return r.is_waitlist
@@ -273,9 +321,18 @@
   }
   function sourceLabel(s) { return s === 'manual' ? '수동' : '온라인'; }
 
+  function manageCell(r) {
+    if (r.source === 'manual') {
+      return `<button type="button" class="btn mini" data-edit="${esc(r.id)}" style="padding:2px 8px; font-size:12px;">수정</button>
+              <button type="button" class="btn mini danger" data-del="${esc(r.id)}" style="padding:2px 8px; font-size:12px;">삭제</button>`;
+    }
+    return `<span class="muted" style="font-size:11.5px;">온라인 신청 건은 관리자에게 문의해 주세요</span>`;
+  }
+
   function renderRoster(payload) {
     const tbody = $('#roster-tbody');
     const list = payload.data || [];
+    rosterRows = list;
     tbody.innerHTML = list.map(r => `
       <tr>
         <td>${r.seq}</td>
@@ -285,6 +342,7 @@
         <td>${esc(r.guardian_name || '')}</td>
         <td>${esc(r.guardian_phone || '')}</td>
         <td>${esc(sourceLabel(r.source))}</td>
+        <td>${manageCell(r)}</td>
       </tr>`).join('');
     const has = list.length > 0;
     $('#roster-table').hidden = !has;
@@ -341,7 +399,12 @@
   $('#roster-auth-btn').addEventListener('click', authAndLoad);
   $('#roster-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); authAndLoad(); } });
 
-  // 수동 신청 추가
+  async function refreshRoster() {
+    const { j: rj } = await fetchRoster();
+    if (rj.ok) renderRoster(rj);
+  }
+
+  // 수동 신청 추가 / 수정 저장 (editingId 유무로 분기)
   $('#m-add-btn').addEventListener('click', async () => {
     if (!instructorPass) { toast('먼저 강사 비밀번호를 확인하세요.'); return; }
     const name = $('#m-name').value.trim();
@@ -351,30 +414,69 @@
     const phone = $('#m-phone').value.trim();
     if (!name) { toast('학생 이름을 입력하세요.'); return; }
     if (!grade) { toast('학년을 선택하세요.'); return; }
-    if (!classNo) { toast('반을 입력하세요.'); return; }
+    if (!classNo) { toast('반을 선택하세요.'); return; }
+    const fields = {
+      password: instructorPass,
+      student_name: name,
+      grade: Number(grade),
+      class_no: Number(classNo),
+      guardian_name: guardian || null,
+      guardian_phone: phone || null,
+    };
     try {
-      const res = await fetch(API + '/applications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          password: instructorPass,
-          student_name: name,
-          grade: Number(grade),
-          class_no: Number(classNo),
-          guardian_name: guardian || null,
-          guardian_phone: phone || null,
-        }),
-      });
-      const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
-      if (!j.ok) { toast(j.error || '추가 실패'); return; }
-      toast(j.is_waitlist ? `대기 ${j.slot_number}번으로 추가되었습니다` : `접수 ${j.slot_number}번으로 추가되었습니다`);
-      // 폼 비우고 명단 새로고침
-      $('#m-name').value = ''; $('#m-grade').value = '';
-      $('#m-class').value = ''; $('#m-guardian').value = ''; $('#m-phone').value = '';
-      const { j: rj } = await fetchRoster();
-      if (rj.ok) renderRoster(rj);
+      if (editingId) {
+        const res = await fetch(API + '/applications/' + encodeURIComponent(editingId), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(fields),
+        });
+        const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
+        if (!j.ok) { toast(j.error || '수정 실패'); return; }
+        toast('수정되었습니다');
+      } else {
+        const res = await fetch(API + '/applications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(fields),
+        });
+        const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
+        if (!j.ok) { toast(j.error || '추가 실패'); return; }
+        toast(j.is_waitlist ? `대기 ${j.slot_number}번으로 추가되었습니다` : `접수 ${j.slot_number}번으로 추가되었습니다`);
+      }
+      resetMForm();
+      await refreshRoster();
     } catch (err) {
-      toast('서버 오류로 추가하지 못했습니다.');
+      toast('서버 오류로 처리하지 못했습니다.');
+    }
+  });
+
+  // 명단 테이블: 수동 건 수정/삭제 (이벤트 위임)
+  $('#roster-tbody').addEventListener('click', async (e) => {
+    const editBtn = e.target.closest('[data-edit]');
+    const delBtn = e.target.closest('[data-del]');
+    if (editBtn) {
+      const row = rosterRows.find(r => String(r.id) === editBtn.getAttribute('data-edit'));
+      if (row) startEdit(row);
+      return;
+    }
+    if (delBtn) {
+      if (!instructorPass) { toast('먼저 강사 비밀번호를 확인하세요.'); return; }
+      const id = delBtn.getAttribute('data-del');
+      if (!confirm('정말로 이 신청자를 삭제하시겠습니까? 삭제하면 복구할 수 없습니다.')) return;
+      try {
+        const res = await fetch(API + '/applications/' + encodeURIComponent(id), {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: instructorPass }),
+        });
+        const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
+        if (!j.ok) { toast(j.error || '삭제 실패'); return; }
+        toast('삭제되었습니다');
+        if (editingId === id) resetMForm(); // 수정 중이던 건을 지웠으면 폼 초기화
+        await refreshRoster();
+      } catch (err) {
+        toast('서버 오류로 삭제하지 못했습니다.');
+      }
     }
   });
 

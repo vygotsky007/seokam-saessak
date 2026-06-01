@@ -156,7 +156,7 @@
           <thead>
             <tr>
               <th>순번</th><th>상태</th><th>학생</th><th>학년/반</th>
-              <th>보호자</th><th>연락처</th><th>경로</th>
+              <th>보호자</th><th>연락처</th><th>경로</th><th>관리</th>
             </tr>
           </thead>
           <tbody id="roster-tbody"></tbody>
@@ -165,7 +165,7 @@
       <div class="muted" id="roster-empty" hidden style="padding:16px; text-align:center;">아직 신청자가 없습니다.</div>
 
       <!-- 수동 신청 입력 -->
-      <h2 style="font-size:15px; font-weight:800; margin:18px 0 8px;">＋ 수동 신청 입력 (종이 신청서)</h2>
+      <h2 style="font-size:15px; font-weight:800; margin:18px 0 8px;" id="m-form-title">＋ 수동 신청 입력 (종이 신청서)</h2>
       <div class="muted" style="font-size:12.5px; margin-bottom:8px;">정원이 차면 자동으로 대기자로 등록됩니다. 대상 학년만 입력 가능합니다.</div>
       <div class="form-grid">
         <label>학생 이름*</label><input type="text" id="m-name">
@@ -175,12 +175,16 @@
           <option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option>
           <option value="4">4학년</option><option value="5">5학년</option><option value="6">6학년</option>
         </select>
-        <label>반*</label><input type="number" id="m-class" min="1" max="30" style="width:120px;">
+        <label>반*</label>
+        <select id="m-class" style="width:120px;" disabled>
+          <option value="">학년 먼저 선택</option>
+        </select>
         <label>보호자 이름</label><input type="text" id="m-guardian">
         <label>보호자 연락처</label><input type="text" id="m-phone" placeholder="010-0000-0000" style="max-width:220px;">
       </div>
       <div class="actions" style="display:flex; gap:8px; margin-top:12px;">
         <button type="button" class="btn primary" id="m-add-btn">신청자 추가</button>
+        <button type="button" class="btn" id="m-cancel-btn" hidden>수정 취소</button>
       </div>
     </div>
   </div>

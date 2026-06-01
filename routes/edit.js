@@ -53,6 +53,7 @@ async function gateRoster(req, res) {
 // 명단 1행을 강사에게 보여줄 필드만 추려서 반환.
 function pickRosterRow(a) {
   return {
+    id: a.id,
     student_name: a.student_name,
     grade: a.grade,
     class_no: a.class_no,
@@ -375,6 +376,102 @@ router.post('/:token/applications', rosterLimiter, async (req, res) => {
     });
   } catch (err) {
     console.error('[POST /api/edit/:token/applications]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 강사가 만질 수 있는 신청 행인지 확인: 이 프로그램(program_id 일치) + source='manual' 만.
+// 온라인 신청은 강사가 수정/삭제 불가 → 409 로 거부(클라이언트 우회 방지).
+// 통과 시 행 반환, 실패 시 res 로 응답하고 null 반환.
+async function findManualRow(programId, appId, res) {
+  const { data, error } = await supabase
+    .from('saessak_applications')
+    .select('*')
+    .eq('id', appId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data || data.program_id !== programId) {
+    res.status(404).json({ ok: false, error: '신청 건을 찾을 수 없습니다.' });
+    return null;
+  }
+  if (data.source !== 'manual') {
+    res.status(409).json({ ok: false, error: '온라인 신청 건은 관리자에게 문의해 주세요.' });
+    return null;
+  }
+  return data;
+}
+
+// PUT /api/edit/:token/applications/:appId — 수동 신청 건 수정(내부 강사 전용)
+// body: { password, student_name, grade, class_no, guardian_name, guardian_phone }
+router.put('/:token/applications/:appId', rosterLimiter, async (req, res) => {
+  try {
+    const p = await gateRoster(req, res);
+    if (!p) return;
+    const row = await findManualRow(p.id, req.params.appId, res);
+    if (!row) return;
+
+    const b = req.body || {};
+    const patch = {};
+    if ('student_name' in b) {
+      const name = b.student_name ? String(b.student_name).trim() : '';
+      if (!name) return res.status(400).json({ ok: false, error: '학생 이름을 입력하세요.' });
+      patch.student_name = name;
+    }
+    const grades = Array.isArray(p.grades) ? p.grades : [];
+    if ('grade' in b) {
+      const grade = Number(b.grade);
+      if (!Number.isInteger(grade) || grade < 1 || grade > 6) {
+        return res.status(400).json({ ok: false, error: '학년은 1~6 사이로 입력하세요.' });
+      }
+      if (!grades.includes(grade)) {
+        return res.status(400).json({ ok: false, error: `이 프로그램은 ${grades.join(',')}학년 대상입니다.` });
+      }
+      patch.grade = grade;
+    }
+    if ('class_no' in b) {
+      const classNo = Number(b.class_no);
+      if (!Number.isInteger(classNo) || classNo < 1 || classNo > 30) {
+        return res.status(400).json({ ok: false, error: '반은 1~30 사이로 입력하세요.' });
+      }
+      patch.class_no = classNo;
+    }
+    if ('guardian_name' in b) patch.guardian_name = b.guardian_name ? String(b.guardian_name).trim() : null;
+    if ('guardian_phone' in b) patch.guardian_phone = b.guardian_phone ? normalizeMobile(b.guardian_phone) : null;
+
+    const { data, error } = await supabase
+      .from('saessak_applications')
+      .update(patch)
+      .eq('id', row.id)
+      .eq('program_id', p.id)      // 프로그램 재확인(경합 방지)
+      .eq('source', 'manual')      // 온라인 건 보호 재확인
+      .select();
+    if (error) throw error;
+    if (!data || !data[0]) return res.status(409).json({ ok: false, error: '수정에 실패했습니다.' });
+    res.json({ ok: true, data: pickRosterRow(data[0]) });
+  } catch (err) {
+    console.error('[PUT /api/edit/:token/applications/:appId]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// DELETE /api/edit/:token/applications/:appId — 수동 신청 건 삭제(내부 강사 전용)
+router.delete('/:token/applications/:appId', rosterLimiter, async (req, res) => {
+  try {
+    const p = await gateRoster(req, res);
+    if (!p) return;
+    const row = await findManualRow(p.id, req.params.appId, res);
+    if (!row) return;
+
+    const { error } = await supabase
+      .from('saessak_applications')
+      .delete()
+      .eq('id', row.id)
+      .eq('program_id', p.id)      // 프로그램 재확인
+      .eq('source', 'manual');     // 온라인 건 보호 재확인
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[DELETE /api/edit/:token/applications/:appId]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
