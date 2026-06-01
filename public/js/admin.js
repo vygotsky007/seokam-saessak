@@ -892,6 +892,9 @@
   // 6월 2026 중심. session_dates 가 있는 프로그램만 표시.
   let scheduleYear = 2026;
   let scheduleMonth = 5; // 0-indexed → June
+  // 달력에서 숨길 프로그램 id 집합(체크 해제된 것). 비어 있으면 전체 표시.
+  // 상태 저장 안 함 — 탭 진입/새로고침 시 항상 전체 표시로 초기화.
+  let scheduleHiddenIds = new Set();
 
   // 프로그램 블록 색 팔레트 — 차분한 파스텔 + 진한 텍스트(가독성).
   // id 해시로 안정 배정(같은 프로그램은 항상 같은 색).
@@ -923,6 +926,7 @@
     try {
       const j = await api('/programs');
       programs = j.data || [];
+      scheduleHiddenIds = new Set(); // 탭 진입 시 전체 표시 기본
       renderScheduleCalendar();
     } catch (err) { toast(err.message); }
   }
@@ -958,8 +962,11 @@
     }
 
     const withSessions = programs.filter(p => Array.isArray(p.session_dates) && p.session_dates.length > 0);
+    // 표시 필터 UI(전체 프로그램 기준)와 실제 표시 대상(체크된 것만) 분리
+    renderScheduleFilter(withSessions);
+    const visiblePrograms = withSessions.filter(p => !scheduleHiddenIds.has(String(p.id)));
     const eventsByDate = {};
-    withSessions.forEach(p => {
+    visiblePrograms.forEach(p => {
       const color = programColor(p);
       p.session_dates.forEach(iso => {
         (eventsByDate[iso] = eventsByDate[iso] || []).push({ p, color });
@@ -996,15 +1003,40 @@
       const [y, m] = iso.split('-').map(Number);
       return y === scheduleYear && m === scheduleMonth + 1;
     };
-    const monthPrograms = withSessions.filter(p => p.session_dates.some(monthIso));
+    const monthPrograms = visiblePrograms.filter(p => p.session_dates.some(monthIso));
     $('#cal-legend').innerHTML = monthPrograms.length === 0
-      ? '<span class="muted">이 달에는 일정이 있는 프로그램이 없습니다.</span>'
+      ? '<span class="muted">이 달에는 표시할 일정이 없습니다.</span>'
       : monthPrograms.map(p =>
           (() => {
             const c = programColor(p);
             return `<span class="lg" style="background:${c.bg}; color:${c.fg}"><span class="lg-color" style="background:${c.fg}"></span>${esc(p.title)}</span>`;
           })()
         ).join('');
+  }
+
+  // 프로그램 표시 필터 — session_dates 가 있는 모든 프로그램을 체크박스로 나열(색 스와치 포함).
+  // 기본 전체 체크. 체크 해제하면 scheduleHiddenIds 에 담겨 달력에서 숨겨진다.
+  function renderScheduleFilter(withSessions) {
+    const box = $('#cal-filter');
+    if (!box) return;
+    if (!withSessions || withSessions.length === 0) { box.innerHTML = ''; return; }
+    const items = withSessions.map(p => {
+      const c = programColor(p);
+      const id = esc(String(p.id));
+      const checked = scheduleHiddenIds.has(String(p.id)) ? '' : 'checked';
+      return `<label class="cf-item">
+        <input type="checkbox" class="cf-cb" data-cf-id="${id}" ${checked}>
+        <span class="cf-color" style="background:${c.bg}; border-color:${c.fg}"></span>
+        <span class="cf-name">${esc(p.title)}</span>
+      </label>`;
+    }).join('');
+    box.innerHTML = `
+      <div class="cf-head">
+        <span class="cf-title">📌 달력에 표시할 프로그램</span>
+        <button type="button" class="btn xsmall" id="cf-all">전체 선택</button>
+        <button type="button" class="btn xsmall" id="cf-none">전체 해제</button>
+      </div>
+      <div class="cf-list">${items}</div>`;
   }
 
   // 월 이동
@@ -1021,6 +1053,25 @@
       const n = new Date();
       scheduleYear = n.getFullYear();
       scheduleMonth = n.getMonth();
+      renderScheduleCalendar();
+    } else if (e.target && e.target.id === 'cf-all') {
+      scheduleHiddenIds.clear();
+      renderScheduleCalendar();
+    } else if (e.target && e.target.id === 'cf-none') {
+      programs
+        .filter(p => Array.isArray(p.session_dates) && p.session_dates.length > 0)
+        .forEach(p => scheduleHiddenIds.add(String(p.id)));
+      renderScheduleCalendar();
+    }
+  });
+
+  // 프로그램 표시 체크박스 토글 — 실시간 반영
+  document.addEventListener('change', (e) => {
+    const t = e.target;
+    if (t && t.classList && t.classList.contains('cf-cb')) {
+      const id = t.dataset.cfId;
+      if (t.checked) scheduleHiddenIds.delete(id);
+      else scheduleHiddenIds.add(id);
       renderScheduleCalendar();
     }
   });
