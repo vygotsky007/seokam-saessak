@@ -243,7 +243,13 @@
         <div class="type-checks">
           <label><input type="checkbox" id="type-multicultural"> 다문화 우대</label>
           <label><input type="checkbox" id="type-sibling"> 형제 우대</label>
-          <span class="muted" style="font-size:12px;">둘 다 미체크면 일반형</span>
+          <label><input type="checkbox" id="type-custom"> 기타</label>
+          <span class="muted" style="font-size:12px;">모두 미체크면 일반형</span>
+        </div>
+        <label id="type-custom-label" hidden>기타 유형명</label>
+        <div id="type-custom-row" hidden>
+          <input type="text" name="type_custom" id="type-custom-input" style="width:220px;" placeholder="예: 저소득층 우대, 특별반, 신입생 전용">
+          <span class="muted" style="margin-left:6px; font-size:12px;">배지로 표시되는 분류명(표시 전용)</span>
         </div>
         <label id="multi-min-label" hidden>다문화 최소 보장</label>
         <div id="multi-min-row" hidden>

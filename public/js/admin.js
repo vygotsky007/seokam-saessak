@@ -89,18 +89,26 @@
     const s = (typeof p.is_type_sibling === 'boolean')       ? p.is_type_sibling       : (p.program_type === 'sibling');
     return { multicultural: m, sibling: s };
   }
+  function customTypeOf(p) {
+    const v = p && p.type_custom;
+    return (v && String(v).trim() !== '') ? String(v).trim() : null;
+  }
   function typeLabel(p) {
     const { multicultural, sibling } = typesOf(p);
+    const custom = customTypeOf(p);
     const parts = [];
     if (multicultural) parts.push('다문화 우대');
     if (sibling)       parts.push('형제 우대');
+    if (custom)        parts.push(custom);
     return parts.length === 0 ? '일반형' : parts.join(' · ');
   }
   function typeBadges(p) {
     const { multicultural, sibling } = typesOf(p);
+    const custom = customTypeOf(p);
     const out = [];
     if (multicultural) out.push('<span class="badge tag-multicultural">다문화 우대</span>');
     if (sibling)       out.push('<span class="badge tag-sibling">형제 우대</span>');
+    if (custom)        out.push(`<span class="badge tag-custom">${esc(custom)}</span>`);
     if (out.length === 0) return '<span class="badge">일반형</span>';
     return out.join(' ');
   }
@@ -321,6 +329,9 @@
         const t = typesOf(p);
         $('#type-multicultural').checked = !!t.multicultural;
         $('#type-sibling').checked       = !!t.sibling;
+        const custom = customTypeOf(p);
+        $('#type-custom').checked = !!custom;
+        $('#type-custom-input').value = custom || '';
         form.multicultural_min.value = p.multicultural_min ?? '';
         form.recruit_status.value = recruitStatusOf(p);
         loadScheduleBuilderFrom(p);
@@ -328,11 +339,14 @@
     } else {
       $('#type-multicultural').checked = false;
       $('#type-sibling').checked       = false;
+      $('#type-custom').checked = false;
+      $('#type-custom-input').value = '';
       form.multicultural_min.value = '';
       form.recruit_status.value = 'hidden'; // 신규는 숨김으로 시작
       loadScheduleBuilderFrom(null);
     }
     updateMulticulturalMinVisibility();
+    updateTypeCustomVisibility();
     dlg.classList.add('open');
   }
 
@@ -461,11 +475,26 @@
   }
   $('#type-multicultural').addEventListener('change', updateMulticulturalMinVisibility);
 
+  // 기타 유형: 체크 시 입력칸 노출, 해제 시 숨기고 값 초기화
+  function updateTypeCustomVisibility() {
+    const show = $('#type-custom').checked;
+    $('#type-custom-label').hidden = !show;
+    $('#type-custom-row').hidden = !show;
+    if (!show) $('#type-custom-input').value = '';
+  }
+  $('#type-custom').addEventListener('change', updateTypeCustomVisibility);
+
   $('#program-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
     const tMulti = $('#type-multicultural').checked;
     const tSib   = $('#type-sibling').checked;
+    const tCustom = $('#type-custom').checked;
+    const customName = tCustom ? $('#type-custom-input').value.trim() : '';
+    if (tCustom && !customName) {
+      toast('기타 유형명을 입력하세요.');
+      return;
+    }
     const grades = readGradeChecks(form);
     if (grades.length === 0) {
       toast('대상 학년을 1개 이상 선택하세요.');
@@ -501,6 +530,7 @@
       organization: form.organization.value.trim() || null,
       is_type_multicultural: tMulti,
       is_type_sibling: tSib,
+      type_custom: customName || null,
       multicultural_min: tMulti && form.multicultural_min.value !== ''
         ? Number(form.multicultural_min.value) : null,
       session_dates: sessionDates,

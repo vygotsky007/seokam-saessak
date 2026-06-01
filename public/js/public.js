@@ -67,6 +67,8 @@
     const out = [];
     if (t.multicultural) out.push('<span class="badge tag-multicultural">다문화 우대</span>');
     if (t.sibling)       out.push('<span class="badge tag-sibling">형제 우대</span>');
+    const custom = (p && p.type_custom && String(p.type_custom).trim() !== '') ? String(p.type_custom).trim() : null;
+    if (custom)          out.push(`<span class="badge tag-custom">${esc(custom)}</span>`);
     return out.join(' ');
   }
   function formatGradesLabel(grades) {

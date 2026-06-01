@@ -642,6 +642,10 @@ body.public-page {
   background: #FCE7F3;
   color: #9D174D;
 }
+.badge.tag-custom {
+  background: #EDE9FE;
+  color: #5B21B6;
+}
 
 /* 모집 상태 배지 (공개 화면) */
 .badge.upcoming {

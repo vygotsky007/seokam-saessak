@@ -260,6 +260,7 @@ tbody tr:hover { background: #F8FAFC; }
 
 .badge.tag-multicultural { background: #E0F2FE; color: #075985; }
 .badge.tag-sibling       { background: #FCE7F3; color: #9D174D; }
+.badge.tag-custom        { background: #EDE9FE; color: #5B21B6; }
 .badge.name-conflict     { background: #FEF3C7; color: #92400E; font-weight: 700; cursor: help; }
 
 /* 대시보드 - 마감 임박 (모집중 + 남은자리 ≤ 3) */

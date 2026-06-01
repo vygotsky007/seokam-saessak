@@ -98,6 +98,7 @@ router.post('/programs', async (req, res) => {
       session_dates, start_time, end_time,
       recruit_status,
       is_type_multicultural, is_type_sibling,
+      type_custom,
       organization,
     } = req.body || {};
 
@@ -134,6 +135,8 @@ router.post('/programs', async (req, res) => {
       program_type: ptype,
       is_type_multicultural: tMulti,
       is_type_sibling: tSib,
+      type_custom: (type_custom === null || type_custom === undefined || String(type_custom).trim() === '')
+        ? null : String(type_custom).trim(),
       multicultural_min: tMulti
         ? (multicultural_min === '' || multicultural_min === null || multicultural_min === undefined ? null : Number(multicultural_min))
         : null,
@@ -162,6 +165,7 @@ router.put('/programs/:id', async (req, res) => {
       'session_dates', 'start_time', 'end_time',
       'recruit_status',
       'is_type_multicultural', 'is_type_sibling',
+      'type_custom',
       'organization'];
     const patch = {};
     for (const k of allowed) {
@@ -217,6 +221,10 @@ router.put('/programs/:id', async (req, res) => {
     if ('organization' in patch) {
       const o = patch.organization;
       patch.organization = (o === null || o === undefined || String(o).trim() === '') ? null : String(o).trim();
+    }
+    if ('type_custom' in patch) {
+      const tc = patch.type_custom;
+      patch.type_custom = (tc === null || tc === undefined || String(tc).trim() === '') ? null : String(tc).trim();
     }
 
     const { data, error } = await supabase
