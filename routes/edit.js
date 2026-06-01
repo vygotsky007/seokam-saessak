@@ -4,6 +4,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
+const ExcelJS = require('exceljs');
 const router = express.Router();
 const supabase = require('../utils/supabase');
 const { normalizeMobile } = require('../utils/phone');
@@ -374,6 +375,88 @@ router.post('/:token/applications', rosterLimiter, async (req, res) => {
     });
   } catch (err) {
     console.error('[POST /api/edit/:token/applications]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// POST /api/edit/:token/roster.xlsx — 이 프로그램 신청자 명단 엑셀 다운로드(내부 강사 전용)
+// body: { password }. 명단 보기와 동일 게이트. 읽기 전용(데이터 변경 없음).
+router.post('/:token/roster.xlsx', rosterLimiter, async (req, res) => {
+  try {
+    const p = await gateRoster(req, res);
+    if (!p) return; // gateRoster 가 이미 응답함
+
+    const { data, error } = await supabase
+      .from('saessak_applications')
+      .select('*')
+      .eq('program_id', p.id) // 이 프로그램만
+      .order('is_waitlist', { ascending: true })
+      .order('display_order', { ascending: true, nullsFirst: false })
+      .order('submitted_at', { ascending: true });
+    if (error) throw error;
+
+    const rows = (data || []).filter(a => a.status !== 'cancelled');
+    let acceptedNo = 0, waitlistNo = 0;
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = '석암 디지털새싹';
+    wb.created = new Date();
+    const ws = wb.addWorksheet('신청자명단');
+
+    ws.columns = [
+      { key: 'seq', width: 6 },
+      { key: 'status', width: 8 },
+      { key: 'student_name', width: 12 },
+      { key: 'grade', width: 6 },
+      { key: 'class_no', width: 6 },
+      { key: 'guardian_name', width: 12 },
+      { key: 'guardian_phone', width: 18 },
+      { key: 'source', width: 10 },
+      { key: 'submitted_at', width: 22 },
+    ];
+
+    // 1행: 외부 유출 금지 경고(전 열 병합)
+    ws.mergeCells(1, 1, 1, 9);
+    const warn = ws.getCell(1, 1);
+    warn.value = '⚠ 외부 유출 금지 · 담당 강사 본인 확인용';
+    warn.font = { bold: true, color: { argb: 'FFB00020' } };
+    warn.alignment = { horizontal: 'left' };
+
+    // 2행: 프로그램명/요약
+    ws.mergeCells(2, 1, 2, 9);
+    ws.getCell(2, 1).value =
+      `${p.title || ''} · 접수 ${rows.filter(r => !r.is_waitlist).length}/${p.capacity || 0} · 대기 ${rows.filter(r => r.is_waitlist === true).length}/${p.waitlist_capacity || 0}`;
+
+    // 3행: 헤더
+    const header = ws.addRow({
+      seq: '순번', status: '상태', student_name: '학생 이름', grade: '학년', class_no: '반',
+      guardian_name: '보호자 이름', guardian_phone: '보호자 연락처', source: '경로', submitted_at: '신청일시',
+    });
+    header.font = { bold: true };
+
+    rows.forEach(r => {
+      ws.addRow({
+        seq: r.is_waitlist === true ? ++waitlistNo : ++acceptedNo,
+        status: r.is_waitlist === true ? '대기' : '접수',
+        student_name: r.student_name,
+        grade: r.grade,
+        class_no: r.class_no,
+        guardian_name: r.guardian_name || '',
+        guardian_phone: r.guardian_phone || '',
+        source: r.source === 'manual' ? '수동' : '온라인',
+        submitted_at: r.submitted_at ? new Date(r.submitted_at).toLocaleString('ko-KR') : '',
+      });
+    });
+
+    const buf = await wb.xlsx.writeBuffer();
+    const safeTitle = String(p.title || '프로그램').replace(/[\\/?*\[\]:]/g, '_').slice(0, 40);
+    const fname = `${safeTitle}_신청자명단_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    // 한글 파일명은 RFC 5987 filename* 로 안전 전달.
+    res.setHeader('Content-Disposition', `attachment; filename="roster.xlsx"; filename*=UTF-8''${encodeURIComponent(fname)}`);
+    res.send(Buffer.from(buf));
+  } catch (err) {
+    console.error('[POST /api/edit/:token/roster.xlsx]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

@@ -146,7 +146,10 @@
     <div id="roster-body" hidden>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
         <h2 style="font-size:15px; font-weight:800;" id="roster-title">신청자 명단</h2>
-        <span class="muted" id="roster-summary" style="font-size:12.5px;"></span>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span class="muted" id="roster-summary" style="font-size:12.5px;"></span>
+          <button type="button" class="btn" id="roster-xlsx-btn">엑셀 다운로드</button>
+        </div>
       </div>
       <div style="overflow-x:auto;">
         <table class="roster-table" id="roster-table">

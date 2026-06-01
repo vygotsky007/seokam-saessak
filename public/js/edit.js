@@ -378,5 +378,42 @@
     }
   });
 
+  // 엑셀 다운로드 — 인증된 비번을 동봉해 POST, blob 으로 받아 저장.
+  $('#roster-xlsx-btn').addEventListener('click', async () => {
+    if (!instructorPass) { toast('먼저 강사 비밀번호를 확인하세요.'); return; }
+    const btn = $('#roster-xlsx-btn');
+    btn.disabled = true;
+    try {
+      const res = await fetch(API + '/roster.xlsx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: instructorPass }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({ error: '다운로드 실패' }));
+        toast(j.error || '다운로드 실패');
+        return;
+      }
+      // 서버가 보낸 파일명(Content-Disposition filename*) 추출, 없으면 기본값.
+      let fname = '신청자명단.xlsx';
+      const cd = res.headers.get('Content-Disposition') || '';
+      const m = /filename\*=UTF-8''([^;]+)/i.exec(cd);
+      if (m) { try { fname = decodeURIComponent(m[1]); } catch {} }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fname;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast('서버 오류로 다운로드하지 못했습니다.');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
   load();
 })();
