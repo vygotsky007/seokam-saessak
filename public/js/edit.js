@@ -379,7 +379,7 @@
         : '';
       return `
       <tr${r.status === 'cancelled' ? ' style="opacity:.6;"' : ''}>
-        <td>${r.seq}</td>
+        <td>${r.status === 'cancelled' ? '—' : r.seq}</td>
         <td>${statusBadge(r)}</td>
         <td>${esc(r.student_name)}</td>
         <td>${esc(r.grade ?? '')}학년 ${esc(r.class_no ?? '')}반</td>

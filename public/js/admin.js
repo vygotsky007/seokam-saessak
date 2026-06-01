@@ -712,8 +712,11 @@
   // 신청자 1명 → (메인행 + 문의사항행) HTML.
   // allView 면 순서이동(▲▼) 버튼을 숨긴다(전체 보기에서는 프로그램 교차 reorder 가 무의미·위험).
   function applicantRowHtml(a, displayIndex, allView) {
+    const cancelled = a.status === 'cancelled';
     const badges = [];
-    if (a.is_waitlist) badges.push('<span class="badge" style="background:#FEF3C7; color:#92400E;">자동대기</span>');
+    // 취소 건은 자동접수/자동대기 대신 "취소"로 표시(상태·카운트 정합성).
+    if (cancelled) badges.push('<span class="badge" style="background:#E5E7EB; color:#6B7280;">취소</span>');
+    else if (a.is_waitlist) badges.push('<span class="badge" style="background:#FEF3C7; color:#92400E;">자동대기</span>');
     else badges.push('<span class="badge" style="background:#DCFCE7; color:#166534;">자동접수</span>');
     if (a.is_multicultural) badges.push('<span class="badge tag-multicultural">다문화</span>');
     if (a.sibling_group_id) {
@@ -730,7 +733,7 @@
       `<button class="btn small" data-up="${a.id}" title="위로">▲</button>
           <button class="btn small" data-down="${a.id}" title="아래로">▼</button>`;
     return `
-      <tr data-id="${a.id}">
+      <tr data-id="${a.id}"${cancelled ? ' style="opacity:.55;"' : ''}>
         <td>${displayIndex}</td>
         <td><b>${esc(a.student_name)}</b></td>
         <td>${a.grade ?? '?'}-${a.class_no ?? '?'}</td>
@@ -782,7 +785,10 @@
     const tbody = $('#applicants-tbody');
     const allView = (currentProgramId === ALL_PROGRAMS);
 
-    $('#app-count').textContent = `${applications.length}명`;
+    // 카운트: 유효(취소 제외) 인원 기준 + 취소 건수 별도 표기(명단 표시 인원과 정합).
+    const validCount = applications.filter(a => a.status !== 'cancelled').length;
+    const cancelledCount = applications.length - validCount;
+    $('#app-count').textContent = `${validCount}명` + (cancelledCount ? ` (취소 ${cancelledCount})` : '');
     if (applications.length === 0) {
       tbody.innerHTML = `<tr><td colspan="10" class="empty-state">신청자가 없습니다.</td></tr>`;
       return;
@@ -805,13 +811,18 @@
       order.forEach(pid => {
         const g = groups.get(pid);
         const rows = g.rows.slice().sort(applicationComparator);
-        html += `<tr class="group-row"><td colspan="10" style="background:#EEF2FF; color:#3730A3; font-weight:800; padding:6px 10px;">📚 ${esc(g.title)} <span class="muted" style="font-weight:600;">· ${rows.length}명</span></td></tr>`;
-        html += rows.map((a, i) => applicantRowHtml(a, i + 1, true)).join('');
+        const gValid = rows.filter(a => a.status !== 'cancelled').length;
+        const gCancelled = rows.length - gValid;
+        html += `<tr class="group-row"><td colspan="10" style="background:#EEF2FF; color:#3730A3; font-weight:800; padding:6px 10px;">📚 ${esc(g.title)} <span class="muted" style="font-weight:600;">· ${gValid}명${gCancelled ? ` (취소 ${gCancelled})` : ''}</span></td></tr>`;
+        // 순번은 취소 제외하고 매김. 취소 건은 '—'.
+        let n = 0;
+        html += rows.map(a => applicantRowHtml(a, a.status === 'cancelled' ? '—' : (++n), true)).join('');
       });
       tbody.innerHTML = html;
     } else {
       const list = applications.slice().sort(applicationComparator);
-      tbody.innerHTML = list.map((a, i) => applicantRowHtml(a, i + 1, false)).join('');
+      let n = 0;
+      tbody.innerHTML = list.map(a => applicantRowHtml(a, a.status === 'cancelled' ? '—' : (++n), false)).join('');
     }
 
     bindApplicationRowEvents();
