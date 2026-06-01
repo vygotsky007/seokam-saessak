@@ -337,7 +337,7 @@
 
   // ===== Schedule Builder =====
   // dialog DOM: #sb-start-date, #sb-end-date, #sb-start-time, #sb-end-time,
-  //             #sb-apply-range, #sb-days, #sb-preview
+  //             #sb-days, #sb-preview (시작일·종료일 선택 시 자동 펼침)
   // 내부 상태: 각 행마다 <label class="sb-day on"><input type=checkbox value="YYYY-MM-DD" checked> M/D(요일)</label>
 
   function pad2(n) { return String(n).padStart(2, '0'); }
@@ -383,15 +383,18 @@
       .sort();
   }
 
-  function applyRangeFromInputs() {
-    const sIso = $('#sb-start-date').value;
-    const eIso = $('#sb-end-date').value;
-    const s = fromISO(sIso);
-    const e = fromISO(eIso);
-    if (!s || !e) { toast('시작일과 종료일을 선택하세요.'); return; }
-    if (s.getTime() > e.getTime()) { toast('종료일이 시작일보다 빠릅니다.'); return; }
+  // 시작일·종료일이 둘 다 선택되면 그 사이 모든 날짜를 체크된 칩 목록으로 자동 펼친다.
+  // 종료일이 없으면(범위 미정) 아직 펼치지 않는다. 범위가 바뀌면 체크 상태는 초기화(전부 체크).
+  function autoExpandRange() {
+    const s = fromISO($('#sb-start-date').value);
+    const e = fromISO($('#sb-end-date').value);
+    if (!s || !e) { renderDays([]); return; }            // 범위 미정 → 아직 안 펼침
+    if (s.getTime() > e.getTime()) {                      // 종료일이 시작일보다 빠름
+      toast('종료일이 시작일보다 빠릅니다.');
+      renderDays([]);
+      return;
+    }
     const items = [];
-    // 기존 체크 해제 상태는 사용자가 한 번 더 만들 때마다 초기화(다 체크된 상태로).
     for (let d = new Date(s); d.getTime() <= e.getTime(); d.setDate(d.getDate() + 1)) {
       items.push({ iso: toISO(d), checked: true });
     }
@@ -441,11 +444,11 @@
   }
 
   // 이벤트 바인딩 (DOM 로딩 후 모듈 IIFE 시점에 한 번만)
-  document.addEventListener('click', (e) => {
-    if (e.target && e.target.id === 'sb-apply-range') applyRangeFromInputs();
-  });
   document.addEventListener('change', (e) => {
-    if (e.target && (e.target.id === 'sb-start-time' || e.target.id === 'sb-end-time')) {
+    if (!e.target) return;
+    if (e.target.id === 'sb-start-date' || e.target.id === 'sb-end-date') {
+      autoExpandRange();
+    } else if (e.target.id === 'sb-start-time' || e.target.id === 'sb-end-time') {
       updateSchedulePreview();
     }
   });
@@ -470,6 +473,11 @@
     const sessionDates = readSelectedDates();
     const startTime = $('#sb-start-time').value || null;
     const endTime = $('#sb-end-time').value || null;
+    // 일정 필수 검증: 날짜가 하나도 체크 안 됐거나 시작/종료 시각이 비어 있으면 저장 차단.
+    if (sessionDates.length === 0 || !startTime || !endTime) {
+      toast('일정(날짜·시간)을 입력해 주세요');
+      return;
+    }
     // 기존 schedule 텍스트 호환: 새 입력이 있으면 자동 포맷한 결과를 schedule 에도 같이 저장(레거시 화면 안전망).
     let autoSchedule = '';
     if (sessionDates.length > 0) {
