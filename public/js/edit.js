@@ -284,19 +284,7 @@
     }
   });
 
-  // ===== 삭제 =====
-  $('#delete-btn').addEventListener('click', async () => {
-    if (!confirm('이 프로그램을 삭제하시겠습니까? 되돌릴 수 없습니다.')) return;
-    try {
-      const res = await fetch(API, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
-      const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
-      if (res.status === 403) { blocked(j.error || '현재 수정이 비활성화되어 있습니다. 관리자에게 문의하세요.', '🔒'); return; }
-      if (!j.ok) { toast(j.error || '삭제 실패'); return; }
-      blocked('프로그램이 삭제되었습니다.', '✅');
-    } catch (err) {
-      toast('서버 오류로 삭제하지 못했습니다.');
-    }
-  });
+  // 프로그램 삭제는 강사 페이지에서 제공하지 않는다(신청 데이터 손실 방지 — 관리자 전용).
 
   // ===== 신청자 명단 + 수동입력 =====
   // 인증된 강사 비번을 메모리에만 보관(요청마다 동봉). 새로고침하면 다시 입력.
@@ -351,18 +339,33 @@
   $('#m-cancel-btn').addEventListener('click', resetMForm);
 
   function statusBadge(r) {
+    if (r.status === 'cancelled') return '<span class="badge-wait" style="opacity:.7;">취소</span>';
     return r.is_waitlist
       ? '<span class="badge-wait">대기</span>'
       : '<span class="badge-ok">접수</span>';
   }
   function sourceLabel(s) { return s === 'manual' ? '수동' : '온라인'; }
 
+  // 선정(상태) 변경 드롭다운 — 온라인·수동 모두. 데이터 삭제 아님(status만 변경).
+  const APP_STATUS_OPTS = [
+    { v: 'applied', t: '신청' },
+    { v: 'selected', t: '선정' },
+    { v: 'waiting', t: '대기' },
+    { v: 'cancelled', t: '취소' },
+  ];
+  function selectCell(r) {
+    const cur = r.status || 'applied';
+    const opts = APP_STATUS_OPTS.map(o =>
+      `<option value="${o.v}" ${o.v === cur ? 'selected' : ''}>${o.t}</option>`).join('');
+    return `<select class="x-status" data-status-id="${esc(r.id)}" style="font-size:12px; padding:2px 4px;">${opts}</select>`;
+  }
+
   function manageCell(r) {
     if (r.source === 'manual') {
       return `<button type="button" class="btn mini" data-edit="${esc(r.id)}" style="padding:2px 8px; font-size:12px;">수정</button>
               <button type="button" class="btn mini danger" data-del="${esc(r.id)}" style="padding:2px 8px; font-size:12px;">삭제</button>`;
     }
-    return `<span class="muted" style="font-size:11.5px;">온라인 신청 건은 관리자에게 문의해 주세요</span>`;
+    return `<span class="muted" style="font-size:11.5px;">온라인 신청</span>`;
   }
 
   function renderRoster(payload) {
@@ -372,10 +375,10 @@
     tbody.innerHTML = list.map(r => {
       const memo = (r.motivation && String(r.motivation).trim()) ? String(r.motivation).trim() : '';
       const memoRow = memo
-        ? `<tr class="memo-row"><td colspan="8" style="background:#FFFBEB; color:#92400E; font-size:12.5px; white-space:normal;">💬 <b>문의사항</b> · ${esc(memo)}</td></tr>`
+        ? `<tr class="memo-row"><td colspan="9" style="background:#FFFBEB; color:#92400E; font-size:12.5px; white-space:normal;">💬 <b>문의사항</b> · ${esc(memo)}</td></tr>`
         : '';
       return `
-      <tr>
+      <tr${r.status === 'cancelled' ? ' style="opacity:.6;"' : ''}>
         <td>${r.seq}</td>
         <td>${statusBadge(r)}</td>
         <td>${esc(r.student_name)}</td>
@@ -383,6 +386,7 @@
         <td>${esc(r.guardian_name || '')}</td>
         <td>${esc(r.guardian_phone || '')}</td>
         <td>${esc(sourceLabel(r.source))}</td>
+        <td>${selectCell(r)}</td>
         <td>${manageCell(r)}</td>
       </tr>${memoRow}`;
     }).join('');
@@ -393,6 +397,7 @@
     $('#roster-summary').textContent =
       `접수 ${payload.accepted_count}/${pr.capacity ?? '-'} · 대기 ${payload.waitlist_count}/${pr.waitlist_capacity ?? '-'}`;
     $('#roster-title').textContent = `신청자 명단 — ${pr.title || ''}`;
+    if (pr.recruit_status) $('#recruit-status-select').value = pr.recruit_status;
   }
 
   async function fetchRoster() {
@@ -519,6 +524,46 @@
       } catch (err) {
         toast('서버 오류로 삭제하지 못했습니다.');
       }
+    }
+  });
+
+  // 명단 테이블: 선정/상태 변경 (이벤트 위임)
+  $('#roster-tbody').addEventListener('change', async (e) => {
+    const sel = e.target.closest('.x-status');
+    if (!sel) return;
+    if (!instructorPass) { toast('먼저 강사 비밀번호를 확인하세요.'); return; }
+    const id = sel.getAttribute('data-status-id');
+    const status = sel.value;
+    try {
+      const res = await fetch(API + '/applications/' + encodeURIComponent(id) + '/status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: instructorPass, status }),
+      });
+      const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
+      if (!j.ok) { toast(j.error || '상태 변경 실패'); return; }
+      toast('상태가 변경되었습니다');
+      await refreshRoster(); // 순번/카운트 재계산 반영
+    } catch (err) {
+      toast('서버 오류로 변경하지 못했습니다.');
+    }
+  });
+
+  // 모집상태 변경 — 공개 화면에 즉시 반영
+  $('#recruit-status-select').addEventListener('change', async (e) => {
+    if (!instructorPass) { toast('먼저 강사 비밀번호를 확인하세요.'); return; }
+    const recruit_status = e.target.value;
+    try {
+      const res = await fetch(API + '/recruit-status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: instructorPass, recruit_status }),
+      });
+      const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
+      if (!j.ok) { toast(j.error || '모집상태 변경 실패'); return; }
+      toast('모집상태가 변경되었습니다');
+    } catch (err) {
+      toast('서버 오류로 변경하지 못했습니다.');
     }
   });
 

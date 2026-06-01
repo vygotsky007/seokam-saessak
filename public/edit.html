@@ -124,7 +124,6 @@
       <div class="actions" style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
         <button type="button" class="btn" id="roster-btn">이 프로그램 신청자 보기</button>
         <button type="submit" class="btn primary">저장</button>
-        <button type="button" class="btn danger" id="delete-btn">프로그램 삭제</button>
       </div>
     </form>
   </div>
@@ -149,6 +148,18 @@
 
     <!-- 명단 본문 (인증 후) -->
     <div id="roster-body" hidden>
+      <!-- 모집상태 변경 (공개 화면에 즉시 반영) -->
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; background:var(--primary-soft); border-radius:8px; padding:8px 12px;">
+        <label style="font-size:13px; font-weight:700;">모집상태</label>
+        <select id="recruit-status-select" style="border:1px solid var(--border-strong); border-radius:7px; padding:5px 9px; font-size:13px;">
+          <option value="recruiting">🟢 모집중</option>
+          <option value="upcoming">🔴 모집예정</option>
+          <option value="full">🟠 모집마감</option>
+          <option value="closed">⚫ 모집종료</option>
+          <option value="hidden">⚪ 모집숨김</option>
+        </select>
+        <span class="muted" style="font-size:12px;">변경 시 학부모 공개 화면에 바로 반영됩니다.</span>
+      </div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
         <h2 style="font-size:15px; font-weight:800;" id="roster-title">신청자 명단</h2>
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -161,7 +172,7 @@
           <thead>
             <tr>
               <th>순번</th><th>상태</th><th>학생</th><th>학년/반</th>
-              <th>보호자</th><th>연락처</th><th>경로</th><th>관리</th>
+              <th>보호자</th><th>연락처</th><th>경로</th><th>선정</th><th>관리</th>
             </tr>
           </thead>
           <tbody id="roster-tbody"></tbody>

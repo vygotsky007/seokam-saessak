@@ -231,23 +231,10 @@ router.put('/:token', editLimiter, async (req, res) => {
   }
 });
 
-// DELETE /api/edit/:token — 강사 프로그램 삭제(권한 on 일 때만)
-router.delete('/:token', editLimiter, async (req, res) => {
-  try {
-    const p = await findByToken(req.params.token);
-    if (!p) return res.status(404).json({ ok: false, error: '유효하지 않은 링크입니다.' });
-    if (p.edit_enabled !== true) {
-      return res.status(403).json({ ok: false, error: '현재 수정이 비활성화되어 있습니다. 관리자에게 문의하세요.' });
-    }
-    // 프로그램 삭제 시 연결된 신청 행도 함께 제거(관리자 삭제와 동일). 명단을 보여주지는 않는다.
-    await supabase.from('saessak_applications').delete().eq('program_id', p.id);
-    const { error } = await supabase.from('saessak_programs').delete().eq('id', p.id);
-    if (error) throw error;
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('[DELETE /api/edit/:token]', err.message);
-    res.status(500).json({ ok: false, error: err.message });
-  }
+// DELETE /api/edit/:token — 프로그램 삭제는 강사에게 허용하지 않는다(관리자 전용).
+// 신청자 있는 프로그램을 강사가 실수로 지우면 신청 데이터가 손실되므로, 서버에서도 항상 거부.
+router.delete('/:token', editLimiter, (req, res) => {
+  return res.status(403).json({ ok: false, error: '프로그램 삭제는 관리자만 가능합니다. 관리자에게 문의하세요.' });
 });
 
 // 명단/수동입력 비번 시도 제한(브루트포스 방지). 수정 한도와 별개로 더 빡빡하게.
@@ -277,18 +264,22 @@ router.post('/:token/roster', rosterLimiter, async (req, res) => {
       .order('submitted_at', { ascending: true });
     if (error) throw error;
 
-    // 취소건 제외. 접수/대기 각각 순번 부여.
-    const rows = (data || []).filter(a => a.status !== 'cancelled').map(pickRosterRow);
+    // 취소건도 표시(강사가 되돌릴 수 있게). 단 순번/카운트는 비취소 건만.
+    const rows = (data || []).map(pickRosterRow);
     let acceptedNo = 0;
     let waitlistNo = 0;
-    const list = rows.map(r => ({
-      ...r,
-      seq: r.is_waitlist ? ++waitlistNo : ++acceptedNo,
-    }));
+    const list = rows.map(r => {
+      let seq = '';
+      if (r.status !== 'cancelled') seq = r.is_waitlist ? ++waitlistNo : ++acceptedNo;
+      return { ...r, seq };
+    });
 
     res.json({
       ok: true,
-      program: { title: p.title || '', capacity: p.capacity || 0, waitlist_capacity: p.waitlist_capacity || 0, grades: p.grades || [] },
+      program: {
+        title: p.title || '', capacity: p.capacity || 0, waitlist_capacity: p.waitlist_capacity || 0,
+        grades: p.grades || [], recruit_status: p.recruit_status || (p.is_open ? 'recruiting' : 'hidden'),
+      },
       accepted_count: acceptedNo,
       waitlist_count: waitlistNo,
       data: list,
@@ -489,6 +480,67 @@ router.delete('/:token/applications/:appId', rosterLimiter, async (req, res) => 
     res.json({ ok: true });
   } catch (err) {
     console.error('[DELETE /api/edit/:token/applications/:appId]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// PATCH /api/edit/:token/applications/:appId/status — 신청자 선정/상태 변경(내부 강사 전용)
+// 온라인·수동 모두 가능. 데이터 삭제가 아니라 status 값만 변경(안전). 이 프로그램 신청자만.
+const APP_STATUSES = ['applied', 'selected', 'waiting', 'cancelled'];
+router.patch('/:token/applications/:appId/status', rosterLimiter, async (req, res) => {
+  try {
+    const p = await gateRoster(req, res);
+    if (!p) return;
+    const status = (req.body || {}).status;
+    if (!APP_STATUSES.includes(status)) {
+      return res.status(400).json({ ok: false, error: '유효하지 않은 상태입니다.' });
+    }
+    // 이 토큰의 프로그램 신청자인지 확인(다른 프로그램 거부)
+    const { data: row, error: e0 } = await supabase
+      .from('saessak_applications')
+      .select('id, program_id')
+      .eq('id', req.params.appId)
+      .maybeSingle();
+    if (e0) throw e0;
+    if (!row || row.program_id !== p.id) {
+      return res.status(404).json({ ok: false, error: '신청 건을 찾을 수 없습니다.' });
+    }
+    const { data, error } = await supabase
+      .from('saessak_applications')
+      .update({ status })
+      .eq('id', row.id)
+      .eq('program_id', p.id) // 프로그램 재확인(경합 방지)
+      .select();
+    if (error) throw error;
+    if (!data || !data[0]) return res.status(409).json({ ok: false, error: '상태 변경에 실패했습니다.' });
+    res.json({ ok: true, data: pickRosterRow(data[0]) });
+  } catch (err) {
+    console.error('[PATCH /api/edit/:token/applications/:appId/status]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// PATCH /api/edit/:token/recruit-status — 모집상태 변경(내부 강사 전용). 공개 화면 즉시 반영.
+const RECRUIT_STATUSES = ['recruiting', 'upcoming', 'full', 'closed', 'hidden'];
+router.patch('/:token/recruit-status', rosterLimiter, async (req, res) => {
+  try {
+    const p = await gateRoster(req, res);
+    if (!p) return;
+    const status = (req.body || {}).recruit_status;
+    if (!RECRUIT_STATUSES.includes(status)) {
+      return res.status(400).json({ ok: false, error: '유효하지 않은 모집상태입니다.' });
+    }
+    const { data, error } = await supabase
+      .from('saessak_programs')
+      .update({ recruit_status: status, is_open: status === 'recruiting' }) // is_open 호환 동기화
+      .eq('id', p.id)
+      .eq('edit_token', req.params.token) // 토큰 재확인(경합 방지)
+      .select();
+    if (error) throw error;
+    if (!data || !data[0]) return res.status(409).json({ ok: false, error: '모집상태 변경에 실패했습니다.' });
+    res.json({ ok: true, recruit_status: data[0].recruit_status });
+  } catch (err) {
+    console.error('[PATCH /api/edit/:token/recruit-status]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
