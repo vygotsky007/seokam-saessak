@@ -716,7 +716,7 @@ router.get('/export', async (req, res) => {
           { header: '프로그램유형', key: 'program_type', width: 12 },
           { header: '다문화여부', key: 'is_multicultural', width: 10 },
           { header: '형제묶음ID', key: 'sibling_group_id', width: 36 },
-          { header: '신청동기', key: 'motivation', width: 32 },
+          { header: '문의사항', key: 'motivation', width: 36 },
           { header: '접수시각', key: 'submitted_at', width: 22 },
         ];
         ws.getRow(1).font = { bold: true };

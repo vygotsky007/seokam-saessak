@@ -333,7 +333,12 @@
     const tbody = $('#roster-tbody');
     const list = payload.data || [];
     rosterRows = list;
-    tbody.innerHTML = list.map(r => `
+    tbody.innerHTML = list.map(r => {
+      const memo = (r.motivation && String(r.motivation).trim()) ? String(r.motivation).trim() : '';
+      const memoRow = memo
+        ? `<tr class="memo-row"><td colspan="8" style="background:#FFFBEB; color:#92400E; font-size:12.5px; white-space:normal;">💬 <b>문의사항</b> · ${esc(memo)}</td></tr>`
+        : '';
+      return `
       <tr>
         <td>${r.seq}</td>
         <td>${statusBadge(r)}</td>
@@ -343,7 +348,8 @@
         <td>${esc(r.guardian_phone || '')}</td>
         <td>${esc(sourceLabel(r.source))}</td>
         <td>${manageCell(r)}</td>
-      </tr>`).join('');
+      </tr>${memoRow}`;
+    }).join('');
     const has = list.length > 0;
     $('#roster-table').hidden = !has;
     $('#roster-empty').hidden = has;

@@ -688,6 +688,10 @@
       if (a.name_conflict) {
         badges.push('<span class="badge name-conflict" title="같은 이름·다른 학년/반으로 신청된 다른 행이 있어요 (동명이인 의심)">⚠ 확인 필요</span>');
       }
+      const memo = (a.motivation && String(a.motivation).trim()) ? String(a.motivation).trim() : '';
+      const memoRow = memo
+        ? `<tr class="memo-row"><td colspan="10" style="background:#FFFBEB; color:#92400E; font-size:12.5px; white-space:normal; padding:4px 10px;">💬 <b>문의사항</b> · ${esc(memo)}</td></tr>`
+        : '';
       return `
       <tr data-id="${a.id}">
         <td>${i + 1}</td>
@@ -713,7 +717,7 @@
           <button class="btn small" data-edit-app="${a.id}">수정</button>
           <button class="btn small danger" data-del-app="${a.id}">삭제</button>
         </td>
-      </tr>
+      </tr>${memoRow}
     `;
     }).join('');
 

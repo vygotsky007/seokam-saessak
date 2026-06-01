@@ -63,6 +63,7 @@ function pickRosterRow(a) {
     status: a.status,
     source: a.source,
     submitted_at: a.submitted_at,
+    motivation: a.motivation || null, // 학부모가 신청 시 적은 문의사항(특이사항·알레르기 등)
   };
 }
 
@@ -510,17 +511,19 @@ router.post('/:token/roster.xlsx', rosterLimiter, async (req, res) => {
       { key: 'guardian_phone', width: 18 },
       { key: 'source', width: 10 },
       { key: 'submitted_at', width: 22 },
+      { key: 'motivation', width: 36 },
     ];
+    const COLS = ws.columns.length; // 병합 범위 = 전체 열 수
 
     // 1행: 외부 유출 금지 경고(전 열 병합)
-    ws.mergeCells(1, 1, 1, 9);
+    ws.mergeCells(1, 1, 1, COLS);
     const warn = ws.getCell(1, 1);
     warn.value = '⚠ 외부 유출 금지 · 담당 강사 본인 확인용';
     warn.font = { bold: true, color: { argb: 'FFB00020' } };
     warn.alignment = { horizontal: 'left' };
 
     // 2행: 프로그램명/요약
-    ws.mergeCells(2, 1, 2, 9);
+    ws.mergeCells(2, 1, 2, COLS);
     ws.getCell(2, 1).value =
       `${p.title || ''} · 접수 ${rows.filter(r => !r.is_waitlist).length}/${p.capacity || 0} · 대기 ${rows.filter(r => r.is_waitlist === true).length}/${p.waitlist_capacity || 0}`;
 
@@ -528,11 +531,12 @@ router.post('/:token/roster.xlsx', rosterLimiter, async (req, res) => {
     const header = ws.addRow({
       seq: '순번', status: '상태', student_name: '학생 이름', grade: '학년', class_no: '반',
       guardian_name: '보호자 이름', guardian_phone: '보호자 연락처', source: '경로', submitted_at: '신청일시',
+      motivation: '문의사항',
     });
     header.font = { bold: true };
 
     rows.forEach(r => {
-      ws.addRow({
+      const row = ws.addRow({
         seq: r.is_waitlist === true ? ++waitlistNo : ++acceptedNo,
         status: r.is_waitlist === true ? '대기' : '접수',
         student_name: r.student_name,
@@ -542,7 +546,9 @@ router.post('/:token/roster.xlsx', rosterLimiter, async (req, res) => {
         guardian_phone: r.guardian_phone || '',
         source: r.source === 'manual' ? '수동' : '온라인',
         submitted_at: r.submitted_at ? new Date(r.submitted_at).toLocaleString('ko-KR') : '',
+        motivation: r.motivation || '',
       });
+      if (r.motivation) row.getCell('motivation').alignment = { wrapText: true, vertical: 'top' };
     });
 
     const buf = await wb.xlsx.writeBuffer();
