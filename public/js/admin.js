@@ -483,6 +483,7 @@
       session_dates: sessionDates,
       start_time: st,
       end_time: et,
+      extra_sessions: readExtraSessions(),
     });
     $('#sb-preview').textContent = text ? `미리보기: ${text}` : '미리보기: (날짜를 선택하면 표시됩니다)';
   }
@@ -493,6 +494,7 @@
     const endTime = (p && p.end_time) || '';
     $('#sb-start-time').value = startTime;
     $('#sb-end-time').value = endTime;
+    loadExtraSessions(p && p.extra_sessions);
     if (sd.length === 0) {
       $('#sb-start-date').value = '';
       $('#sb-end-date').value = '';
@@ -516,6 +518,38 @@
     }
     renderDays(items);
   }
+
+  // ===== 보충 회차 빌더 (메인 일정과 별도 시간) =====
+  function buildExtraRow(data) {
+    const d = (data && data.date) || '';
+    const s = (data && data.start) || '';
+    const e = (data && data.end) || '';
+    const row = document.createElement('div');
+    row.className = 'sb-extra-row';
+    row.style.cssText = 'display:flex; gap:6px; align-items:center; margin-bottom:4px; flex-wrap:wrap;';
+    row.innerHTML =
+      `<input type="date" class="x-date" value="${d}">` +
+      `<input type="time" class="x-start" value="${s}">` +
+      `<span>~</span>` +
+      `<input type="time" class="x-end" value="${e}">` +
+      `<button type="button" class="btn small danger x-del">삭제</button>`;
+    row.querySelector('.x-del').addEventListener('click', () => { row.remove(); updateSchedulePreview(); });
+    row.querySelectorAll('input').forEach(inp => inp.addEventListener('change', updateSchedulePreview));
+    return row;
+  }
+  function addExtraRow(data) { $('#sb-extra-list').appendChild(buildExtraRow(data)); }
+  function readExtraSessions() {
+    return Array.from(document.querySelectorAll('#sb-extra-list .sb-extra-row')).map(r => ({
+      date: r.querySelector('.x-date').value,
+      start: r.querySelector('.x-start').value,
+      end: r.querySelector('.x-end').value,
+    })).filter(x => x.date && x.start && x.end);
+  }
+  function loadExtraSessions(arr) {
+    $('#sb-extra-list').innerHTML = '';
+    (Array.isArray(arr) ? arr : []).forEach(x => addExtraRow(x));
+  }
+  $('#sb-extra-add').addEventListener('click', () => addExtraRow());
 
   // 이벤트 바인딩 (DOM 로딩 후 모듈 IIFE 시점에 한 번만)
   document.addEventListener('change', (e) => {
@@ -567,13 +601,15 @@
       toast('일정(날짜·시간)을 입력해 주세요');
       return;
     }
+    const extraSessions = readExtraSessions();
     // 기존 schedule 텍스트 호환: 새 입력이 있으면 자동 포맷한 결과를 schedule 에도 같이 저장(레거시 화면 안전망).
     let autoSchedule = '';
-    if (sessionDates.length > 0) {
+    if (sessionDates.length > 0 || extraSessions.length > 0) {
       autoSchedule = window.SaessakSchedule.format({
         session_dates: sessionDates,
         start_time: startTime,
         end_time: endTime,
+        extra_sessions: extraSessions,
       });
     }
     const recruitStatus = form.recruit_status.value;
@@ -595,6 +631,7 @@
       session_dates: sessionDates,
       start_time: startTime,
       end_time: endTime,
+      extra_sessions: extraSessions,
       recruit_status: recruitStatus,
     };
     try {
@@ -1005,15 +1042,24 @@
       cells.push({ y, m, d, other });
     }
 
-    const withSessions = programs.filter(p => Array.isArray(p.session_dates) && p.session_dates.length > 0);
+    const withSessions = programs.filter(p =>
+      (Array.isArray(p.session_dates) && p.session_dates.length > 0) ||
+      (Array.isArray(p.extra_sessions) && p.extra_sessions.length > 0));
     // 표시 필터 UI(전체 프로그램 기준)와 실제 표시 대상(체크된 것만) 분리
     renderScheduleFilter(withSessions);
     const visiblePrograms = withSessions.filter(p => !scheduleHiddenIds.has(String(p.id)));
     const eventsByDate = {};
     visiblePrograms.forEach(p => {
       const color = programColor(p);
-      p.session_dates.forEach(iso => {
-        (eventsByDate[iso] = eventsByDate[iso] || []).push({ p, color });
+      const mainTime = (p.start_time && p.end_time) ? `${p.start_time}~${p.end_time}` : (p.start_time || '');
+      (Array.isArray(p.session_dates) ? p.session_dates : []).forEach(iso => {
+        (eventsByDate[iso] = eventsByDate[iso] || []).push({ p, color, time: mainTime, extra: false });
+      });
+      // 보충 회차도 블록으로 표시(개별 시간, 보충 표기)
+      (Array.isArray(p.extra_sessions) ? p.extra_sessions : []).forEach(x => {
+        if (!x || !x.date) return;
+        const t = (x.start && x.end) ? `${x.start}~${x.end}` : (x.start || '');
+        (eventsByDate[x.date] = eventsByDate[x.date] || []).push({ p, color, time: t, extra: true });
       });
     });
 
@@ -1024,14 +1070,14 @@
       const iso = isoOf(c.y, c.m, c.d);
       const isToday = iso === todayIso;
       const evs = eventsByDate[iso] || [];
-      const evHtml = evs.map(({ p, color }) => {
-        const time = (p.start_time && p.end_time) ? `${p.start_time}~${p.end_time}` : (p.start_time || '');
+      const evHtml = evs.map(({ p, color, time, extra }) => {
         const inst = p.instructors || '';
         const org  = p.organization || '';
         const teacherLine = [inst, org].filter(Boolean).join(' · ');
-        const tip = `${p.title}${time ? ' · ' + time : ''}${inst ? ' · ' + inst : ''}${org ? ' · ' + org : ''}`;
-        return `<div class="cal-event" style="background:${color.bg}; color:${color.fg}; border-color:${color.fg}33" title="${esc(tip)}">
-          <div class="ev-title">${esc(p.title)}</div>
+        const titleText = `${p.title}${extra ? ' (보충)' : ''}`;
+        const tip = `${titleText}${time ? ' · ' + time : ''}${inst ? ' · ' + inst : ''}${org ? ' · ' + org : ''}`;
+        return `<div class="cal-event${extra ? ' cal-event-extra' : ''}" style="background:${color.bg}; color:${color.fg}; border-color:${color.fg}33" title="${esc(tip)}">
+          <div class="ev-title">${extra ? '🔁 ' : ''}${esc(p.title)}${extra ? ' <span style="font-weight:600;">(보충)</span>' : ''}</div>
           ${time ? `<div class="ev-time">${esc(time)}</div>` : ''}
           ${teacherLine ? `<div class="ev-inst">${esc(teacherLine)}</div>` : ''}
         </div>`;
@@ -1047,7 +1093,9 @@
       const [y, m] = iso.split('-').map(Number);
       return y === scheduleYear && m === scheduleMonth + 1;
     };
-    const monthPrograms = visiblePrograms.filter(p => p.session_dates.some(monthIso));
+    const monthPrograms = visiblePrograms.filter(p =>
+      (Array.isArray(p.session_dates) && p.session_dates.some(monthIso)) ||
+      (Array.isArray(p.extra_sessions) && p.extra_sessions.some(x => x && monthIso(x.date))));
     $('#cal-legend').innerHTML = monthPrograms.length === 0
       ? '<span class="muted">이 달에는 표시할 일정이 없습니다.</span>'
       : monthPrograms.map(p =>

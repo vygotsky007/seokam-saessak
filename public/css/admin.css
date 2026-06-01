@@ -417,6 +417,8 @@ tbody tr:hover { background: #F8FAFC; }
 .cal-event .ev-title { font-weight: 700; }
 .cal-event .ev-time { font-size: 10.5px; opacity: 0.78; }
 .cal-event .ev-inst { font-size: 10.5px; opacity: 0.72; }
+/* 보충 회차: 점선 테두리로 메인 일정과 구분 */
+.cal-event-extra { border-style: dashed !important; opacity: 0.95; }
 .cal-legend {
   display: flex;
   flex-wrap: wrap;

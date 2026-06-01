@@ -95,6 +95,23 @@ function normalizeTime(input) {
   return `${hh}:${mm}`;
 }
 
+// 보충 회차 배열 정규화: [{date:YYYY-MM-DD, start:HH:MM, end:HH:MM}, ...]
+// 날짜/시작/종료가 모두 유효한 항목만 남기고 날짜+시작시각 순으로 정렬. 항상 배열 반환.
+function normalizeExtraSessions(input) {
+  if (!Array.isArray(input)) return [];
+  const out = [];
+  for (const it of input) {
+    if (!it) continue;
+    const date = String(it.date || '').trim();
+    const start = normalizeTime(it.start);
+    const end = normalizeTime(it.end);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !start || !end) continue;
+    out.push({ date, start, end });
+  }
+  out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.start.localeCompare(b.start)));
+  return out;
+}
+
 router.post('/programs', async (req, res) => {
   try {
     const {
@@ -106,6 +123,7 @@ router.post('/programs', async (req, res) => {
       is_type_multicultural, is_type_sibling,
       type_custom,
       organization,
+      extra_sessions,
     } = req.body || {};
 
     if (!title || !String(title).trim()) {
@@ -149,6 +167,7 @@ router.post('/programs', async (req, res) => {
       session_dates: normalizeSessionDates(session_dates),
       start_time: normalizeTime(start_time),
       end_time: normalizeTime(end_time),
+      extra_sessions: normalizeExtraSessions(extra_sessions),
       edit_token: genEditToken(),   // 강사용 수정 링크 토큰 자동 발급
       edit_enabled: false,          // 강사 수정 권한 기본 off
     };
@@ -171,6 +190,7 @@ router.put('/programs/:id', async (req, res) => {
       'grades', 'capacity', 'waitlist_capacity', 'instructors', 'is_open',
       'program_type', 'multicultural_min',
       'session_dates', 'start_time', 'end_time',
+      'extra_sessions',
       'recruit_status',
       'is_type_multicultural', 'is_type_sibling',
       'type_custom',
@@ -227,6 +247,7 @@ router.put('/programs/:id', async (req, res) => {
     if ('session_dates' in patch) patch.session_dates = normalizeSessionDates(patch.session_dates);
     if ('start_time' in patch) patch.start_time = normalizeTime(patch.start_time);
     if ('end_time' in patch) patch.end_time = normalizeTime(patch.end_time);
+    if ('extra_sessions' in patch) patch.extra_sessions = normalizeExtraSessions(patch.extra_sessions);
     if ('organization' in patch) {
       const o = patch.organization;
       patch.organization = (o === null || o === undefined || String(o).trim() === '') ? null : String(o).trim();

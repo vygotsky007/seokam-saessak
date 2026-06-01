@@ -55,7 +55,30 @@
            (last.getMonth() + 1) + '월 ' + last.getDate() + '일(' + ew + ')';
   }
 
-  // program-like: { session_dates, start_time, end_time, schedule }
+  // 보충 회차 배열 → "6월 16일 14:40~16:20, 6월 18일 10:00~11:00" (각 회차 개별 시간)
+  function formatExtras(extras) {
+    if (!Array.isArray(extras)) return '';
+    var rows = [];
+    for (var i = 0; i < extras.length; i++) {
+      var x = extras[i] || {};
+      var d = parseDateLocal(x.date);
+      if (!d) continue;
+      rows.push({ d: d, start: x.start || '', end: x.end || '' });
+    }
+    rows.sort(function (a, b) {
+      if (a.d.getTime() !== b.d.getTime()) return a.d.getTime() - b.d.getTime();
+      return String(a.start).localeCompare(String(b.start));
+    });
+    return rows.map(function (r) {
+      var t = '';
+      if (r.start && r.end) t = ' ' + r.start + '~' + r.end;
+      else if (r.start) t = ' ' + r.start;
+      else if (r.end) t = ' ~' + r.end;
+      return (r.d.getMonth() + 1) + '월 ' + r.d.getDate() + '일' + t;
+    }).join(', ');
+  }
+
+  // program-like: { session_dates, start_time, end_time, schedule, extra_sessions }
   function format(program) {
     var p = program || {};
     var rawDates = Array.isArray(p.session_dates) ? p.session_dates : [];
@@ -71,30 +94,35 @@
       uniq.push(parsed[i]);
     }
 
+    var mainText;
     if (uniq.length === 0) {
-      return p.schedule ? String(p.schedule) : '';
-    }
-
-    var dateText;
-    if (isContiguous(uniq) && uniq.length >= 2) {
-      dateText = formatRange(uniq[0], uniq[uniq.length - 1]);
-    } else if (uniq.length === 1) {
-      dateText = formatRange(uniq[0], uniq[0]);
+      mainText = p.schedule ? String(p.schedule) : '';
     } else {
-      // 불연속: 가운뎃점 묶음 + (시작 요일~종료 요일) 꼬리
-      var head = joinSameMonth(uniq);
-      var sw = WEEK[uniq[0].getDay()];
-      var ew = WEEK[uniq[uniq.length - 1].getDay()];
-      dateText = head + ' (' + sw + '~' + ew + ')';
+      var dateText;
+      if (isContiguous(uniq) && uniq.length >= 2) {
+        dateText = formatRange(uniq[0], uniq[uniq.length - 1]);
+      } else if (uniq.length === 1) {
+        dateText = formatRange(uniq[0], uniq[0]);
+      } else {
+        // 불연속: 가운뎃점 묶음 + (시작 요일~종료 요일) 꼬리
+        var head = joinSameMonth(uniq);
+        var sw = WEEK[uniq[0].getDay()];
+        var ew = WEEK[uniq[uniq.length - 1].getDay()];
+        dateText = head + ' (' + sw + '~' + ew + ')';
+      }
+      var t = '';
+      if (p.start_time && p.end_time) t = ' ' + p.start_time + '~' + p.end_time;
+      else if (p.start_time) t = ' ' + p.start_time;
+      else if (p.end_time) t = ' ~' + p.end_time;
+      mainText = dateText + t;
     }
 
-    var t = '';
-    if (p.start_time && p.end_time) t = ' ' + p.start_time + '~' + p.end_time;
-    else if (p.start_time) t = ' ' + p.start_time;
-    else if (p.end_time) t = ' ~' + p.end_time;
-
-    return dateText + t;
+    // 보충 회차 합치기: "메인 / 보충 …"
+    var extraText = formatExtras(p.extra_sessions);
+    if (mainText && extraText) return mainText + ' / 보충 ' + extraText;
+    if (extraText) return '보충 ' + extraText;
+    return mainText;
   }
 
-  global.SaessakSchedule = { format: format };
+  global.SaessakSchedule = { format: format, formatExtras: formatExtras };
 })(typeof window !== 'undefined' ? window : globalThis);

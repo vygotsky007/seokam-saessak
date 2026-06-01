@@ -114,13 +114,47 @@
     const sessionDates = readSelectedDates();
     const st = $('#sb-start-time').value || null;
     const et = $('#sb-end-time').value || null;
-    const text = window.SaessakSchedule.format({ session_dates: sessionDates, start_time: st, end_time: et });
+    const text = window.SaessakSchedule.format({ session_dates: sessionDates, start_time: st, end_time: et, extra_sessions: readExtraSessions() });
     $('#sb-preview').textContent = text ? `미리보기: ${text}` : '미리보기: (날짜를 선택하면 표시됩니다)';
   }
+
+  // ===== 보충 회차 빌더 (메인 일정과 별도 시간) =====
+  function buildExtraRow(data) {
+    const d = (data && data.date) || '';
+    const s = (data && data.start) || '';
+    const e = (data && data.end) || '';
+    const row = document.createElement('div');
+    row.className = 'sb-extra-row';
+    row.style.cssText = 'display:flex; gap:6px; align-items:center; margin-bottom:4px; flex-wrap:wrap;';
+    row.innerHTML =
+      `<input type="date" class="x-date" value="${d}">` +
+      `<input type="time" class="x-start" value="${s}">` +
+      `<span>~</span>` +
+      `<input type="time" class="x-end" value="${e}">` +
+      `<button type="button" class="btn small danger x-del">삭제</button>`;
+    row.querySelector('.x-del').addEventListener('click', () => { row.remove(); updateSchedulePreview(); });
+    row.querySelectorAll('input').forEach(inp => inp.addEventListener('change', updateSchedulePreview));
+    return row;
+  }
+  function addExtraRow(data) { $('#sb-extra-list').appendChild(buildExtraRow(data)); }
+  function readExtraSessions() {
+    return $$('#sb-extra-list .sb-extra-row').map(r => ({
+      date: r.querySelector('.x-date').value,
+      start: r.querySelector('.x-start').value,
+      end: r.querySelector('.x-end').value,
+    })).filter(x => x.date && x.start && x.end);
+  }
+  function loadExtraSessions(arr) {
+    $('#sb-extra-list').innerHTML = '';
+    (Array.isArray(arr) ? arr : []).forEach(x => addExtraRow(x));
+  }
+  $('#sb-extra-add').addEventListener('click', () => addExtraRow());
+
   function loadScheduleBuilderFrom(p) {
     const sd = (p && Array.isArray(p.session_dates)) ? p.session_dates.slice() : [];
     $('#sb-start-time').value = (p && p.start_time) || '';
     $('#sb-end-time').value = (p && p.end_time) || '';
+    loadExtraSessions(p && p.extra_sessions);
     if (sd.length === 0) {
       $('#sb-start-date').value = '';
       $('#sb-end-date').value = '';
@@ -213,9 +247,10 @@
     const endTime = $('#sb-end-time').value || null;
     if (sessionDates.length === 0 || !startTime || !endTime) { toast('일정(날짜·시간)을 입력해 주세요'); return; }
 
+    const extraSessions = readExtraSessions();
     let autoSchedule = '';
-    if (sessionDates.length > 0) {
-      autoSchedule = window.SaessakSchedule.format({ session_dates: sessionDates, start_time: startTime, end_time: endTime });
+    if (sessionDates.length > 0 || extraSessions.length > 0) {
+      autoSchedule = window.SaessakSchedule.format({ session_dates: sessionDates, start_time: startTime, end_time: endTime, extra_sessions: extraSessions });
     }
 
     const payload = {
@@ -234,6 +269,7 @@
       session_dates: sessionDates,
       start_time: startTime,
       end_time: endTime,
+      extra_sessions: extraSessions,
     };
 
     try {

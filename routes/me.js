@@ -31,7 +31,7 @@ router.post('/lookup', async (req, res) => {
     // 보호자 연락처 + 보호자 이름 둘 다 일치해야 조회
     const { data: own, error: e1 } = await supabase
       .from('saessak_applications')
-      .select('*, program:saessak_programs(id, title, schedule, location, program_type, capacity, waitlist_capacity, session_dates, start_time, end_time)')
+      .select('*, program:saessak_programs(id, title, schedule, location, program_type, capacity, waitlist_capacity, session_dates, start_time, end_time, extra_sessions)')
       .eq('guardian_phone', phone)
       .eq('guardian_name', gname);
     if (e1) throw e1;

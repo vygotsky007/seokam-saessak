@@ -71,7 +71,7 @@ function pickRosterRow(a) {
 const PUBLIC_PROGRAM_FIELDS = [
   'id', 'title', 'description', 'schedule', 'location', 'grades',
   'capacity', 'waitlist_capacity', 'instructors',
-  'session_dates', 'start_time', 'end_time',
+  'session_dates', 'start_time', 'end_time', 'extra_sessions',
   'is_type_multicultural', 'is_type_sibling', 'type_custom',
   'multicultural_min', 'program_type', 'recruit_status', 'edit_enabled',
 ];
@@ -115,6 +115,21 @@ function normalizeTime(input) {
   const hh = String(Math.min(23, Math.max(0, Number(m[1])))).padStart(2, '0');
   const mm = String(Math.min(59, Math.max(0, Number(m[2])))).padStart(2, '0');
   return `${hh}:${mm}`;
+}
+// 보충 회차 배열 정규화(관리자 라우트와 동일 규칙)
+function normalizeExtraSessions(input) {
+  if (!Array.isArray(input)) return [];
+  const out = [];
+  for (const it of input) {
+    if (!it) continue;
+    const date = String(it.date || '').trim();
+    const start = normalizeTime(it.start);
+    const end = normalizeTime(it.end);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !start || !end) continue;
+    out.push({ date, start, end });
+  }
+  out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.start.localeCompare(b.start)));
+  return out;
 }
 
 // 토큰으로 프로그램 1개 조회. 없으면 null.
@@ -178,6 +193,7 @@ router.put('/:token', editLimiter, async (req, res) => {
     if ('session_dates' in b) patch.session_dates = normalizeSessionDates(b.session_dates);
     if ('start_time' in b) patch.start_time = normalizeTime(b.start_time);
     if ('end_time' in b) patch.end_time = normalizeTime(b.end_time);
+    if ('extra_sessions' in b) patch.extra_sessions = normalizeExtraSessions(b.extra_sessions);
 
     // 유형(다문화/형제/기타) — program_type 호환값도 함께 동기화.
     const hasTypeFields = ('is_type_multicultural' in b) || ('is_type_sibling' in b);

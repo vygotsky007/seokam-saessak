@@ -329,6 +329,7 @@ router.post('/apply', async (req, res) => {
           session_dates: p.session_dates,
           start_time: p.start_time,
           end_time: p.end_time,
+          extra_sessions: p.extra_sessions,
           application_id: inserted[0].id,
           submitted_at: inserted[0].submitted_at,
           is_waitlist: isWait,
