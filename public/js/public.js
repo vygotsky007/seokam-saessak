@@ -99,7 +99,8 @@
   let counter = 0;
   const MAX_STUDENTS = 4;
   let activeGradeFilter = null; // null = 전체
-  // 유형 필터: null=전체 | 'multicultural' | 'sibling' | 'neulbom' | 'custom:<type_custom 값>'
+  // 유형 필터: null=전체 | 'multicultural' | 'sibling' | 'custom:<type_custom 값>'
+  // 고정 유형은 다문화·형제 2개뿐. 그 외(늘봄 등)는 type_custom 자유 입력이 칩으로 자동 반영.
   let activeTypeFilter = null;
 
   // === DOM ===
@@ -177,7 +178,6 @@
     if (activeTypeFilter == null) return true;
     if (activeTypeFilter === 'multicultural') return typesOf(p).multicultural === true;
     if (activeTypeFilter === 'sibling')       return typesOf(p).sibling === true;
-    if (activeTypeFilter === 'neulbom')        return p.is_type_neulbom === true;
     if (activeTypeFilter.startsWith('custom:')) {
       return customTypeOf(p) === activeTypeFilter.slice('custom:'.length);
     }
