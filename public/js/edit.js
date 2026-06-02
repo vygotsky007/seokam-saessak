@@ -222,6 +222,7 @@
       blocked('현재 수정이 비활성화되어 있습니다. 관리자에게 문의하세요.', '🔒');
       return;
     }
+    currentProgram = j.data || {};
     fillForm(j.data || {});
     showState('form');
   }
@@ -277,7 +278,7 @@
       const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
       if (res.status === 403) { blocked(j.error || '현재 수정이 비활성화되어 있습니다. 관리자에게 문의하세요.', '🔒'); return; }
       if (!j.ok) { toast(j.error || '저장 실패'); return; }
-      if (j.data) fillForm(j.data);
+      if (j.data) { currentProgram = j.data; fillForm(j.data); }
       toast('저장되었습니다');
     } catch (err) {
       toast('서버 오류로 저장하지 못했습니다.');
@@ -291,6 +292,7 @@
   let instructorPass = null;
   let rosterRows = [];   // 현재 표시 중인 명단(수정 시 행 조회용)
   let editingId = null;  // 수정 중인 수동신청 id (null 이면 신규 추가 모드)
+  let currentProgram = {}; // 초기 GET 로드의 프로그램 전체 정보(확인증 생성에 사용)
 
   // 학년별 반 개수 (공개/관리자 폼과 동일 규칙 — 4학년만 8반, 나머지 전 학년 7반)
   const CLASS_COUNT = { 1: 7, 2: 7, 3: 7, 4: 8, 5: 7, 6: 7 };
@@ -565,6 +567,16 @@
     } catch (err) {
       toast('서버 오류로 변경하지 못했습니다.');
     }
+  });
+
+  // 참가 확인증 출력 — 인증된 명단(rosterRows) + 프로그램 정보로 인쇄용 창 생성(읽기 전용).
+  $('#roster-cert-btn').addEventListener('click', () => {
+    if (!instructorPass || $('#roster-body').hidden) { toast('먼저 강사 비밀번호를 확인하세요.'); return; }
+    if (!rosterRows || rosterRows.length === 0) { toast('확인증을 출력할 신청자가 없습니다.'); return; }
+    window.SaessakCertificate.openDialog({
+      groups: [{ program: currentProgram || {}, candidates: rosterRows }],
+      defaultContact: (currentProgram && currentProgram.instructors) || '',
+    });
   });
 
   // 엑셀 다운로드 — 인증된 비번을 동봉해 POST, blob 으로 받아 저장.

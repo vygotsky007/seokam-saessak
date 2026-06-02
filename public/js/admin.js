@@ -845,6 +845,38 @@
 
   $('#add-applicant-btn').addEventListener('click', () => openApplicantDialog(null));
 
+  // 참가 확인증 출력 — 현재 신청자 탭에 로드된 데이터로 인쇄용 창 생성(읽기 전용).
+  // 특정 프로그램 선택 시 그 프로그램, '전체 보기' 시 전체 프로그램 확인증.
+  $('#cert-print-btn').addEventListener('click', () => {
+    if (!currentProgramId) { toast('먼저 프로그램을 선택하세요.'); return; }
+    if (!applications || applications.length === 0) { toast('확인증을 출력할 신청자가 없습니다.'); return; }
+    let groups;
+    if (currentProgramId === ALL_PROGRAMS) {
+      // 프로그램별로 묶기. program 정보는 조인된 a.program 또는 programs 목록에서.
+      const byPid = new Map();
+      applications.forEach(a => {
+        const pid = a.program_id;
+        if (!byPid.has(pid)) {
+          const prog = (a.program) || programs.find(p => p.id === pid) || { title: '(삭제된 프로그램)' };
+          byPid.set(pid, { program: prog, candidates: [] });
+        }
+        byPid.get(pid).candidates.push(a);
+      });
+      // programs 목록 순서를 따른다.
+      const order = programs.map(p => p.id).filter(id => byPid.has(id));
+      byPid.forEach((_, pid) => { if (!order.includes(pid)) order.push(pid); });
+      groups = order.map(pid => byPid.get(pid));
+    } else {
+      const prog = programs.find(p => p.id === currentProgramId) || {};
+      groups = [{ program: prog, candidates: applications }];
+    }
+    const firstProg = groups[0] && groups[0].program;
+    window.SaessakCertificate.openDialog({
+      groups,
+      defaultContact: (firstProg && (firstProg.organization || firstProg.instructors)) || '',
+    });
+  });
+
   function fillAppGradeOptions(currentVal) {
     const sel = $('#app-grade-select');
     sel.innerHTML = '<option value="">학년</option>' +
