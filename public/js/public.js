@@ -99,6 +99,8 @@
   let counter = 0;
   const MAX_STUDENTS = 4;
   let activeGradeFilter = null; // null = 전체
+  // 유형 필터: null=전체 | 'multicultural' | 'sibling' | 'neulbom' | 'custom:<type_custom 값>'
+  let activeTypeFilter = null;
 
   // === DOM ===
   const detailListEl = document.getElementById('program-detail-list');
@@ -167,10 +169,26 @@
     });
   }
 
-  // === 학년 필터 ===
+  // === 유형 필터 ===
+  function customTypeOf(p) {
+    return (p && p.type_custom && String(p.type_custom).trim() !== '') ? String(p.type_custom).trim() : null;
+  }
+  function typeMatchesFilter(p) {
+    if (activeTypeFilter == null) return true;
+    if (activeTypeFilter === 'multicultural') return typesOf(p).multicultural === true;
+    if (activeTypeFilter === 'sibling')       return typesOf(p).sibling === true;
+    if (activeTypeFilter === 'neulbom')        return p.is_type_neulbom === true;
+    if (activeTypeFilter.startsWith('custom:')) {
+      return customTypeOf(p) === activeTypeFilter.slice('custom:'.length);
+    }
+    return true;
+  }
+
+  // === 학년 + 유형 필터 (AND 조건) ===
   function filteredPrograms() {
-    if (activeGradeFilter == null) return programs;
-    return programs.filter(p => gradeIncluded(p, activeGradeFilter));
+    return programs.filter(p =>
+      (activeGradeFilter == null || gradeIncluded(p, activeGradeFilter)) &&
+      typeMatchesFilter(p));
   }
 
   // === 상단: 안내 카드 ===
@@ -577,6 +595,7 @@
       const j = await res.json();
       if (!j.ok) throw new Error(j.error || '불러오기 실패');
       programs = j.data || [];
+      renderTypeFilterCustomChips();
       renderDetailList();
       if (students.length === 0) addStudent();
       else { renderStudents(); renderStep2(); renderSummary(); }
@@ -767,6 +786,55 @@
     });
   }
 
+  // === 유형 필터: 기타(type_custom) 값이 있는 프로그램이면 칩으로 동적 추가 ===
+  function renderTypeFilterCustomChips() {
+    const el = document.getElementById('type-filter');
+    if (!el) return;
+    // 이전에 추가한 custom 칩 제거 후 재생성
+    el.querySelectorAll('.chip[data-type^="custom:"]').forEach(c => c.remove());
+    const customs = Array.from(new Set(
+      programs.map(p => customTypeOf(p)).filter(Boolean)
+    )).sort((a, b) => a.localeCompare(b));
+    customs.forEach(v => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'chip';
+      btn.dataset.type = 'custom:' + v;     // dataset 으로 안전 전달(HTML 인젝션 없음)
+      btn.setAttribute('role', 'tab');
+      btn.textContent = v;
+      el.appendChild(btn);
+    });
+    // 현재 선택 상태를 칩에 반영(재생성 후에도 active 유지)
+    el.querySelectorAll('.chip').forEach(c => {
+      const raw = c.dataset.type;
+      const tok = (raw === '' || raw == null) ? null : raw;
+      const isActive = tok === activeTypeFilter;
+      c.classList.toggle('active', isActive);
+      c.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+  }
+
+  // === 유형 필터 칩 와이어링 (학년 필터와 동일 패턴, 이벤트 위임 → 동적 칩도 처리) ===
+  function wireTypeFilter() {
+    const filterEl = document.getElementById('type-filter');
+    if (!filterEl) return;
+    filterEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('.chip');
+      if (!btn || !filterEl.contains(btn)) return;
+      const raw = btn.dataset.type;
+      const next = (raw === '' || raw == null) ? null : raw;
+      if (next === activeTypeFilter) return;
+      activeTypeFilter = next;
+      filterEl.querySelectorAll('.chip').forEach(c => {
+        const isActive = c === btn;
+        c.classList.toggle('active', isActive);
+        c.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+      renderDetailList();
+      renderStep2();
+    });
+  }
+
   // === 보호자 입력 → 진행 요약 갱신 ===
   function wireGuardianInputs() {
     const ids = ['guardian_name', 'guardian_phone'];
@@ -794,6 +862,7 @@
   renderPrivacyText();
   attachPhoneFormatter(document.getElementById('guardian_phone'));
   wireGradeFilter();
+  wireTypeFilter();
   wireGuardianInputs();
   prefillGuardianFromSession();
   loadPrograms();
