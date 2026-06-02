@@ -1,6 +1,6 @@
 (() => {
-  // 학년별 반 개수 (반 개수 바뀌면 이 한 곳만 수정) — 4학년만 8반, 나머지 전 학년 7반
-  const CLASS_COUNT = { 1: 7, 2: 7, 3: 7, 4: 8, 5: 7, 6: 7 };
+  // 학년별 반 개수 (반 개수 바뀌면 이 한 곳만 수정) — 1·2학년 6반, 3학년 7반, 4학년 8반, 5·6학년 7반
+  const CLASS_COUNT = { 1: 6, 2: 6, 3: 7, 4: 8, 5: 7, 6: 7 };
   const GRADE_LIST = Object.keys(CLASS_COUNT).map(Number).sort((a, b) => a - b);
 
   function recruitStatusOf(p) {
