@@ -133,10 +133,26 @@
     <div class="toolbar">
       <select id="app-program-select" class="select"></select>
       <select id="app-sort" class="select">
-        <option value="order">제출시각순(수동 정렬 포함)</option>
-        <option value="submitted">제출시각순(원본)</option>
+        <option value="order">수동 정렬 포함</option>
+        <option value="submitted">제출 빠른순</option>
+        <option value="submitted_desc">제출 최근순</option>
         <option value="grade">학년순</option>
         <option value="name">이름순</option>
+      </select>
+      <select id="app-pref-filter" class="select" title="우대 유형">
+        <option value="all">우대: 전체</option>
+        <option value="multicultural">다문화</option>
+        <option value="sibling">형제</option>
+        <option value="general">일반</option>
+      </select>
+      <select id="app-grade-filter" class="select" title="학년">
+        <option value="all">학년: 전체</option>
+        <option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option>
+        <option value="4">4학년</option><option value="5">5학년</option><option value="6">6학년</option>
+      </select>
+      <select id="app-cancel-filter" class="select" title="취소 건">
+        <option value="show">취소 포함</option>
+        <option value="hide">취소 숨김</option>
       </select>
       <button class="btn small" id="add-applicant-btn">+ 신청자 추가</button>
       <button class="btn small" id="cert-print-btn">🪪 확인증 출력</button>

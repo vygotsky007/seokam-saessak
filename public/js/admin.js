@@ -836,6 +836,22 @@
     currentSort = e.target.value;
     renderApplications();
   });
+  // 신청자 탭 필터(클라이언트 전용 — 서버/DB 무변경)
+  let appPrefFilter = 'all';   // all | multicultural | sibling | general
+  let appGradeFilter = 'all';  // all | 1..6
+  let appCancelFilter = 'show'; // show | hide
+  $('#app-pref-filter').addEventListener('change', (e) => { appPrefFilter = e.target.value; renderApplications(); });
+  $('#app-grade-filter').addEventListener('change', (e) => { appGradeFilter = e.target.value; renderApplications(); });
+  $('#app-cancel-filter').addEventListener('change', (e) => { appCancelFilter = e.target.value; renderApplications(); });
+  // 우대 판정은 기존 명단 배지와 동일 기준(a.is_multicultural / a.sibling_group_id) 재사용.
+  function appPassesFilters(a) {
+    if (appCancelFilter === 'hide' && a.status === 'cancelled') return false;
+    if (appGradeFilter !== 'all' && Number(a.grade) !== Number(appGradeFilter)) return false;
+    if (appPrefFilter === 'multicultural' && a.is_multicultural !== true) return false;
+    if (appPrefFilter === 'sibling' && !a.sibling_group_id) return false;
+    if (appPrefFilter === 'general' && (a.is_multicultural === true || a.sibling_group_id)) return false;
+    return true;
+  }
 
   async function loadApplications(pid) {
     try {
@@ -863,6 +879,7 @@
 
   function applicationComparator(a, b) {
     if (currentSort === 'submitted') return new Date(a.submitted_at) - new Date(b.submitted_at);
+    if (currentSort === 'submitted_desc') return new Date(b.submitted_at) - new Date(a.submitted_at);
     if (currentSort === 'grade') return (a.grade || 0) - (b.grade || 0) || (a.class_no || 0) - (b.class_no || 0);
     if (currentSort === 'name') return (a.student_name || '').localeCompare(b.student_name || '');
     const ao = a.display_order ?? null;
@@ -952,19 +969,27 @@
     const tbody = $('#applicants-tbody');
     const allView = (currentProgramId === ALL_PROGRAMS);
 
-    // 카운트: 유효(취소 제외) 인원 기준 + 취소 건수 별도 표기(명단 표시 인원과 정합).
-    const validCount = applications.filter(a => a.status !== 'cancelled').length;
-    const cancelledCount = applications.length - validCount;
-    $('#app-count').textContent = `${validCount}명` + (cancelledCount ? ` (취소 ${cancelledCount})` : '');
+    // 필터 적용(우대·학년·취소). 정렬/필터는 클라이언트 전용.
+    const filtered = applications.filter(appPassesFilters);
+
+    // 카운트: 필터 적용 후 유효(취소 제외) 인원 + 취소 건수 별도 표기.
+    const validCount = filtered.filter(a => a.status !== 'cancelled').length;
+    const cancelledCount = filtered.length - validCount;
+    const totalNote = (filtered.length !== applications.length) ? ` · 필터 적용(전체 ${applications.length})` : '';
+    $('#app-count').textContent = `${validCount}명` + (cancelledCount ? ` (취소 ${cancelledCount})` : '') + totalNote;
     if (applications.length === 0) {
       tbody.innerHTML = `<tr><td colspan="10" class="empty-state">신청자가 없습니다.</td></tr>`;
+      return;
+    }
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" class="empty-state">필터에 해당하는 신청자가 없습니다.</td></tr>`;
       return;
     }
 
     if (allView) {
       // 프로그램별로 묶어서 표시. 그룹 순서는 programs 목록 순서를 따른다.
       const groups = new Map(); // program_id → { title, rows }
-      applications.forEach(a => {
+      filtered.forEach(a => {
         const pid = a.program_id;
         if (!groups.has(pid)) {
           groups.set(pid, { title: (a.program && a.program.title) || '(삭제된 프로그램)', rows: [] });
@@ -987,7 +1012,7 @@
       });
       tbody.innerHTML = html;
     } else {
-      const list = applications.slice().sort(applicationComparator);
+      const list = filtered.slice().sort(applicationComparator);
       let n = 0;
       tbody.innerHTML = list.map(a => applicantRowHtml(a, a.status === 'cancelled' ? '—' : (++n), false)).join('');
     }
