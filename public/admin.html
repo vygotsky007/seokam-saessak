@@ -23,6 +23,7 @@
     <button class="tab" data-tab="programs">📚 프로그램</button>
     <button class="tab" data-tab="applicants">👥 신청자</button>
     <button class="tab" data-tab="inquiries">💬 문의사항 <span class="tab-badge" id="inq-badge" hidden></span></button>
+    <button class="tab" data-tab="student-board">🧑‍🎓 학생 기록</button>
     <button class="tab" data-tab="schedule">📅 일정</button>
     <button class="tab" data-tab="export">📥 내보내기</button>
   </div>
@@ -174,6 +175,44 @@
           </tr>
         </thead>
         <tbody id="inquiries-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="tab-pane" id="pane-student-board" hidden>
+    <div class="toolbar">
+      <label class="muted" style="font-size:13px;">정렬</label>
+      <select id="sb-sort" class="select">
+        <option value="name">이름순</option>
+        <option value="stamps">이수 횟수순</option>
+        <option value="pos">긍정 많은순</option>
+        <option value="neg">부정 많은순</option>
+        <option value="recent">최근 기록순</option>
+      </select>
+      <label class="muted" style="font-size:13px;">필터</label>
+      <select id="sb-filter" class="select">
+        <option value="all">전체</option>
+        <option value="neg">부정기록 있는 학생만</option>
+        <option value="pos">긍정기록 있는 학생만</option>
+      </select>
+      <span class="muted" id="sb-count"></span>
+      <span class="muted" style="font-size:11.5px;">행을 클릭하면 학생 상세·기록 추가</span>
+    </div>
+    <div class="table-wrap">
+      <table id="student-board-table">
+        <thead>
+          <tr>
+            <th>학생</th>
+            <th>학년·반</th>
+            <th>보호자 연락처</th>
+            <th>이수</th>
+            <th>신청·선정</th>
+            <th>긍정</th>
+            <th>부정</th>
+            <th>최근 기록</th>
+          </tr>
+        </thead>
+        <tbody id="student-board-tbody"></tbody>
       </table>
     </div>
   </section>
@@ -358,27 +397,46 @@
   </div>
 </div>
 
-<!-- 학생 참고기록(노쇼/태도) Dialog -->
+<!-- 학생 기록(긍정/부정) Dialog -->
 <div class="dialog-mask" id="note-dialog">
   <div class="dialog">
-    <h2>⚠️ 학생 참고기록</h2>
+    <h2>📋 학생 기록</h2>
     <p id="note-target-info" style="margin-bottom:4px;"></p>
-    <p class="muted" style="font-size:11.5px; margin-bottom:10px;">이름·학년·반으로 매칭한 기록입니다. 동명이인일 수 있으니 참고용으로만 활용하세요.</p>
+    <p class="muted" style="font-size:11.5px; margin-bottom:10px;">잘한 점·아쉬운 점을 함께 기록할 수 있어요. 이름·학년·반으로 매칭하므로 동명이인일 수 있습니다.</p>
     <div id="note-history" class="note-history"></div>
     <hr style="border:none; border-top:1px solid var(--border); margin:12px 0;">
     <div class="form-grid">
       <label>유형</label>
-      <select id="note-type" class="select">
-        <option value="noshow">🚫 노쇼</option>
-        <option value="attitude">😠 태도</option>
-        <option value="etc">📝 기타</option>
-      </select>
+      <select id="note-type" class="select"></select>
       <label>상세 메모</label>
-      <textarea id="note-content" placeholder="예: 무단 불참 / 수업 방해 등"></textarea>
+      <textarea id="note-content" placeholder="예: 발표를 적극적으로 했어요 / 무단 불참"></textarea>
     </div>
     <div class="actions">
       <button type="button" class="btn" data-close>닫기</button>
       <button type="button" class="btn primary" id="note-save">기록 추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- 학생 상세(학생 기록 게시판) Dialog -->
+<div class="dialog-mask" id="sb-detail">
+  <div class="dialog" style="max-width:560px;">
+    <h2>🧑‍🎓 학생 상세</h2>
+    <p id="sb-detail-info" style="margin-bottom:10px; font-size:13px;"></p>
+    <h3 style="font-size:13px; color:var(--muted); margin:8px 0 4px;">들은 · 신청 프로그램</h3>
+    <ul id="sb-programs" class="sb-programs"></ul>
+    <h3 style="font-size:13px; color:var(--muted); margin:12px 0 4px;">기록 타임라인</h3>
+    <div id="sb-timeline" class="note-history"></div>
+    <hr style="border:none; border-top:1px solid var(--border); margin:12px 0;">
+    <div class="form-grid">
+      <label>유형</label>
+      <select id="sb-note-type" class="select"></select>
+      <label>상세 메모</label>
+      <textarea id="sb-note-content" placeholder="예: 발표를 적극적으로 했어요 / 무단 불참"></textarea>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn" data-close>닫기</button>
+      <button type="button" class="btn primary" id="sb-note-save">기록 추가</button>
     </div>
   </div>
 </div>

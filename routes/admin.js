@@ -563,9 +563,38 @@ router.post('/applications/:id/copy', async (req, res) => {
   }
 });
 
-// ===== 학생 참고기록(노쇼/태도) — 내부 관리용. 공개/내신청 화면에는 절대 노출 안 함. =====
-// student_notes 테이블만 읽고/쓴다(신청 테이블 무변경). 매칭 식별값: 이름+학년+반.
-const NOTE_TYPES = ['noshow', 'attitude', 'etc'];
+// ===== 학생 기록(긍정/부정) — 내부 관리용. 공개/내신청 화면에는 절대 노출 안 함. =====
+// student_notes 테이블만 읽고/쓴다(신청 테이블 무변경). 매칭 식별값: 이름+학년+반(+연락처).
+// 유형→polarity 매핑(프론트 NOTE_TYPE_GROUPS 와 동일하게 유지).
+const NOTE_TYPE_POLARITY = {
+  excellent: '긍정', active: '긍정', praise: '긍정', // 긍정
+  noshow: '부정', attitude: '부정',                  // 부정
+  etc: '중립',                                        // 중립
+};
+const NOTE_TYPES = Object.keys(NOTE_TYPE_POLARITY);
+const POLARITIES = ['긍정', '부정', '중립'];
+function polarityForType(t) { return NOTE_TYPE_POLARITY[t] || '중립'; }
+// 표시/집계용: 저장된 polarity 우선, 없으면(기존 행) note_type 으로 추론.
+function notePolarity(n) { return (n && POLARITIES.includes(n.polarity)) ? n.polarity : polarityForType(n && n.note_type); }
+// 학생 매칭: 연락처 양쪽 다 있으면 이름+연락처(학년/반 무관), 없으면 이름+학년+반.
+function rowContact(r) { return (r && (r.guardian_contact || r.guardian_phone)) || null; }
+function rowMatchesStudent(stu, r) {
+  if (String(r.student_name || '').trim() !== stu.name) return false;
+  const rc = rowContact(r);
+  if (stu.contact && rc) return rc === stu.contact;
+  return (r.grade ?? '') === (stu.grade ?? '') && (r.class_no ?? '') === (stu.class_no ?? '');
+}
+
+// polarity 컬럼이 아직 없는 DB에서도 동작하도록 resilient insert(없으면 polarity 빼고 재시도).
+async function insertStudentNote(row) {
+  let { data, error } = await supabase.from('student_notes').insert([row]).select();
+  if (error && /polarity/i.test(error.message || '')) {
+    const rest = Object.assign({}, row);
+    delete rest.polarity;
+    ({ data, error } = await supabase.from('student_notes').insert([rest]).select());
+  }
+  return { data, error };
+}
 
 // GET /api/student-notes
 //  - 파라미터 없음: 전체 반환(명단 일괄 매칭용 — 학생마다 N번 호출 방지)
@@ -593,6 +622,7 @@ router.post('/student-notes', async (req, res) => {
     const student_name = b.student_name ? String(b.student_name).trim() : '';
     if (!student_name) return res.status(400).json({ ok: false, error: '학생 이름이 필요합니다.' });
     const note_type = NOTE_TYPES.includes(b.note_type) ? b.note_type : 'etc';
+    const polarity = POLARITIES.includes(b.polarity) ? b.polarity : polarityForType(note_type);
     const content = b.content ? String(b.content).trim() : '';
     const row = {
       student_name,
@@ -601,14 +631,112 @@ router.post('/student-notes', async (req, res) => {
       guardian_contact: b.guardian_contact ? String(b.guardian_contact).trim() : null, // 동명이인 구분용
       program_id: b.program_id || null,
       note_type,
+      polarity,
       content,
       created_by: '관리자',
     };
-    const { data, error } = await supabase.from('student_notes').insert([row]).select();
+    const { data, error } = await insertStudentNote(row);
     if (error) throw error;
     res.json({ ok: true, data: (data && data[0]) || null });
   } catch (err) {
     console.error('[POST admin/student-notes]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// GET /api/student-board — 학생 단위 집계(일괄 조회 후 1회 집계, 학생마다 N번 호출 금지).
+// 신청/도장/기록을 읽기만 해서 학생별로 묶는다(신청 테이블 무변경).
+router.get('/student-board', async (req, res) => {
+  try {
+    const [appsRes, notesRes, stampsRes] = await Promise.all([
+      supabase.from('saessak_applications').select('*, program:saessak_programs(title)'),
+      supabase.from('student_notes').select('*'),
+      supabase.from('completion_stamps').select('*'),
+    ]);
+    if (appsRes.error) throw appsRes.error;
+    if (notesRes.error) throw notesRes.error;
+    if (stampsRes.error) throw stampsRes.error;
+    const apps = appsRes.data || [];
+    const notes = notesRes.data || [];
+    const stamps = stampsRes.data || [];
+
+    // 1) 신청(applications) 으로 학생 집합 구성. 키: 연락처 있으면 이름+연락처, 없으면 이름+학년+반.
+    const students = new Map();
+    const keyOf = (name, grade, classNo, contact) =>
+      contact ? `c:${name}|${contact}` : `n:${name}|${grade ?? ''}|${classNo ?? ''}`;
+    apps.forEach(a => {
+      const name = String(a.student_name || '').trim();
+      if (!name) return;
+      const contact = a.guardian_phone || null;
+      const key = keyOf(name, a.grade, a.class_no, contact);
+      let s = students.get(key);
+      if (!s) {
+        s = { key, name, grade: a.grade ?? null, class_no: a.class_no ?? null, contact, guardian_phone: contact, _latest: a.submitted_at || '', _apps: [] };
+        students.set(key, s);
+      }
+      // 최신 신청의 학년/반을 대표값으로
+      if ((a.submitted_at || '') >= (s._latest || '')) { s.grade = a.grade ?? s.grade; s.class_no = a.class_no ?? s.class_no; s._latest = a.submitted_at || s._latest; }
+      s._apps.push(a);
+    });
+
+    // 2) 학생별 프로그램(신청/선정) 집계
+    students.forEach(s => {
+      const progMap = new Map();
+      const selected = new Set();
+      s._apps.forEach(a => {
+        if (a.status === 'cancelled') return;
+        const pid = String(a.program_id);
+        if (!progMap.has(pid)) progMap.set(pid, { program_id: pid, title: (a.program && a.program.title) || '', selected: false, stamped: false });
+        if (a.status === 'selected') selected.add(pid);
+      });
+      selected.forEach(pid => { if (progMap.has(pid)) progMap.get(pid).selected = true; });
+      s._progMap = progMap;
+      s.applied_count = progMap.size;
+      s.selected_count = selected.size;
+    });
+
+    // 3) 도장(completion_stamps) 매칭 → 이수 횟수 + 프로그램에 도장 표시
+    students.forEach(s => {
+      const pids = new Set();
+      stamps.forEach(st => {
+        if (!rowMatchesStudent(s, st)) return;
+        const pid = String(st.program_id);
+        pids.add(pid);
+        if (s._progMap.has(pid)) s._progMap.get(pid).stamped = true;
+        else s._progMap.set(pid, { program_id: pid, title: st.program_name || '', selected: false, stamped: true });
+      });
+      s.stamp_count = pids.size;
+      s.programs = Array.from(s._progMap.values());
+    });
+
+    // 4) 기록(student_notes) 매칭 → 긍정/부정 수, 최근 기록일, 타임라인
+    students.forEach(s => {
+      const matched = notes.filter(n => rowMatchesStudent(s, n));
+      let pos = 0, neg = 0, neu = 0, recent = null;
+      matched.forEach(n => {
+        const pol = notePolarity(n);
+        if (pol === '긍정') pos++; else if (pol === '부정') neg++; else neu++;
+        if (n.created_at && (!recent || n.created_at > recent)) recent = n.created_at;
+      });
+      s.pos_count = pos; s.neg_count = neg; s.neu_count = neu; s.recent_note_at = recent;
+      s.notes = matched
+        .slice()
+        .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')))
+        .map(n => ({
+          note_type: n.note_type, polarity: notePolarity(n), content: n.content,
+          created_at: n.created_at, created_by: n.created_by, program_id: n.program_id,
+        }));
+    });
+
+    const out = Array.from(students.values()).map(s => ({
+      key: s.key, name: s.name, grade: s.grade, class_no: s.class_no, guardian_phone: s.guardian_phone,
+      stamp_count: s.stamp_count, applied_count: s.applied_count, selected_count: s.selected_count,
+      pos_count: s.pos_count, neg_count: s.neg_count, neu_count: s.neu_count, recent_note_at: s.recent_note_at,
+      programs: s.programs, notes: s.notes,
+    }));
+    res.json({ ok: true, data: out });
+  } catch (err) {
+    console.error('[GET admin/student-board]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

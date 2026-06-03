@@ -341,14 +341,30 @@ tbody tr:hover { background: #F8FAFC; }
 .note-history { max-height: 260px; overflow-y: auto; }
 .note-item {
   border: 1px solid var(--border);
+  border-left: 4px solid #CBD5E1;
   border-radius: 8px;
   padding: 8px 10px;
   margin-bottom: 6px;
-  background: #FFFBEB;
+  background: #F8FAFC;
 }
 .note-item-head { display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; }
-.note-type-tag { font-weight: 800; color: #B45309; }
+.note-type-tag { font-weight: 800; }
 .note-item-body { margin-top: 4px; font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+/* polarity 색: 긍정(초록)/부정(빨강)/중립(회색) */
+.note-item.pol-pos { border-left-color: #43A047; background: #F1F8E9; }
+.note-item.pol-pos .note-type-tag { color: #2E7D32; }
+.note-item.pol-neg { border-left-color: #E53935; background: #FEF2F2; }
+.note-item.pol-neg .note-type-tag { color: #B91C1C; }
+.note-item.pol-neu { border-left-color: #94A3B8; background: #F8FAFC; }
+.note-item.pol-neu .note-type-tag { color: #64748B; }
+.pol-pos { color: #2E7D32; }
+.pol-neg { color: #B91C1C; }
+.pol-badge { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; }
+.pol-badge.pol-pos { background: #E8F5E9; color: #2E7D32; }
+.pol-badge.pol-neg { background: #FEE2E2; color: #B91C1C; }
+/* 학생 상세 프로그램 목록 */
+.sb-programs { margin: 0; padding-left: 4px; list-style: none; font-size: 13px; }
+.sb-programs li { padding: 3px 0; border-bottom: 1px solid #F1F5F9; }
 
 .badge.tag-multicultural { background: #E0F2FE; color: #075985; }
 .badge.tag-sibling       { background: #FCE7F3; color: #9D174D; }

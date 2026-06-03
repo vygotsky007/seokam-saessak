@@ -41,7 +41,33 @@
   const ALL_PROGRAMS = '__all__'; // 신청자 탭 "전체 보기" sentinel
 
   // 학생 참고기록(노쇼/태도) — 내부 관리용
-  const NOTE_TYPE_LABELS = { noshow: '🚫 노쇼', attitude: '😠 태도', etc: '📝 기타' };
+  // 기록 유형 설정 — 여기만 바꾸면 모달·학생기록 게시판에 모두 반영.
+  const NOTE_TYPE_GROUPS = [
+    { polarity: '긍정', types: [
+      { value: 'excellent', label: '🌟 우수' },
+      { value: 'active',    label: '👍 적극참여' },
+      { value: 'praise',    label: '💬 칭찬' },
+    ] },
+    { polarity: '부정', types: [
+      { value: 'noshow',   label: '🚫 노쇼' },
+      { value: 'attitude', label: '😠 태도' },
+    ] },
+    { polarity: '중립', types: [
+      { value: 'etc', label: '📝 기타' },
+    ] },
+  ];
+  const NOTE_TYPE_LABELS = {};
+  const NOTE_TYPE_POLARITY = {};
+  NOTE_TYPE_GROUPS.forEach(g => g.types.forEach(t => { NOTE_TYPE_LABELS[t.value] = t.label; NOTE_TYPE_POLARITY[t.value] = g.polarity; }));
+  // 표시/집계용: 저장된 polarity 우선, 없으면(기존 행) note_type 으로 추론.
+  function polarityOf(n) { return (n && ['긍정', '부정', '중립'].includes(n.polarity)) ? n.polarity : (NOTE_TYPE_POLARITY[n && n.note_type] || '중립'); }
+  function noteTypeOptionsHtml() {
+    return NOTE_TYPE_GROUPS.map(g =>
+      `<optgroup label="${g.polarity}">` + g.types.map(t => `<option value="${t.value}">${t.label}</option>`).join('') + `</optgroup>`
+    ).join('');
+  }
+  const POLARITY_CLASS = { '긍정': 'pol-pos', '부정': 'pol-neg', '중립': 'pol-neu' };
+
   let studentNotesByKey = {}; // 이름|학년|반 → [기록...]
   let noteTarget = null;      // 현재 작성 대상 { student_name, grade, class_no, program_id }
   // 1차 매칭 식별값: 이름+학년+반
@@ -195,6 +221,7 @@
     else if (name === 'programs') loadProgramsTab();
     else if (name === 'applicants') loadApplicantsTab();
     else if (name === 'inquiries') loadInquiriesTab();
+    else if (name === 'student-board') loadStudentBoardTab();
     else if (name === 'schedule') loadScheduleTab();
     else if (name === 'export') loadExportTab();
   }
@@ -1112,14 +1139,17 @@
     if (!list.length) {
       return '<p class="muted" style="margin:8px 0;">아직 기록이 없습니다.</p>';
     }
-    return list.map(n => `
-      <div class="note-item">
+    return list.map(n => {
+      const pol = polarityOf(n);
+      return `
+      <div class="note-item ${POLARITY_CLASS[pol] || 'pol-neu'}">
         <div class="note-item-head">
           <span class="note-type-tag">${NOTE_TYPE_LABELS[n.note_type] || NOTE_TYPE_LABELS.etc}</span>
           <span class="muted">${esc(fmtNoteDate(n.created_at))} · ${esc(n.created_by || '?')}</span>
         </div>
         ${n.content ? `<div class="note-item-body">${esc(n.content)}</div>` : ''}
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
   function openNoteDialog(appId) {
     const a = applications.find(x => x.id === appId);
@@ -1135,20 +1165,22 @@
       `<b>${esc(a.student_name)}</b> (${a.grade ?? '?'}-${a.class_no ?? '?'})`;
     $('#note-history').innerHTML = renderNoteHistory(
       matchedNotes(a.student_name, a.grade, a.class_no, a.guardian_phone));
-    $('#note-type').value = 'noshow';
+    $('#note-type').innerHTML = noteTypeOptionsHtml();
+    $('#note-type').value = 'excellent';
     $('#note-content').value = '';
     $('#note-dialog').classList.add('open');
   }
   $('#note-save')?.addEventListener('click', async () => {
     if (!noteTarget) return;
     const note_type = $('#note-type').value;
+    const polarity = NOTE_TYPE_POLARITY[note_type] || '중립';
     const content = $('#note-content').value.trim();
     try {
       await api('/student-notes', {
         method: 'POST',
-        body: JSON.stringify({ ...noteTarget, note_type, content }),
+        body: JSON.stringify({ ...noteTarget, note_type, polarity, content }),
       });
-      toast('참고기록을 저장했습니다');
+      toast('기록을 저장했습니다');
       await loadStudentNotes();
       renderApplications();
       // 모달은 열어둔 채 이력 갱신(방금 추가분 즉시 확인)
@@ -1222,6 +1254,105 @@
     inquiryFilter = b.dataset.inqFilter;
     renderInquiries();
   }));
+
+  // ===== 학생 기록 게시판 (관리자 전용) =====
+  let studentBoard = [];
+  let sbSort = 'name';     // name | stamps | pos | neg | recent
+  let sbFilter = 'all';    // all | neg | pos
+  let sbCurrent = null;    // 상세에서 보고 있는 학생
+
+  async function loadStudentBoardTab() {
+    try {
+      const j = await api('/student-board');
+      studentBoard = j.data || [];
+      renderStudentBoard();
+    } catch (err) { toast(err.message); }
+  }
+  function sbComparator(a, b) {
+    if (sbSort === 'stamps') return (b.stamp_count - a.stamp_count) || a.name.localeCompare(b.name);
+    if (sbSort === 'pos') return (b.pos_count - a.pos_count) || a.name.localeCompare(b.name);
+    if (sbSort === 'neg') return (b.neg_count - a.neg_count) || a.name.localeCompare(b.name);
+    if (sbSort === 'recent') return String(b.recent_note_at || '').localeCompare(String(a.recent_note_at || '')) || a.name.localeCompare(b.name);
+    return a.name.localeCompare(b.name); // name
+  }
+  function renderStudentBoard() {
+    const selSort = $('#sb-sort'); if (selSort) selSort.value = sbSort;
+    const selFilter = $('#sb-filter'); if (selFilter) selFilter.value = sbFilter;
+    let list = studentBoard.slice();
+    if (sbFilter === 'neg') list = list.filter(s => s.neg_count > 0);
+    else if (sbFilter === 'pos') list = list.filter(s => s.pos_count > 0);
+    list.sort(sbComparator);
+    $('#sb-count').textContent = `${list.length}명`;
+    const tbody = $('#student-board-tbody');
+    if (!list.length) { tbody.innerHTML = `<tr><td colspan="8" class="empty-state">학생이 없습니다.</td></tr>`; return; }
+    tbody.innerHTML = list.map(s => `
+      <tr data-sb-key="${esc(s.key)}" style="cursor:pointer;">
+        <td><b>${esc(s.name)}</b></td>
+        <td>${s.grade ?? '?'}-${s.class_no ?? '?'}</td>
+        <td><span class="muted">${esc(s.guardian_phone || '')}</span></td>
+        <td>${s.stamp_count}</td>
+        <td>${s.applied_count}<span class="muted"> / 선정 ${s.selected_count}</span></td>
+        <td>${s.pos_count ? `<span class="pol-badge pol-pos">👍 ${s.pos_count}</span>` : '<span class="muted">0</span>'}</td>
+        <td>${s.neg_count ? `<span class="pol-badge pol-neg">⚠ ${s.neg_count}</span>` : '<span class="muted">0</span>'}</td>
+        <td><span class="muted">${s.recent_note_at ? esc(fmtNoteDate(s.recent_note_at)) : '—'}</span></td>
+      </tr>`).join('');
+    $$('[data-sb-key]').forEach(tr => tr.addEventListener('click', () => openStudentDetail(tr.dataset.sbKey)));
+  }
+  $('#sb-sort')?.addEventListener('change', (e) => { sbSort = e.target.value; renderStudentBoard(); });
+  $('#sb-filter')?.addEventListener('change', (e) => { sbFilter = e.target.value; renderStudentBoard(); });
+
+  function renderStudentDetail(s) {
+    const progHtml = (s.programs || []).length
+      ? s.programs.map(p => `<li>${p.stamped ? '🌱' : '·'} ${esc(p.title || '(제목 없음)')}${p.selected ? ' <span class="pol-badge pol-pos">선정</span>' : ''}${p.stamped ? ' <span class="pol-badge" style="background:#E8F5E9;color:#2E7D32;">이수</span>' : ''}</li>`).join('')
+      : '<li class="muted">신청·이수 기록이 없습니다.</li>';
+    const timeline = (s.notes || []).length
+      ? s.notes.slice().reverse().map(n => `
+        <div class="note-item ${POLARITY_CLASS[n.polarity] || 'pol-neu'}">
+          <div class="note-item-head">
+            <span class="note-type-tag">${NOTE_TYPE_LABELS[n.note_type] || NOTE_TYPE_LABELS.etc}</span>
+            <span class="muted">${esc(fmtNoteDate(n.created_at))} · ${esc(n.created_by || '?')}</span>
+          </div>
+          ${n.content ? `<div class="note-item-body">${esc(n.content)}</div>` : ''}
+        </div>`).join('')
+      : '<p class="muted" style="margin:6px 0;">아직 기록이 없습니다.</p>';
+    $('#sb-detail-info').innerHTML =
+      `<b>${esc(s.name)}</b> (${s.grade ?? '?'}-${s.class_no ?? '?'}) · ${esc(s.guardian_phone || '연락처 없음')}
+       · 이수 ${s.stamp_count} · 신청 ${s.applied_count}/선정 ${s.selected_count}
+       · <span class="pol-pos" style="font-weight:700;">긍정 ${s.pos_count}</span> / <span class="pol-neg" style="font-weight:700;">부정 ${s.neg_count}</span>`;
+    $('#sb-programs').innerHTML = progHtml;
+    $('#sb-timeline').innerHTML = timeline;
+  }
+  function openStudentDetail(key) {
+    const s = studentBoard.find(x => x.key === key);
+    if (!s) return;
+    sbCurrent = s;
+    renderStudentDetail(s);
+    $('#sb-note-type').innerHTML = noteTypeOptionsHtml();
+    $('#sb-note-type').value = 'excellent';
+    $('#sb-note-content').value = '';
+    $('#sb-detail').classList.add('open');
+  }
+  $('#sb-note-save')?.addEventListener('click', async () => {
+    if (!sbCurrent) return;
+    const note_type = $('#sb-note-type').value;
+    const polarity = NOTE_TYPE_POLARITY[note_type] || '중립';
+    const content = $('#sb-note-content').value.trim();
+    try {
+      await api('/student-notes', {
+        method: 'POST',
+        body: JSON.stringify({
+          student_name: sbCurrent.name, grade: sbCurrent.grade, class_no: sbCurrent.class_no,
+          guardian_contact: sbCurrent.guardian_phone || null, note_type, polarity, content,
+        }),
+      });
+      toast('기록을 저장했습니다');
+      const key = sbCurrent.key;
+      await loadStudentBoardTab();          // 집계 갱신
+      const s = studentBoard.find(x => x.key === key);
+      if (s) { sbCurrent = s; renderStudentDetail(s); }
+      $('#sb-note-content').value = '';
+    } catch (err) { toast(err.message); }
+  });
 
   // ===== Export =====
   async function loadExportTab() {
