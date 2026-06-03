@@ -689,4 +689,75 @@ router.post('/:token/student-notes', rosterLimiter, async (req, res) => {
   }
 });
 
+// ===== 이수 도장(마일리지) — 강사용. 비번 게이트. 자기 프로그램(p.id)에만 도장. =====
+function gradeOrNull(v) { return (v === undefined || v === null || v === '') ? null : Number(v); }
+
+// POST /api/edit/:token/completion-stamps/list — 도장판 매칭/집계용 전체 도장 조회(비번 게이트).
+router.post('/:token/completion-stamps/list', rosterLimiter, async (req, res) => {
+  try {
+    const p = await gateRoster(req, res);
+    if (!p) return;
+    const { data, error } = await supabase
+      .from('completion_stamps')
+      .select('*')
+      .order('stamped_at', { ascending: true });
+    if (error) throw error;
+    res.json({ ok: true, data: data || [] });
+  } catch (err) {
+    console.error('[POST /api/edit/:token/completion-stamps/list]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// POST /api/edit/:token/completion-stamps — 도장 찍기(이수) upsert. 프로그램은 이 토큰의 것으로 고정.
+router.post('/:token/completion-stamps', rosterLimiter, async (req, res) => {
+  try {
+    const p = await gateRoster(req, res);
+    if (!p) return;
+    const b = req.body || {};
+    const student_name = b.student_name ? String(b.student_name).trim() : '';
+    if (!student_name) return res.status(400).json({ ok: false, error: '학생 정보가 필요합니다.' });
+    const row = {
+      student_name,
+      grade: gradeOrNull(b.grade),
+      class_no: gradeOrNull(b.class_no),
+      guardian_contact: b.guardian_contact ? String(b.guardian_contact).trim() : null,
+      program_id: String(p.id),          // 강사는 자기 프로그램만
+      program_name: p.title || null,
+      stamped_by: instructorNoteAuthor(p, req.params.token),
+      stamped_at: new Date().toISOString(),
+    };
+    const { error } = await supabase
+      .from('completion_stamps')
+      .upsert(row, { onConflict: 'student_name,grade,class_no,program_id' });
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[POST /api/edit/:token/completion-stamps]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// POST /api/edit/:token/completion-stamps/remove — 도장 취소(삭제). 자기 프로그램만.
+router.post('/:token/completion-stamps/remove', rosterLimiter, async (req, res) => {
+  try {
+    const p = await gateRoster(req, res);
+    if (!p) return;
+    const b = req.body || {};
+    const student_name = b.student_name ? String(b.student_name).trim() : '';
+    if (!student_name) return res.status(400).json({ ok: false, error: '학생 정보가 필요합니다.' });
+    let q = supabase.from('completion_stamps').delete()
+      .eq('student_name', student_name).eq('program_id', String(p.id));
+    const g = gradeOrNull(b.grade), c = gradeOrNull(b.class_no);
+    q = (g === null) ? q.is('grade', null) : q.eq('grade', g);
+    q = (c === null) ? q.is('class_no', null) : q.eq('class_no', c);
+    const { error } = await q;
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[POST /api/edit/:token/completion-stamps/remove]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 module.exports = router;

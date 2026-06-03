@@ -683,6 +683,74 @@ router.post('/inquiries/status', async (req, res) => {
   }
 });
 
+// ===== 이수 도장(마일리지) — completion_stamps 만 읽고/쓴다. 신청 테이블 무변경. =====
+// unique: (student_name, grade, class_no, program_id). 확인증 출력 화면에서 도장 찍기/취소.
+function gradeOrNull(v) { return (v === undefined || v === null || v === '') ? null : Number(v); }
+
+// GET /api/completion-stamps — 전체 도장(확인증 도장판 매칭/집계용, 일괄 조회).
+router.get('/completion-stamps', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('completion_stamps')
+      .select('*')
+      .order('stamped_at', { ascending: true });
+    if (error) throw error;
+    res.json({ ok: true, data: data || [] });
+  } catch (err) {
+    console.error('[GET admin/completion-stamps]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// POST /api/completion-stamps — 도장 찍기(이수) upsert.
+router.post('/completion-stamps', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const student_name = b.student_name ? String(b.student_name).trim() : '';
+    const program_id = b.program_id != null ? String(b.program_id) : '';
+    if (!student_name || !program_id) return res.status(400).json({ ok: false, error: '학생·프로그램 정보가 필요합니다.' });
+    const row = {
+      student_name,
+      grade: gradeOrNull(b.grade),
+      class_no: gradeOrNull(b.class_no),
+      guardian_contact: b.guardian_contact ? String(b.guardian_contact).trim() : null,
+      program_id,
+      program_name: b.program_name ? String(b.program_name).trim() : null,
+      stamped_by: '관리자',
+      stamped_at: new Date().toISOString(),
+    };
+    const { error } = await supabase
+      .from('completion_stamps')
+      .upsert(row, { onConflict: 'student_name,grade,class_no,program_id' });
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[POST admin/completion-stamps]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// POST /api/completion-stamps/remove — 도장 취소(삭제). unique 키로만 삭제.
+router.post('/completion-stamps/remove', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const student_name = b.student_name ? String(b.student_name).trim() : '';
+    const program_id = b.program_id != null ? String(b.program_id) : '';
+    if (!student_name || !program_id) return res.status(400).json({ ok: false, error: '학생·프로그램 정보가 필요합니다.' });
+    let q = supabase.from('completion_stamps').delete()
+      .eq('student_name', student_name).eq('program_id', program_id);
+    const g = gradeOrNull(b.grade), c = gradeOrNull(b.class_no);
+    q = (g === null) ? q.is('grade', null) : q.eq('grade', g);
+    q = (c === null) ? q.is('class_no', null) : q.eq('class_no', c);
+    const { error } = await q;
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[POST admin/completion-stamps/remove]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 router.get('/dashboard', async (req, res) => {
   try {
     const { data: programs, error: pErr } = await supabase

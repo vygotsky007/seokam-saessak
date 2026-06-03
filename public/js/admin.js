@@ -956,14 +956,20 @@
       groups = [{ program: prog, candidates: applications }];
     }
     const firstProg = groups[0] && groups[0].program;
-    // 성장 도장판용: 전체 신청 일괄 조회(학생의 연중 참여 프로그램 계산). 실패해도 확인증은 출력.
-    let allApps = [];
-    try { const j = await api('/applications'); allApps = j.data || []; } catch {}
+    // 이수 도장판용: 전체 도장 일괄 조회(학생별 매칭/집계). 실패해도 확인증은 출력.
+    let stamps = [];
+    try { const j = await api('/completion-stamps'); stamps = j.data || []; } catch {}
     window.SaessakCertificate.openDialog({
       groups,
       defaultContact: (firstProg && (firstProg.organization || firstProg.instructors)) || '',
-      allApplications: allApps,
-      programs,
+      stamps,
+      // 도장 찍기/취소 → 관리자 API 호출 후 최신 도장 목록 반환(미리보기 재렌더용)
+      onToggleStamp: async (entry) => {
+        if (entry.stamped) await api('/completion-stamps/remove', { method: 'POST', body: JSON.stringify(entry) });
+        else await api('/completion-stamps', { method: 'POST', body: JSON.stringify(entry) });
+        const j = await api('/completion-stamps');
+        return j.data || [];
+      },
     });
   });
 

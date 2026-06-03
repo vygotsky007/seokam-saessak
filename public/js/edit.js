@@ -674,12 +674,39 @@
   });
 
   // 참가 확인증 출력 — 인증된 명단(rosterRows) + 프로그램 정보로 인쇄용 창 생성(읽기 전용).
-  $('#roster-cert-btn').addEventListener('click', () => {
+  $('#roster-cert-btn').addEventListener('click', async () => {
     if (!instructorPass || $('#roster-body').hidden) { toast('먼저 강사 비밀번호를 확인하세요.'); return; }
     if (!rosterRows || rosterRows.length === 0) { toast('확인증을 출력할 신청자가 없습니다.'); return; }
+    // 이수 도장 목록(매칭/집계용). 실패해도 확인증은 출력.
+    let stamps = [];
+    try {
+      const res = await fetch(API + '/completion-stamps/list', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: instructorPass }),
+      });
+      const j = await res.json().catch(() => ({ ok: false }));
+      if (j.ok) stamps = j.data || [];
+    } catch {}
     window.SaessakCertificate.openDialog({
       groups: [{ program: currentProgram || {}, candidates: rosterRows }],
       defaultContact: (currentProgram && currentProgram.instructors) || '',
+      stamps,
+      // 도장 찍기/취소 → 강사 API(비번 동봉) 호출 후 최신 목록 반환
+      onToggleStamp: async (entry) => {
+        const url = entry.stamped ? '/completion-stamps/remove' : '/completion-stamps';
+        const r = await fetch(API + url, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: instructorPass, ...entry }),
+        });
+        const rj = await r.json().catch(() => ({ ok: false, error: '응답 오류' }));
+        if (!rj.ok) throw new Error(rj.error || '도장 처리 실패');
+        const lr = await fetch(API + '/completion-stamps/list', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: instructorPass }),
+        });
+        const lj = await lr.json().catch(() => ({ ok: false }));
+        return lj.ok ? (lj.data || []) : [];
+      },
     });
   });
 
