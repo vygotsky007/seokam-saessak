@@ -103,9 +103,13 @@
   // 강사명: 콤마/공백 무엇으로 입력돼도 콤마 없이 공백 한 칸으로만 구분.
   // 각 이름은 .inst(inline-block+nowrap)로 감싸 이름 내부는 안 끊기고 이름 사이에서만 줄바꿈.
   function instructorsHtml(raw) {
-    const names = String(raw || '').split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
+    const names = parseInstructors(raw);
     if (names.length === 0) return '';
     return names.map(n => `<span class="inst">${esc(n)}</span>`).join(' ');
+  }
+  // 강사명 파싱(표시·필터 공통 기준): 콤마/공백으로 분리하고 빈값 제거.
+  function parseInstructors(raw) {
+    return String(raw || '').split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
   }
   function formatSchedule(p) {
     if (window.SaessakSchedule && typeof window.SaessakSchedule.format === 'function') {
@@ -1570,6 +1574,8 @@ th { color:#2E7D32; font-weight:800; background:#F1F8E9; }
   // 달력에서 숨길 프로그램 id 집합(체크 해제된 것). 비어 있으면 전체 표시.
   // 상태 저장 안 함 — 탭 진입/새로고침 시 항상 전체 표시로 초기화.
   let scheduleHiddenIds = new Set();
+  // 강사 필터 — '' = 전체. 선택한 강사가 포함된 프로그램만 표시(체크박스 필터와 AND).
+  let scheduleInstructor = '';
 
   // 프로그램 블록 색 팔레트 — 차분한 파스텔 + 진한 텍스트(가독성).
   // id 해시로 안정 배정(같은 프로그램은 항상 같은 색).
@@ -1608,6 +1614,7 @@ th { color:#2E7D32; font-weight:800; background:#F1F8E9; }
       const j = await api('/programs');
       programs = j.data || [];
       scheduleHiddenIds = new Set(); // 탭 진입 시 전체 표시 기본
+      scheduleInstructor = '';       // 탭 진입 시 강사 필터도 전체로
       renderScheduleCalendar();
     } catch (err) { toast(err.message); }
   }
@@ -1647,7 +1654,11 @@ th { color:#2E7D32; font-weight:800; background:#F1F8E9; }
       (Array.isArray(p.extra_sessions) && p.extra_sessions.length > 0));
     // 표시 필터 UI(전체 프로그램 기준)와 실제 표시 대상(체크된 것만) 분리
     renderScheduleFilter(withSessions);
-    const visiblePrograms = withSessions.filter(p => !scheduleHiddenIds.has(String(p.id)));
+    renderInstructorOptions(withSessions);
+    // 표시 대상 = 체크된 프로그램 AND (강사 전체이거나 선택 강사가 그 프로그램 강사 중에 있음)
+    const visiblePrograms = withSessions
+      .filter(p => !scheduleHiddenIds.has(String(p.id)))
+      .filter(p => !scheduleInstructor || parseInstructors(p.instructors).includes(scheduleInstructor));
     // "HH:MM"(24시간제) → 분. 시간 없으면 맨 뒤로(Infinity).
     const toMin = (s) => {
       const m = /^(\d{1,2}):(\d{2})/.exec(String(s || '').trim());
@@ -1713,6 +1724,22 @@ th { color:#2E7D32; font-weight:800; background:#F1F8E9; }
         ).join('');
   }
 
+  // 강사 필터 드롭다운 옵션 채우기 — 현재 달력 대상(session_dates 가 있는) 프로그램들의
+  // 강사 필드에서 이름을 수집·중복 제거. 한 프로그램에 강사가 여럿이면 각각 옵션에 들어간다.
+  // 옵션 목록은 월 이동과 무관하게 동일하므로, 현재 선택값은 보존한다.
+  function renderInstructorOptions(withSessions) {
+    const sel = $('#cal-instructor');
+    if (!sel) return;
+    const set = new Set();
+    (withSessions || []).forEach(p => parseInstructors(p.instructors).forEach(n => set.add(n)));
+    // 선택했던 강사가 더 이상 목록에 없으면 전체로 되돌림
+    if (scheduleInstructor && !set.has(scheduleInstructor)) scheduleInstructor = '';
+    const names = Array.from(set).sort((a, b) => a.localeCompare(b, 'ko'));
+    sel.innerHTML = '<option value="">강사 전체</option>' +
+      names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    sel.value = scheduleInstructor;
+  }
+
   // 프로그램 표시 필터 — session_dates 가 있는 모든 프로그램을 체크박스로 나열(색 스와치 포함).
   // 기본 전체 체크. 체크 해제하면 scheduleHiddenIds 에 담겨 달력에서 숨겨진다.
   function renderScheduleFilter(withSessions) {
@@ -1767,6 +1794,11 @@ th { color:#2E7D32; font-weight:800; background:#F1F8E9; }
   // 프로그램 표시 체크박스 토글 — 실시간 반영
   document.addEventListener('change', (e) => {
     const t = e.target;
+    if (t && t.id === 'cal-instructor') {
+      scheduleInstructor = t.value;
+      renderScheduleCalendar();
+      return;
+    }
     if (t && t.classList && t.classList.contains('cf-cb')) {
       const id = t.dataset.cfId;
       if (t.checked) scheduleHiddenIds.delete(id);

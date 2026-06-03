@@ -456,6 +456,18 @@ tbody tr:hover { background: #F8FAFC; }
   flex-wrap: wrap;
   margin-bottom: 12px;
 }
+.cal-inst-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cal-inst-filter select {
+  padding: 4px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fff;
+}
 .sched-month-label {
   font-size: 16px;
   font-weight: 700;
