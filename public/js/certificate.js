@@ -46,6 +46,77 @@
     return { main, extra };
   }
 
+  // ===== 디지털새싹 성장 도장판 =====
+  // 채워진 새싹(참여) SVG — 줄기 + 두 잎(연두/초록).
+  function sproutFilledSvg() {
+    return `<svg class="seed-ico" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+      <path d="M12 22 V12" stroke="#2E7D32" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M12 13 C12 8 7 6.5 3.5 7.8 C4.6 12 9 13.2 12 13 Z" fill="#81C784"/>
+      <path d="M12 13 C12 7.5 17 6.5 20.5 7.8 C19.4 12 15 13.2 12 13 Z" fill="#43A047"/>
+    </svg>`;
+  }
+  // 빈 슬롯(다음에 채울 자리) — 외곽선만.
+  function sproutEmptySvg() {
+    return `<svg class="seed-ico" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+      <path d="M12 22 V12" stroke="#C8E6C9" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M12 13 C12 8 7 6.5 3.5 7.8 C4.6 12 9 13.2 12 13 Z" fill="none" stroke="#C8E6C9" stroke-width="1.4"/>
+      <path d="M12 13 C12 7.5 17 6.5 20.5 7.8 C19.4 12 15 13.2 12 13 Z" fill="none" stroke="#C8E6C9" stroke-width="1.4"/>
+    </svg>`;
+  }
+
+  // student_notes 와 동일 매칭: 이름+학년+반, 양쪽 보호자연락처 있으면 연락처까지 일치.
+  function sameStudent(att, a) {
+    if (String(a.student_name || '').trim() !== String(att.student_name || '').trim()) return false;
+    if ((a.grade ?? '') !== (att.grade ?? '')) return false;
+    if ((a.class_no ?? '') !== (att.class_no ?? '')) return false;
+    const c1 = att.guardian_phone, c2 = a.guardian_phone;
+    if (c1 && c2 && c1 !== c2) return false; // 양쪽 다 있으면 일치해야 동일 학생
+    return true;
+  }
+
+  // 이 학생이 올해 참여한 프로그램(프로그램 단위 중복 제거). 현재 확인증 프로그램은 무조건 포함.
+  function filledProgramsFor(att, program) {
+    const all = state.allApplications || [];
+    // 선정 데이터가 하나라도 있으면 '선정' 기준, 없으면 취소 아닌 active 기준.
+    const useSelected = all.some(a => a && a.status === 'selected');
+    const seen = new Set();
+    const result = [];
+    const curId = (program && program.id != null) ? String(program.id) : ('cur:' + ((program && program.title) || ''));
+    seen.add(curId);
+    result.push({ title: (program && program.title) || '' }); // 현재 프로그램 먼저
+    all.forEach(a => {
+      if (!sameStudent(att, a)) return;
+      if (a.status === 'cancelled') return;
+      if (useSelected && a.status !== 'selected') return;
+      const pid = (a.program_id != null) ? String(a.program_id) : null;
+      const key = pid || ('t:' + ((a.program && a.program.title) || ''));
+      if (seen.has(key)) return;
+      seen.add(key);
+      const title = (a.program && a.program.title) || (pid && state.programsById[pid]) || '';
+      result.push({ title });
+    });
+    return result;
+  }
+
+  // 성장 도장판 블록. layout 'a' 면 라벨까지, 'b' 면 아이콘만 한 줄로 간략히.
+  function growthBoard(program, att, layout) {
+    const filled = filledProgramsFor(att, program);
+    const emptyCount = layout === 'a' ? 3 : 2; // 다음에 채울 빈 슬롯
+    const compact = layout !== 'a';
+    const filledHtml = filled.map(f => `<div class="seed filled">${sproutFilledSvg()}${
+      compact ? '' : `<span class="seed-label" title="${esc(f.title)}">${esc(f.title)}</span>`
+    }</div>`).join('');
+    let emptyHtml = '';
+    for (let i = 0; i < emptyCount; i++) {
+      emptyHtml += `<div class="seed empty">${sproutEmptySvg()}${compact ? '' : '<span class="seed-label">&nbsp;</span>'}</div>`;
+    }
+    return `<div class="cert-board${compact ? ' cert-board-compact' : ''}">
+      <div class="cert-board-title">🌱 디지털새싹 성장 기록 <span class="cert-board-count">새싹 ${filled.length}개</span></div>
+      <div class="cert-board-grid">${filledHtml}${emptyHtml}</div>
+      <div class="cert-board-msg">디지털새싹을 만날수록 나의 새싹이 무럭무럭 자라요 🌱 다음 새싹에서 또 만나요!</div>
+    </div>`;
+  }
+
   function infoRows(program, opts) {
     const sch = scheduleTexts(program);
     const rows = [];
@@ -79,6 +150,7 @@
         <div class="cert-prog">${esc(program.title || '')}</div>
         <table class="cert-info">${infoRows(program, opts)}</table>
         ${note}
+        ${growthBoard(program, att, layout)}
       </div>
       ${contact}
       ${layout === 'b' ? '<div class="cert-cut">✂ ─────────────────────────────────────────────</div>' : ''}
@@ -154,6 +226,39 @@ body {
 .cert-note-lbl { display: block; font-weight: 800; color: #558B2F; margin-bottom: 3px; font-size: 12.5px; }
 .cert-foot { text-align: center; font-size: 12.5px; color: #6b7b6e; margin-top: 14px; }
 
+/* 디지털새싹 성장 도장판 */
+.cert-board {
+  margin-top: 16px; padding: 14px 16px;
+  background: #F1F8E9; border: 1.5px dashed #AED581; border-radius: 12px;
+  page-break-inside: avoid; break-inside: avoid;
+}
+.cert-board-title { font-size: 14px; font-weight: 800; color: #558B2F; margin-bottom: 10px; }
+.cert-board-count { font-size: 12px; font-weight: 700; color: #7CB342; margin-left: 4px; }
+.cert-board-grid { display: flex; flex-wrap: wrap; gap: 12px 14px; align-items: flex-start; }
+.seed { display: flex; flex-direction: column; align-items: center; width: 64px; }
+.seed-ico { display: block; }
+.seed-label {
+  margin-top: 3px; font-size: 10.5px; line-height: 1.2; text-align: center; color: #33491f;
+  max-width: 64px; max-height: 26px; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.seed.filled .seed-label { font-weight: 700; }
+.seed.empty .seed-label { color: transparent; }
+.cert-board-msg { margin-top: 12px; font-size: 12.5px; color: #558B2F; text-align: center; font-weight: 700; }
+
+/* B 레이아웃: 아이콘만 한 줄로 간략(자르기 흐트러짐 방지) */
+.cert-board-compact { margin-top: 10px; padding: 8px 12px; }
+.cert-board-compact .cert-board-title { font-size: 12.5px; margin-bottom: 6px; }
+.cert-board-compact .cert-board-grid { gap: 6px; }
+.cert-board-compact .seed { width: auto; }
+.cert-board-compact .cert-board-msg { margin-top: 6px; font-size: 11px; }
+
+/* A 레이아웃: 도장판을 본문 하단에 자연스럽게(빈 공간 채움) */
+.cert-a .cert-board { margin-top: 20px; }
+.cert-a .cert-board-title { font-size: 15px; }
+.cert-a .seed { width: 76px; }
+.cert-a .seed-label { max-width: 76px; font-size: 11px; }
+
 /* A: 한 명당 한 장(A4 큼직) */
 .cert-a { min-height: 252mm; display: flex; flex-direction: column; }
 .cert-a .cert-body { flex: 1; }
@@ -206,7 +311,7 @@ body {
 
   // ===== 설정 다이얼로그 =====
   let dlg = null;
-  let state = { groups: [], defaultContact: '' };
+  let state = { groups: [], defaultContact: '', allApplications: [], programsById: {} };
 
   function ensureDialog() {
     if (dlg) return dlg;
@@ -261,6 +366,12 @@ body {
   function openDialog(payload) {
     state.groups = (payload && payload.groups) || [];
     state.defaultContact = (payload && payload.defaultContact) || '';
+    // 성장 도장판용: 학생의 연중 참여 프로그램 계산 데이터(없으면 현재 프로그램만 표시).
+    state.allApplications = (payload && payload.allApplications) || [];
+    state.programsById = {};
+    ((payload && payload.programs) || []).forEach(p => {
+      if (p && p.id != null) state.programsById[String(p.id)] = p.title || '';
+    });
     ensureDialog();
 
     let accepted = 0, waitlist = 0;

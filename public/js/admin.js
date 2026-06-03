@@ -932,7 +932,7 @@
 
   // 참가 확인증 출력 — 현재 신청자 탭에 로드된 데이터로 인쇄용 창 생성(읽기 전용).
   // 특정 프로그램 선택 시 그 프로그램, '전체 보기' 시 전체 프로그램 확인증.
-  $('#cert-print-btn').addEventListener('click', () => {
+  $('#cert-print-btn').addEventListener('click', async () => {
     if (!currentProgramId) { toast('먼저 프로그램을 선택하세요.'); return; }
     if (!applications || applications.length === 0) { toast('확인증을 출력할 신청자가 없습니다.'); return; }
     let groups;
@@ -956,9 +956,14 @@
       groups = [{ program: prog, candidates: applications }];
     }
     const firstProg = groups[0] && groups[0].program;
+    // 성장 도장판용: 전체 신청 일괄 조회(학생의 연중 참여 프로그램 계산). 실패해도 확인증은 출력.
+    let allApps = [];
+    try { const j = await api('/applications'); allApps = j.data || []; } catch {}
     window.SaessakCertificate.openDialog({
       groups,
       defaultContact: (firstProg && (firstProg.organization || firstProg.instructors)) || '',
+      allApplications: allApps,
+      programs,
     });
   });
 
