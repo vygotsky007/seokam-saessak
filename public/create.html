@@ -29,6 +29,34 @@
   .prog-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid #F1F5F9; font-size: 13.5px; }
   .prog-list .p-meta { color: var(--muted); font-size: 12px; }
   .hidden-badge { display:inline-block; background:#F1F5F9; color:#64748B; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700; }
+  /* 신청자/문의/기록 모달 */
+  .cmodal { position:fixed; inset:0; background:rgba(15,23,42,.45); display:flex; align-items:flex-start; justify-content:center; z-index:50; padding:18px; overflow-y:auto; }
+  .cmodal[hidden] { display:none; }
+  .cmodal-box { background:#fff; border-radius:14px; padding:18px; width:100%; max-height:92vh; overflow-y:auto; box-shadow:0 12px 40px rgba(0,0,0,.2); }
+  .cmodal-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px; }
+  .cmodal-head h2 { font-size:16px; font-weight:800; }
+  .cmodal .form-grid input, .cmodal .form-grid select, .cmodal textarea, .cmodal select { border:1px solid var(--border-strong); border-radius:7px; padding:6px 9px; font-size:13px; }
+  .roster-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .roster-table th, .roster-table td { border:1px solid var(--border); padding:6px 8px; text-align:left; white-space:nowrap; }
+  .roster-table th { background:var(--primary-soft); font-weight:700; }
+  .roster-table .badge-wait { color:var(--danger); font-weight:700; }
+  .roster-table .badge-ok { color:var(--primary); font-weight:700; }
+  .note-flag { display:inline-block; border:1px solid #FCA5A5; background:#FEF2F2; color:#B91C1C; font-size:11px; font-weight:700; padding:1px 6px; border-radius:999px; cursor:pointer; }
+  .note-history { max-height:240px; overflow-y:auto; }
+  .note-item { border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin-bottom:6px; background:#FFFBEB; }
+  .note-item-head { display:flex; justify-content:space-between; gap:8px; font-size:11.5px; }
+  .note-type-tag { font-weight:800; color:#B45309; }
+  .note-item-body { margin-top:4px; font-size:13px; white-space:pre-wrap; word-break:break-word; }
+  .inq-filters { display:inline-flex; gap:4px; margin-bottom:8px; }
+  .inq-fbtn { border:1px solid var(--border); background:#fff; color:var(--ink); border-radius:7px; padding:4px 10px; font-size:12.5px; cursor:pointer; }
+  .inq-fbtn.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+  .inq-list { max-height:60vh; overflow-y:auto; }
+  .inq-item { border:1px solid var(--border); border-radius:9px; padding:9px 11px; margin-bottom:7px; }
+  .inq-item-head { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--muted); }
+  .inq-item-msg { margin:5px 0; font-size:13.5px; white-space:pre-wrap; word-break:break-word; color:#33491f; }
+  .inq-item-foot { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .inq-st-wait { color:#92400E; font-weight:700; font-size:12px; }
+  .inq-st-done { color:var(--primary); font-weight:700; font-size:12px; }
 </style>
 </head>
 <body>
@@ -139,6 +167,74 @@
         </div>
       </form>
     </div>
+  </div>
+</div>
+
+<!-- 신청자 명단 모달 -->
+<div class="cmodal" id="roster-modal" hidden>
+  <div class="cmodal-box" style="max-width:820px;">
+    <div class="cmodal-head">
+      <h2 id="roster-title">신청자 명단</h2>
+      <button type="button" class="btn" id="roster-close">닫기</button>
+    </div>
+    <div class="priv-note" style="background:#fff4f4; color:var(--danger);">🔐 명단·연락처는 외부 유출 금지. 운영 목적 외 사용·공유를 삼가 주세요.</div>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+      <span class="muted" id="roster-summary"></span>
+      <button type="button" class="btn small" id="roster-xlsx-btn">엑셀 다운로드</button>
+    </div>
+    <div style="overflow:auto;">
+      <table class="roster-table" id="roster-table" hidden>
+        <thead><tr><th>순번</th><th>상태</th><th>학생</th><th>학년/반</th><th>보호자</th><th>연락처</th><th>경로</th><th>선정</th><th>관리</th></tr></thead>
+        <tbody id="roster-tbody"></tbody>
+      </table>
+    </div>
+    <div class="muted" id="roster-empty" hidden style="padding:16px; text-align:center;"></div>
+
+    <h3 style="font-size:14px; font-weight:800; margin:16px 0 8px;" id="m-form-title">＋ 수동 신청 입력 (종이 신청서)</h3>
+    <div class="muted" style="font-size:12.5px; margin-bottom:8px;">정원이 차면 자동으로 대기자로 등록됩니다. 대상 학년만 입력 가능합니다.</div>
+    <div class="form-grid">
+      <label>학생 이름*</label><input type="text" id="m-name">
+      <label>학년*</label>
+      <select id="m-grade"><option value="">선택</option><option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option><option value="4">4학년</option><option value="5">5학년</option><option value="6">6학년</option></select>
+      <label>반*</label>
+      <select id="m-class" style="width:120px;" disabled><option value="">학년 먼저 선택</option></select>
+      <label>보호자 이름</label><input type="text" id="m-guardian">
+      <label>보호자 연락처</label><input type="text" id="m-phone" placeholder="010-0000-0000" style="max-width:220px;">
+    </div>
+    <div class="actions" style="display:flex; gap:8px; margin-top:12px;">
+      <button type="button" class="btn primary" id="m-add-btn">신청자 추가</button>
+      <button type="button" class="btn" id="m-cancel-btn" hidden>수정 취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- 학생 참고기록 모달 -->
+<div class="cmodal" id="note-modal" hidden>
+  <div class="cmodal-box" style="max-width:440px;">
+    <div class="cmodal-head"><h2>⚠️ 학생 참고기록</h2><button type="button" class="btn" id="note-cancel">닫기</button></div>
+    <p id="note-target-info" style="margin-bottom:4px;"></p>
+    <p class="muted" style="font-size:11.5px; margin-bottom:10px;">이름·학년·반으로 매칭한 기록입니다. 동명이인일 수 있으니 참고용으로만 활용하세요.</p>
+    <div id="note-history" class="note-history"></div>
+    <hr style="border:none; border-top:1px solid var(--border); margin:12px 0;">
+    <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">유형</label>
+    <select id="note-type" style="width:100%;"><option value="noshow">🚫 노쇼</option><option value="attitude">😠 태도</option><option value="etc">📝 기타</option></select>
+    <label style="display:block; font-size:13px; font-weight:600; margin:10px 0 4px;">상세 메모</label>
+    <textarea id="note-content" placeholder="예: 무단 불참 / 수업 방해 등" style="width:100%; min-height:64px;"></textarea>
+    <div class="actions" style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;"><button type="button" class="btn primary" id="note-save">기록 추가</button></div>
+  </div>
+</div>
+
+<!-- 문의사항 모달 -->
+<div class="cmodal" id="inq-modal" hidden>
+  <div class="cmodal-box" style="max-width:640px;">
+    <div class="cmodal-head"><h2>💬 문의사항 <span id="inq-modal-count" class="muted" style="font-size:13px; font-weight:600;"></span></h2><button type="button" class="btn" id="inq-close">닫기</button></div>
+    <p class="muted" style="font-size:11.5px; margin-bottom:10px;">이 프로그램 신청자가 남긴 문의입니다. 답변은 직접 문자·전화로 — 여기서는 처리 여부만 표시합니다.</p>
+    <div class="inq-filters">
+      <button type="button" class="inq-fbtn active" data-inq-f="all">전체</button>
+      <button type="button" class="inq-fbtn" data-inq-f="pending">대기</button>
+      <button type="button" class="inq-fbtn" data-inq-f="answered">답변함</button>
+    </div>
+    <div id="inq-list" class="inq-list"></div>
   </div>
 </div>
 
