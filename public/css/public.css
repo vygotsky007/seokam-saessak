@@ -659,6 +659,28 @@ body.public-page {
 .pc-seats-line .seats-upcoming { color: var(--danger); font-weight: 600; }
 .pc-seats-line .seats-closed   { color: #475569;       font-weight: 600; }
 
+/* ===== 대기 접수 중 (정원 마감 + 대기 여유) =====
+   파랑 계열 — 빨강 마감/주황 마감임박과 색으로 구분. 도장(원형) 대신 신청을 유도하는 안내 톤. */
+.badge.waitlist-open {
+  background: #DBEAFE;
+  color: #1D4ED8;
+  font-weight: 700;
+}
+.pc-seats-line .seats-waitlist {
+  display: inline-block;
+  color: #1D4ED8;
+  font-weight: 700;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+.pc-seats-line .seats-waitlist strong { color: #1D4ED8; }
+/* 대기 접수 카드 좌측 띠 — 파랑 */
+.program-card.is-waitlist::before {
+  background: linear-gradient(90deg, #2563EB 0%, #93C5FD 100%);
+}
+
 /* 모집예정 카드 좌측 띠 */
 .program-card.status-upcoming::before {
   background: linear-gradient(90deg, var(--danger) 0%, #FCA5A5 100%);

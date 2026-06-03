@@ -217,6 +217,8 @@
       const cardDisabled = !isRecruiting || isFull;
       // 마감임박: 모집중이면서 남은자리 1~5 (0은 마감이므로 제외). 남은자리는 기존 p.remaining 그대로.
       const isClosingSoon = isRecruiting && !isFull && p.remaining >= 1 && p.remaining <= 5;
+      // 대기 접수: 모집중·정원(선착순) 마감·대기 여유(remaining<=0, 자동마감 아님). step2와 동일 기준 재사용.
+      const isWaitOnly = isRecruiting && !isFull && p.remaining <= 0;
       const meta = [];
       const schedText = (window.SaessakSchedule && window.SaessakSchedule.format(p)) || p.schedule || '';
       if (schedText)     meta.push(`<span class="meta-item"><span class="meta-ic">📅</span>${esc(schedText)}</span>`);
@@ -227,6 +229,7 @@
       if (status === 'upcoming')      statusBadge = '<span class="badge upcoming">⏰ 모집예정</span>';
       else if (status === 'closed')   statusBadge = '<span class="badge closed-admin">모집완료</span>';
       else if (isFull)                statusBadge = '<span class="badge full">모집 마감</span>';
+      else if (isWaitOnly)            statusBadge = '<span class="badge waitlist-open">🕓 대기 접수 중</span>';
       else                            statusBadge = '<span class="badge open">모집중</span>';
 
       let seatsLine;
@@ -239,14 +242,14 @@
       } else if (p.remaining > 0) {
         seatsLine = `남은 자리 <strong>${p.remaining}명</strong> / 정원 ${p.capacity}명`;
       } else {
-        seatsLine = `정원 마감 · 대기 신청 가능 <strong>(대기 ${p.waitlist_count || 0}/${p.waitlist_capacity ?? 10}명)</strong>`;
+        seatsLine = `<span class="seats-waitlist">정원은 찼지만 대기로 신청할 수 있어요 · 현재 대기 <strong>${p.waitlist_count || 0}/${p.waitlist_capacity ?? 10}</strong></span>`;
       }
       const desc = (p.description || '').trim();
       const descBlock = desc
         ? `<details class="pc-details"><summary><span class="pc-toggle-text"></span></summary><div class="pc-body">${esc(desc)}</div></details>`
         : '';
       return `
-        <article class="program-card ${cardDisabled ? 'disabled' : ''} ${isFull ? 'is-full' : ''} status-${status}">
+        <article class="program-card ${cardDisabled ? 'disabled' : ''} ${isFull ? 'is-full' : ''} ${isWaitOnly ? 'is-waitlist' : ''} status-${status}">
           ${isFull ? '<div class="pc-stamp" aria-label="모집마감">마감</div>' : ''}
           ${isClosingSoon ? `<div class="pc-soon">🔥 마감임박 ${p.remaining}자리</div>` : ''}
           <div class="pc-inner">
@@ -391,7 +394,7 @@
       if (status === 'upcoming')      statusTag = '<span class="badge upcoming">⏰ 모집예정</span>';
       else if (status === 'closed')   statusTag = '<span class="badge closed-admin">모집완료</span>';
       else if (isFull)                statusTag = '<span class="badge full">마감</span>';
-      else if (isWaitOnly)            statusTag = '<span class="badge waiting">대기 가능</span>';
+      else if (isWaitOnly)            statusTag = '<span class="badge waitlist-open">🕓 대기 접수 중</span>';
       else                            statusTag = '<span class="badge open">모집중</span>';
       const tags = [typeBadges(p), statusTag].filter(Boolean).join(' ');
 
