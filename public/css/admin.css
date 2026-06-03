@@ -126,15 +126,31 @@ th {
 tbody tr:hover { background: #F8FAFC; }
 .cell-actions { white-space: nowrap; display: flex; gap: 4px; }
 
-/* 프로그램 목록 표: 열이 많아 칸이 좁으면 글자가 세로로 쪼개지므로,
-   짧은 열은 nowrap(쪼개짐 방지)·긴 열은 min-width 주고 자연 줄바꿈,
-   전체 min-width 로 좁은 화면에선 .table-wrap 의 가로 스크롤이 동작하게 한다. */
-#programs-table { min-width: 1180px; }
+/* 프로그램 목록 표: 열이 많지만 긴 열(프로그램명·일정·강사)을 단어 단위로
+   세로로 펼쳐 화면 폭 안에 들어오게 한다(가로 스크롤 제거).
+   짧은 열은 nowrap 으로 글자 중간 쪼개짐을 막는다. */
+#programs-table { width: 100%; }
 #programs-table th, #programs-table td { white-space: nowrap; }
-#programs-table td:nth-child(1) { white-space: normal; min-width: 150px; } /* 프로그램명 */
-#programs-table td:nth-child(3) { white-space: normal; min-width: 200px; } /* 일정 */
-#programs-table td:nth-child(4) { white-space: normal; min-width: 90px; }  /* 장소 */
-#programs-table td:nth-child(8) { white-space: normal; min-width: 90px; }  /* 강사 */
+/* 프로그램명: 단어(띄어쓰기) 단위 줄바꿈. word-break:keep-all 로 한글이
+   글자 중간에서 끊기지 않게 하고, 칸이 넓어지지 않도록 너비를 제한한다. */
+#programs-table td:nth-child(1) {
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  min-width: 120px;
+  max-width: 200px;
+} /* 프로그램명 */
+#programs-table td:nth-child(3) {
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  min-width: 130px;
+  max-width: 190px;
+} /* 일정 */
+#programs-table td:nth-child(4) { white-space: normal; word-break: keep-all; min-width: 80px; max-width: 120px; }  /* 장소 */
+/* 강사: 이름 단위 줄바꿈. 이름(span.inst)은 nowrap 으로 통째로 유지. */
+#programs-table td:nth-child(8) { white-space: normal; min-width: 70px; max-width: 110px; }  /* 강사 */
+#programs-table .cell-instructors .inst { display: inline-block; white-space: nowrap; }
 
 /* 강사 수정 권한 컬럼 */
 .btn.xsmall { padding: 3px 7px; font-size: 11px; }

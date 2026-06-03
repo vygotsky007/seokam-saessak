@@ -43,6 +43,14 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
+  // 강사명: 쉼표로 분리해 이름 단위로 줄바꿈(이름 내부는 nowrap, 글자 중간 끊김 방지).
+  function instructorsHtml(raw) {
+    const names = String(raw || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (names.length === 0) return '';
+    return names
+      .map((n, i) => `<span class="inst">${esc(n)}${i < names.length - 1 ? ',' : ''}</span>`)
+      .join(' ');
+  }
   function formatSchedule(p) {
     if (window.SaessakSchedule && typeof window.SaessakSchedule.format === 'function') {
       return window.SaessakSchedule.format(p) || '';
@@ -270,7 +278,7 @@
             <td>${formatGradesLabel(p.grades)}</td>
             <td>${p.capacity}<br><span class="muted" style="font-size:11px;">대기 ${p.waitlist_capacity ?? 10}</span></td>
             <td>${p.applied_count} / ${p.capacity}${(p.waitlist_count || 0) > 0 ? `<br><span class="muted" style="font-size:11px;">대기 ${p.waitlist_count} / ${p.waitlist_capacity ?? 10}</span>` : ''}</td>
-            <td>${esc(p.instructors || '')}</td>
+            <td class="cell-instructors">${instructorsHtml(p.instructors)}</td>
             <td>
               <select class="recruit-status-sel rs-${recruitStatusOf(p)}" data-status-pid="${p.id}">
                 ${RECRUIT_STATUSES.map(s => `<option value="${s.value}" ${recruitStatusOf(p) === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}
