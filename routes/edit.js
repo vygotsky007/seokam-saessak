@@ -760,4 +760,85 @@ router.post('/:token/completion-stamps/remove', rosterLimiter, async (req, res) 
   }
 });
 
+// ===== 문의사항 보기 — 강사용(자기 토큰 프로그램만). 원본은 applications.motivation(읽기전용). =====
+// 답변 상태는 관리자 게시판과 동일한 inquiry_status 를 공유한다.
+
+// POST /api/edit/:token/inquiries/list — 이 토큰 프로그램의 문의 + 답변상태(일괄). 비번 게이트.
+router.post('/:token/inquiries/list', rosterLimiter, async (req, res) => {
+  try {
+    const p = await gateRoster(req, res);
+    if (!p) return;
+    const { data: apps, error: aErr } = await supabase
+      .from('saessak_applications')
+      .select('*')
+      .eq('program_id', p.id) // ★ 서버에서 이 토큰의 프로그램으로 강제(다른 프로그램 노출 차단)
+      .not('motivation', 'is', null)
+      .order('submitted_at', { ascending: false });
+    if (aErr) throw aErr;
+    const filtered = (apps || []).filter(a => a.motivation && String(a.motivation).trim());
+    const ids = filtered.map(a => String(a.id));
+    const statusMap = {};
+    if (ids.length) {
+      const { data: st, error: sErr } = await supabase
+        .from('inquiry_status').select('*').in('application_id', ids);
+      if (sErr) throw sErr;
+      (st || []).forEach(s => { statusMap[String(s.application_id)] = s; });
+    }
+    const out = filtered.map(a => {
+      const s = statusMap[String(a.id)];
+      return {
+        id: a.id,
+        student_name: a.student_name,
+        grade: a.grade,
+        class_no: a.class_no,
+        guardian_name: a.guardian_name,
+        guardian_phone: a.guardian_phone,
+        motivation: a.motivation, // 읽기 전용
+        submitted_at: a.submitted_at,
+        status: a.status,
+        answered: !!(s && s.answered),
+        answered_by: s ? s.answered_by : null,
+        answered_at: s ? s.answered_at : null,
+      };
+    });
+    res.json({ ok: true, data: out });
+  } catch (err) {
+    console.error('[POST /api/edit/:token/inquiries/list]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// POST /api/edit/:token/inquiries/status — 답변 상태 토글. 비번 게이트 + 신청이 이 프로그램 소속인지 검증.
+router.post('/:token/inquiries/status', rosterLimiter, async (req, res) => {
+  try {
+    const p = await gateRoster(req, res);
+    if (!p) return;
+    const { application_id, answered } = req.body || {};
+    if (!application_id) return res.status(400).json({ ok: false, error: 'application_id 가 필요합니다.' });
+    // ★ 보안: 이 신청이 이 토큰의 프로그램 소속인지 서버에서 확인(임의 application_id 조작 차단)
+    const { data: app, error: gErr } = await supabase
+      .from('saessak_applications')
+      .select('id, program_id')
+      .eq('id', application_id)
+      .maybeSingle();
+    if (gErr) throw gErr;
+    if (!app || String(app.program_id) !== String(p.id)) {
+      return res.status(403).json({ ok: false, error: '이 프로그램의 문의가 아닙니다.' });
+    }
+    const row = {
+      application_id: String(application_id),
+      answered: answered === true || answered === 'true',
+      answered_by: instructorNoteAuthor(p, req.params.token),
+      answered_at: new Date().toISOString(),
+    };
+    const { error } = await supabase
+      .from('inquiry_status').upsert(row, { onConflict: 'application_id' });
+    if (error) throw error;
+    res.json({ ok: true, data: row });
+  } catch (err) {
+    console.error('[POST /api/edit/:token/inquiries/status]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 module.exports = router;

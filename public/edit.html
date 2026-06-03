@@ -47,6 +47,19 @@
   .note-item-head { display:flex; justify-content:space-between; gap:8px; font-size:11.5px; }
   .note-type-tag { font-weight:800; color:#B45309; }
   .note-item-body { margin-top:4px; font-size:13px; white-space:pre-wrap; word-break:break-word; }
+  /* 문의사항 보기 */
+  .inq-badge-edit { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:var(--danger); color:#fff; font-size:11px; font-weight:700; }
+  .inq-box { max-width:640px; }
+  .inq-filters { display:inline-flex; gap:4px; margin-bottom:8px; }
+  .inq-fbtn { border:1px solid var(--border); background:#fff; color:var(--ink); border-radius:7px; padding:4px 10px; font-size:12.5px; cursor:pointer; }
+  .inq-fbtn.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+  .inq-list { max-height:60vh; overflow-y:auto; }
+  .inq-item { border:1px solid var(--border); border-radius:9px; padding:9px 11px; margin-bottom:7px; }
+  .inq-item-head { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--muted); }
+  .inq-item-msg { margin:5px 0; font-size:13.5px; white-space:pre-wrap; word-break:break-word; color:#33491f; }
+  .inq-item-foot { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .inq-st-wait { color:#92400E; font-weight:700; font-size:12px; }
+  .inq-st-done { color:var(--primary); font-weight:700; font-size:12px; }
 </style>
 </head>
 <body>
@@ -138,6 +151,7 @@
       </div>
       <div class="actions" style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
         <button type="button" class="btn" id="roster-btn">이 프로그램 신청자 보기</button>
+        <button type="button" class="btn" id="inq-btn">💬 문의사항 보기 <span id="inq-badge-edit" class="inq-badge-edit" hidden></span></button>
         <button type="submit" class="btn primary">저장</button>
       </div>
     </form>
@@ -241,6 +255,23 @@
     <div class="actions" style="display:flex; gap:8px; justify-content:flex-end; margin-top:14px;">
       <button type="button" class="btn" id="note-cancel">닫기</button>
       <button type="button" class="btn primary" id="note-save">기록 추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- 문의사항 보기 모달 (이 프로그램 한정) -->
+<div class="note-modal" id="inq-modal" hidden>
+  <div class="note-box inq-box">
+    <h2>💬 문의사항 <span id="inq-modal-count" class="muted" style="font-size:13px; font-weight:600;"></span></h2>
+    <p class="muted" style="font-size:11.5px; margin-bottom:10px;">이 프로그램의 신청자가 남긴 문의입니다. 답변은 직접 문자·전화로 — 여기서는 처리 여부만 표시합니다.</p>
+    <div class="inq-filters">
+      <button type="button" class="inq-fbtn active" data-inq-f="all">전체</button>
+      <button type="button" class="inq-fbtn" data-inq-f="pending">대기</button>
+      <button type="button" class="inq-fbtn" data-inq-f="answered">답변함</button>
+    </div>
+    <div id="inq-list" class="inq-list"></div>
+    <div class="actions" style="display:flex; gap:8px; justify-content:flex-end; margin-top:14px;">
+      <button type="button" class="btn" id="inq-close">닫기</button>
     </div>
   </div>
 </div>

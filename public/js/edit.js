@@ -480,6 +480,7 @@
       $('#roster-auth-msg').textContent = '';
       await fetchNotes();
       renderRoster(j);
+      fetchInquiries(); // 문의사항 미답변 배지 채우기(비동기, 실패해도 무방)
     } catch (err) {
       instructorPass = null;
       $('#roster-auth-msg').textContent = '서버에 연결하지 못했습니다.';
@@ -549,6 +550,90 @@
         matchedNotes(noteTarget.student_name, noteTarget.grade, noteTarget.class_no, noteTarget.guardian_contact));
       $('#note-content').value = '';
     } catch (err) { toast('서버 오류로 저장하지 못했습니다.'); }
+  });
+
+  // ===== 문의사항 보기 (이 프로그램 한정) =====
+  let inquiries = [];
+  let inqFilter = 'all'; // all | pending | answered
+
+  async function fetchInquiries() {
+    if (!instructorPass) return;
+    try {
+      const res = await fetch(API + '/inquiries/list', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: instructorPass }),
+      });
+      const j = await res.json().catch(() => ({ ok: false }));
+      inquiries = j.ok ? (j.data || []) : [];
+    } catch { inquiries = []; }
+    updateInqBadge();
+  }
+  function updateInqBadge() {
+    const pending = inquiries.filter(x => !x.answered).length;
+    const b = $('#inq-badge-edit');
+    if (!b) return;
+    if (pending > 0) { b.textContent = pending; b.hidden = false; } else { b.hidden = true; }
+  }
+  function renderInqList() {
+    $$('[data-inq-f]').forEach(b => b.classList.toggle('active', b.getAttribute('data-inq-f') === inqFilter));
+    let list = inquiries.slice(); // 서버에서 신청일시 내림차순
+    if (inqFilter === 'pending') list = list.filter(x => !x.answered);
+    else if (inqFilter === 'answered') list = list.filter(x => x.answered);
+    const pending = inquiries.filter(x => !x.answered).length;
+    $('#inq-modal-count').textContent = `· 전체 ${inquiries.length} · 대기 ${pending}`;
+    const wrap = $('#inq-list');
+    if (!list.length) {
+      wrap.innerHTML = `<div class="muted" style="padding:16px; text-align:center;">표시할 문의사항이 없습니다.</div>`;
+      return;
+    }
+    wrap.innerHTML = list.map(x => `
+      <div class="inq-item">
+        <div class="inq-item-head">
+          <span><b>${esc(x.student_name)}</b> · ${esc(x.grade ?? '?')}-${esc(x.class_no ?? '?')} · ${esc(x.guardian_phone || '')}</span>
+          <span>${esc(fmtNoteDate(x.submitted_at))}</span>
+        </div>
+        <div class="inq-item-msg">${esc(x.motivation)}</div>
+        <div class="inq-item-foot">
+          ${x.answered
+            ? `<span class="inq-st-done">✅ 답변함${x.answered_at ? ` · ${esc(fmtNoteDate(x.answered_at))}` : ''}</span>`
+            : `<span class="inq-st-wait">⏳ 대기</span>`}
+          <button type="button" class="btn mini" data-inq-toggle="${esc(x.id)}" data-answered="${x.answered ? '1' : '0'}" style="padding:3px 10px; font-size:12px;">${x.answered ? '대기로' : '답변함'}</button>
+        </div>
+      </div>`).join('');
+  }
+  function openInqModal() { $('#inq-modal').hidden = false; renderInqList(); }
+  function closeInqModal() { $('#inq-modal').hidden = true; }
+
+  $('#inq-btn').addEventListener('click', async () => {
+    if (!instructorPass) {
+      $('#state-roster').hidden = false;
+      $('#roster-pass') && $('#roster-pass').focus();
+      toast('먼저 강사 비밀번호를 확인한 뒤 다시 눌러주세요');
+      return;
+    }
+    await fetchInquiries();
+    openInqModal();
+  });
+  $('#inq-close').addEventListener('click', closeInqModal);
+  $('#inq-modal').addEventListener('click', (e) => { if (e.target.id === 'inq-modal') closeInqModal(); });
+  $$('[data-inq-f]').forEach(b => b.addEventListener('click', () => { inqFilter = b.getAttribute('data-inq-f'); renderInqList(); }));
+  $('#inq-list').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-inq-toggle]');
+    if (!btn || !instructorPass) return;
+    const application_id = btn.getAttribute('data-inq-toggle');
+    const next = btn.getAttribute('data-answered') !== '1';
+    btn.disabled = true;
+    try {
+      const res = await fetch(API + '/inquiries/status', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: instructorPass, application_id, answered: next }),
+      });
+      const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
+      if (!j.ok) { toast(j.error || '처리 실패'); btn.disabled = false; return; }
+      toast(next ? '답변함으로 표시했습니다' : '대기로 되돌렸습니다');
+      await fetchInquiries();
+      renderInqList();
+    } catch (err) { toast('서버 오류로 처리하지 못했습니다.'); btn.disabled = false; }
   });
 
   // 수동 신청 추가 / 수정 저장 (editingId 유무로 분기)
