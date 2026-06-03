@@ -1470,6 +1470,81 @@
     } catch (err) { toast(err.message); }
   });
 
+  // ===== 석암새싹증(누적 이수증) — completion_stamps 기반, 매번 재생성(인쇄용) =====
+  // 호칭 기준(참가확인증 TITLE 과 동일 유지). 이상이면 호칭, 미만은 '새싹 회원'.
+  const SAESSAK_TITLE = { 새싹왕: 10, 새싹신: 20 };
+  function saessakTitleForCount(n) {
+    let best = '새싹 회원', bestN = -1;
+    Object.keys(SAESSAK_TITLE).forEach(name => { const v = SAESSAK_TITLE[name]; if (n >= v && v > bestN) { best = name; bestN = v; } });
+    return best;
+  }
+  function periodText(p) {
+    try { const t = window.SaessakSchedule && window.SaessakSchedule.format(p); if (t) return t; } catch (e) {}
+    return p.schedule || '';
+  }
+  function issueSaessakCert(s) {
+    const stamped = (s.programs || []).filter(p => p.stamped);
+    if (!stamped.length) { toast('이수(도장)한 프로그램이 없어 발급할 수 없습니다.'); return; }
+    const count = stamped.length;
+    const title = saessakTitleForCount(count);
+    const now = new Date();
+    const z = n => String(n).padStart(2, '0');
+    const issueDate = `${now.getFullYear()}. ${z(now.getMonth() + 1)}. ${z(now.getDate())}`;
+    const sub = [s.grade ? s.grade + '학년' : '', s.class_no ? s.class_no + '반' : ''].filter(Boolean).join(' ');
+    const rows = stamped.map((p, i) => `
+      <tr>
+        <td class="c-no">${i + 1}</td>
+        <td class="c-prog">${esc(p.title || '(제목 없음)')}</td>
+        <td class="c-period">${esc(periodText(p) || '-')}</td>
+        <td class="c-seal"><span class="seal">이수</span></td>
+      </tr>`).join('');
+    const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"><title>석암새싹증</title>
+<style>
+@page { size: A4; margin: 16mm; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { font-family: 'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR',sans-serif; color: #16341c; background: #f4f7f4; margin: 0; }
+.toolbar { position: sticky; top: 0; background: #2E7D32; color: #fff; padding: 10px 16px; display: flex; gap: 12px; align-items: center; font-size: 14px; }
+.toolbar button { background:#fff; color:#2E7D32; border:0; border-radius:8px; padding:8px 16px; font-weight:800; cursor:pointer; }
+.sheet { max-width: 200mm; margin: 14px auto; padding: 0 6px; }
+.cert { background:#fff; border:3px solid #2E7D32; border-radius:18px; padding:32px 34px; position:relative; }
+.cert-head { text-align:center; border-bottom:2px dashed #A5D6A7; padding-bottom:14px; margin-bottom:18px; }
+.cert-school { font-size:15px; font-weight:800; color:#2E7D32; letter-spacing:.5px; }
+.cert-title { font-size:30px; font-weight:900; color:#1B5E20; margin-top:8px; letter-spacing:6px; }
+.cert-name-wrap { text-align:center; margin-bottom:8px; }
+.cert-name { font-size:30px; font-weight:900; color:#14331a; }
+.cert-sub { font-size:14px; color:#5b6b5e; margin-top:2px; }
+.cert-count { text-align:center; font-size:15px; color:#2E7D32; font-weight:800; margin:10px 0 4px; }
+.cert-count b { font-size:24px; }
+.cert-rank { text-align:center; margin-bottom:16px; }
+.cert-rank .badge { display:inline-block; background:#FFF3E0; color:#E65100; border:1.5px solid #FFB74D; border-radius:999px; padding:5px 16px; font-size:16px; font-weight:800; }
+table { width:100%; border-collapse:collapse; font-size:14.5px; }
+th, td { padding:9px 10px; border-bottom:1px solid #E0EAE0; text-align:left; }
+th { color:#2E7D32; font-weight:800; background:#F1F8E9; }
+.c-no { width:42px; text-align:center; color:#6b7b6e; }
+.c-period { color:#5b6b5e; font-size:13px; }
+.c-seal { width:64px; text-align:center; }
+.seal { display:inline-block; border:2px solid #E53935; color:#E53935; border-radius:50%; width:42px; height:42px; line-height:38px; font-weight:800; font-size:13px; transform: rotate(-10deg); }
+.cert-msg { margin-top:20px; text-align:center; font-size:13.5px; color:#558B2F; font-weight:700; }
+.cert-foot { margin-top:22px; text-align:center; font-size:13px; color:#33491f; }
+@media print { body { background:#fff; } .toolbar { display:none !important; } .sheet { max-width:none; margin:0; padding:0; } }
+</style></head><body>
+<div class="toolbar"><button type="button" onclick="window.print()">🖨 인쇄 / PDF 저장</button><span>미리보기 — 인쇄 대화상자에서 ‘PDF로 저장’ 가능</span></div>
+<div class="sheet"><div class="cert">
+  <div class="cert-head"><div class="cert-school">🌱 석암초등학교 디지털새싹</div><div class="cert-title">석암새싹증</div></div>
+  <div class="cert-name-wrap"><div class="cert-name">${esc(s.name)}</div>${sub ? `<div class="cert-sub">${esc(sub)}</div>` : ''}</div>
+  <div class="cert-count">위 학생은 디지털새싹 프로그램 <b>${count}</b>개를 성실히 이수하였기에 이 증서를 드립니다.</div>
+  <div class="cert-rank"><span class="badge">🏅 ${esc(title)}</span></div>
+  <table><thead><tr><th class="c-no">#</th><th>이수 프로그램</th><th>기간</th><th class="c-seal">도장</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="cert-msg">디지털새싹을 모을수록 나의 새싹이 무럭무럭 자라요 🌱 다음 새싹에서 또 만나요!</div>
+  <div class="cert-foot">${issueDate}<br><b>석암초등학교 디지털새싹</b></div>
+</div></div></body></html>`;
+    const win = window.open('', '_blank');
+    if (!win) { toast('팝업이 차단되어 증서 창을 열 수 없습니다. 팝업 차단을 해제해 주세요.'); return; }
+    win.document.open(); win.document.write(html); win.document.close();
+  }
+  $('#sb-cert-btn')?.addEventListener('click', () => { if (sbCurrent) issueSaessakCert(sbCurrent); });
+
   // ===== Export =====
   async function loadExportTab() {
     // 내보내기도 매번 fresh fetch (캐시 stale 방지).

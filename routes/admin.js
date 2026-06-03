@@ -772,17 +772,26 @@ router.post('/student-notes', async (req, res) => {
 // 신청/도장/기록을 읽기만 해서 학생별로 묶는다(신청 테이블 무변경).
 router.get('/student-board', async (req, res) => {
   try {
-    const [appsRes, notesRes, stampsRes] = await Promise.all([
+    const [appsRes, notesRes, stampsRes, progsRes] = await Promise.all([
       supabase.from('saessak_applications').select('*, program:saessak_programs(title)'),
       supabase.from('student_notes').select('*'),
       supabase.from('completion_stamps').select('*'),
+      supabase.from('saessak_programs').select('id, title, schedule, session_dates, start_time, end_time, extra_sessions'),
     ]);
     if (appsRes.error) throw appsRes.error;
     if (notesRes.error) throw notesRes.error;
     if (stampsRes.error) throw stampsRes.error;
+    if (progsRes.error) throw progsRes.error;
     const apps = appsRes.data || [];
     const notes = notesRes.data || [];
     const stamps = stampsRes.data || [];
+    // 프로그램 일정 정보(석암새싹증 기간 표시용)
+    const progInfo = {};
+    (progsRes.data || []).forEach(p => { progInfo[String(p.id)] = p; });
+    const periodOf = (pid) => {
+      const p = progInfo[String(pid)] || {};
+      return { schedule: p.schedule || null, session_dates: p.session_dates || null, start_time: p.start_time || null, end_time: p.end_time || null, extra_sessions: p.extra_sessions || null };
+    };
 
     // 1) 신청(applications) 으로 학생 집합 구성. 키: 연락처 있으면 이름+연락처, 없으면 이름+학년+반.
     const students = new Map();
@@ -810,7 +819,7 @@ router.get('/student-board', async (req, res) => {
       s._apps.forEach(a => {
         if (a.status === 'cancelled') return;
         const pid = String(a.program_id);
-        if (!progMap.has(pid)) progMap.set(pid, { program_id: pid, title: (a.program && a.program.title) || '', selected: false, stamped: false });
+        if (!progMap.has(pid)) progMap.set(pid, { program_id: pid, title: (a.program && a.program.title) || (progInfo[pid] && progInfo[pid].title) || '', selected: false, stamped: false, stamped_at: null, ...periodOf(pid) });
         if (a.status === 'selected') selected.add(pid);
       });
       selected.forEach(pid => { if (progMap.has(pid)) progMap.get(pid).selected = true; });
@@ -826,8 +835,8 @@ router.get('/student-board', async (req, res) => {
         if (!rowMatchesStudent(s, st)) return;
         const pid = String(st.program_id);
         pids.add(pid);
-        if (s._progMap.has(pid)) s._progMap.get(pid).stamped = true;
-        else s._progMap.set(pid, { program_id: pid, title: st.program_name || '', selected: false, stamped: true });
+        if (s._progMap.has(pid)) { const e = s._progMap.get(pid); e.stamped = true; e.stamped_at = st.stamped_at || e.stamped_at; }
+        else s._progMap.set(pid, { program_id: pid, title: st.program_name || (progInfo[pid] && progInfo[pid].title) || '', selected: false, stamped: true, stamped_at: st.stamped_at || null, ...periodOf(pid) });
       });
       s.stamp_count = pids.size;
       s.programs = Array.from(s._progMap.values());
