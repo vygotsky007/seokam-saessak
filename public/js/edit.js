@@ -290,6 +290,8 @@
   // ===== 신청자 명단 + 수동입력 =====
   // 인증된 강사 비번을 메모리에만 보관(요청마다 동봉). 새로고침하면 다시 입력.
   let instructorPass = null;
+  // 비번 프롬프트를 띄운 의도('roster' | 'inquiries'). 인증 성공 후 이 동작을 실행.
+  let pendingAction = null;
   let rosterRows = [];   // 현재 표시 중인 명단(수정 시 행 조회용)
   let editingId = null;  // 수정 중인 수동신청 id (null 이면 신규 추가 모드)
   let currentProgram = {}; // 초기 GET 로드의 프로그램 전체 정보(확인증 생성에 사용)
@@ -453,11 +455,17 @@
 
   // "신청자 보기" 토글
   $('#roster-btn').addEventListener('click', () => {
-    const card = $('#state-roster');
-    card.hidden = !card.hidden;
-    if (!card.hidden && !instructorPass) {
-      $('#roster-pass').focus();
+    if (instructorPass) {
+      // 이미 인증됨 — 명단 카드 표시/숨김 토글(추가 비번 없음)
+      const card = $('#state-roster');
+      card.hidden = !card.hidden;
+      return;
     }
+    // 미인증 — '명단' 의도로 비번 프롬프트
+    pendingAction = 'roster';
+    $('#state-roster').hidden = false;
+    $('#roster-auth').hidden = false;
+    $('#roster-pass').focus();
   });
 
   // 강사 비번 확인 → 명단 로드
@@ -475,12 +483,25 @@
         else $('#roster-auth-msg').textContent = j.error || '확인 실패';
         return;
       }
+      // 인증 성공 — 명단은 준비(렌더)해 두되, 화면 분기는 의도(pendingAction)에 따른다.
       $('#roster-auth').hidden = true;
       $('#roster-body').hidden = false;
       $('#roster-auth-msg').textContent = '';
       await fetchNotes();
       renderRoster(j);
-      fetchInquiries(); // 문의사항 미답변 배지 채우기(비동기, 실패해도 무방)
+
+      const action = pendingAction || 'roster';
+      pendingAction = null;
+      if (action === 'inquiries') {
+        // '문의사항 보기'로 인증 → 명단 카드는 띄우지 않고 문의 모달만 연다.
+        $('#state-roster').hidden = true;
+        await fetchInquiries();
+        openInqModal();
+      } else {
+        // '신청자 보기'로 인증 → 명단 표시(+ 문의 배지는 비동기로).
+        $('#state-roster').hidden = false;
+        fetchInquiries();
+      }
     } catch (err) {
       instructorPass = null;
       $('#roster-auth-msg').textContent = '서버에 연결하지 못했습니다.';
@@ -606,9 +627,12 @@
 
   $('#inq-btn').addEventListener('click', async () => {
     if (!instructorPass) {
+      // 미인증 — '문의사항' 의도로 비번 프롬프트(인증 성공 시 문의 모달이 열림)
+      pendingAction = 'inquiries';
       $('#state-roster').hidden = false;
+      $('#roster-auth').hidden = false;
       $('#roster-pass') && $('#roster-pass').focus();
-      toast('먼저 강사 비밀번호를 확인한 뒤 다시 눌러주세요');
+      toast('강사 비밀번호를 입력하면 문의사항이 열립니다');
       return;
     }
     await fetchInquiries();
