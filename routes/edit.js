@@ -632,4 +632,61 @@ router.post('/:token/roster.xlsx', rosterLimiter, async (req, res) => {
   }
 });
 
+// ===== 학생 참고기록(노쇼/태도) — 강사용. 비번 게이트(gateRoster)로 보호. =====
+// 내부 관리용이며 student_notes 만 읽고/쓴다. 매칭 식별값: 이름+학년+반.
+const NOTE_TYPES = ['noshow', 'attitude', 'etc'];
+
+// 작성자 라벨: 프로그램 강사명 우선, 없으면 토큰 앞 8자.
+function instructorNoteAuthor(p, token) {
+  const name = (p.instructors && String(p.instructors).trim()) || '';
+  return name ? `강사(${name})` : `강사(${String(token).slice(0, 8)})`;
+}
+
+// POST /api/edit/:token/student-notes/list — 명단 매칭용 참고기록 일괄 조회(비번 게이트).
+// 전체 기록을 반환해 강사가 자기 명단 학생을 이름+학년+반으로 매칭(다른 프로그램 이력 포함).
+router.post('/:token/student-notes/list', rosterLimiter, async (req, res) => {
+  try {
+    const p = await gateRoster(req, res);
+    if (!p) return;
+    const { data, error } = await supabase
+      .from('student_notes')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    res.json({ ok: true, data: data || [] });
+  } catch (err) {
+    console.error('[POST /api/edit/:token/student-notes/list]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// POST /api/edit/:token/student-notes — 참고기록 추가(강사, 비번 게이트).
+router.post('/:token/student-notes', rosterLimiter, async (req, res) => {
+  try {
+    const p = await gateRoster(req, res);
+    if (!p) return;
+    const b = req.body || {};
+    const student_name = b.student_name ? String(b.student_name).trim() : '';
+    if (!student_name) return res.status(400).json({ ok: false, error: '학생 이름이 필요합니다.' });
+    const note_type = NOTE_TYPES.includes(b.note_type) ? b.note_type : 'etc';
+    const content = b.content ? String(b.content).trim() : '';
+    const row = {
+      student_name,
+      grade: (b.grade === undefined || b.grade === null || b.grade === '') ? null : Number(b.grade),
+      class_no: (b.class_no === undefined || b.class_no === null || b.class_no === '') ? null : Number(b.class_no),
+      guardian_contact: b.guardian_contact ? String(b.guardian_contact).trim() : null, // 동명이인 구분용
+      program_id: p.id,
+      note_type,
+      content,
+      created_by: instructorNoteAuthor(p, req.params.token),
+    };
+    const { data, error } = await supabase.from('student_notes').insert([row]).select();
+    if (error) throw error;
+    res.json({ ok: true, data: (data && data[0]) || null });
+  } catch (err) {
+    console.error('[POST /api/edit/:token/student-notes]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 module.exports = router;

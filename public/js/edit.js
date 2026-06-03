@@ -294,6 +294,22 @@
   let editingId = null;  // 수정 중인 수동신청 id (null 이면 신규 추가 모드)
   let currentProgram = {}; // 초기 GET 로드의 프로그램 전체 정보(확인증 생성에 사용)
 
+  // 학생 참고기록(노쇼/태도) — 내부 강사용
+  const NOTE_TYPE_LABELS = { noshow: '🚫 노쇼', attitude: '😠 태도', etc: '📝 기타' };
+  let notesByKey = {};   // 이름|학년|반 → [기록...]
+  let noteTarget = null; // 현재 작성 대상 { student_name, grade, class_no }
+  function noteKey(name, grade, classNo) {
+    return `${String(name || '').trim()}|${grade ?? ''}|${classNo ?? ''}`;
+  }
+  // 동명이인 처리: 이름+학년+반이 같고, 연락처가 양쪽 다 있으면 일치할 때만 같은 학생.
+  function matchedNotes(name, grade, classNo, contact) {
+    const bucket = notesByKey[noteKey(name, grade, classNo)] || [];
+    return bucket.filter(n => {
+      const nc = n.guardian_contact;
+      return !(nc && contact) || nc === contact;
+    });
+  }
+
   // 학년별 반 개수 (공개/관리자 폼과 동일 규칙 — 1·2학년 6반, 3학년 7반, 4학년 8반, 5·6학년 7반)
   const CLASS_COUNT = { 1: 6, 2: 6, 3: 7, 4: 8, 5: 7, 6: 7 };
   function populateMClassOptions(grade, currentVal) {
@@ -379,17 +395,22 @@
       const memoRow = memo
         ? `<tr class="memo-row"><td colspan="9" style="background:#FFFBEB; color:#92400E; font-size:12.5px; white-space:normal;">💬 <b>문의사항</b> · ${esc(memo)}</td></tr>`
         : '';
+      const nCount = matchedNotes(r.student_name, r.grade, r.class_no, r.guardian_phone).length;
+      const noteFlag = nCount
+        ? ` <button type="button" class="note-flag" data-note="${esc(r.id)}" title="참고기록 ${nCount}건 보기">⚠️ ${nCount}</button>`
+        : '';
+      const noteBtn = `<button type="button" class="btn mini" data-note="${esc(r.id)}" style="padding:2px 8px; font-size:12px;">📝 기록</button>`;
       return `
       <tr${r.status === 'cancelled' ? ' style="opacity:.6;"' : ''}>
         <td>${r.status === 'cancelled' ? '—' : r.seq}</td>
         <td>${statusBadge(r)}</td>
-        <td>${esc(r.student_name)}</td>
+        <td>${esc(r.student_name)}${noteFlag}</td>
         <td>${esc(r.grade ?? '')}학년 ${esc(r.class_no ?? '')}반</td>
         <td>${esc(r.guardian_name || '')}</td>
         <td>${esc(r.guardian_phone || '')}</td>
         <td>${esc(sourceLabel(r.source))}</td>
         <td>${selectCell(r)}</td>
-        <td>${manageCell(r)}</td>
+        <td>${manageCell(r)} ${noteBtn}</td>
       </tr>${memoRow}`;
     }).join('');
     const has = list.length > 0;
@@ -410,6 +431,24 @@
     });
     const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
     return { res, j };
+  }
+
+  // 참고기록 일괄 조회 → 이름|학년|반 키로 색인(명단 매칭용).
+  async function fetchNotes() {
+    try {
+      const res = await fetch(API + '/student-notes/list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: instructorPass }),
+      });
+      const j = await res.json().catch(() => ({ ok: false }));
+      const map = {};
+      if (j.ok) (j.data || []).forEach(n => {
+        const k = noteKey(n.student_name, n.grade, n.class_no);
+        (map[k] = map[k] || []).push(n);
+      });
+      notesByKey = map;
+    } catch { notesByKey = {}; }
   }
 
   // "신청자 보기" 토글
@@ -439,6 +478,7 @@
       $('#roster-auth').hidden = true;
       $('#roster-body').hidden = false;
       $('#roster-auth-msg').textContent = '';
+      await fetchNotes();
       renderRoster(j);
     } catch (err) {
       instructorPass = null;
@@ -450,8 +490,66 @@
 
   async function refreshRoster() {
     const { j: rj } = await fetchRoster();
-    if (rj.ok) renderRoster(rj);
+    if (rj.ok) { await fetchNotes(); renderRoster(rj); }
   }
+
+  // ===== 학생 참고기록(노쇼/태도) 모달 =====
+  function fmtNoteDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const z = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}.${z(d.getMonth() + 1)}.${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`;
+  }
+  function renderNoteHistory(notes) {
+    const list = (notes || []).slice().reverse();
+    if (!list.length) return '<p class="muted" style="margin:8px 0;">아직 기록이 없습니다.</p>';
+    return list.map(n => `
+      <div class="note-item">
+        <div class="note-item-head">
+          <span class="note-type-tag">${NOTE_TYPE_LABELS[n.note_type] || NOTE_TYPE_LABELS.etc}</span>
+          <span class="muted">${esc(fmtNoteDate(n.created_at))} · ${esc(n.created_by || '?')}</span>
+        </div>
+        ${n.content ? `<div class="note-item-body">${esc(n.content)}</div>` : ''}
+      </div>`).join('');
+  }
+  function openNoteModal(row) {
+    if (!instructorPass) { toast('먼저 강사 비밀번호를 확인하세요.'); return; }
+    noteTarget = {
+      student_name: row.student_name, grade: row.grade ?? null, class_no: row.class_no ?? null,
+      guardian_contact: row.guardian_phone || null,
+    };
+    $('#note-target-info').innerHTML = `<b>${esc(row.student_name)}</b> (${esc(row.grade ?? '?')}-${esc(row.class_no ?? '?')})`;
+    $('#note-history').innerHTML = renderNoteHistory(
+      matchedNotes(row.student_name, row.grade, row.class_no, row.guardian_phone));
+    $('#note-type').value = 'noshow';
+    $('#note-content').value = '';
+    $('#note-modal').hidden = false;
+  }
+  function closeNoteModal() { $('#note-modal').hidden = true; noteTarget = null; }
+  $('#note-cancel').addEventListener('click', closeNoteModal);
+  $('#note-modal').addEventListener('click', (e) => { if (e.target.id === 'note-modal') closeNoteModal(); });
+  $('#note-save').addEventListener('click', async () => {
+    if (!noteTarget || !instructorPass) return;
+    const note_type = $('#note-type').value;
+    const content = $('#note-content').value.trim();
+    try {
+      const res = await fetch(API + '/student-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: instructorPass, ...noteTarget, note_type, content }),
+      });
+      const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
+      if (!j.ok) { toast(j.error || '저장 실패'); return; }
+      toast('참고기록을 저장했습니다');
+      await fetchNotes();
+      // 명단의 ⚠️ 배지 갱신 + 모달 이력 갱신(방금 추가분 즉시 확인)
+      const { j: rj } = await fetchRoster();
+      if (rj.ok) renderRoster(rj);
+      $('#note-history').innerHTML = renderNoteHistory(
+        matchedNotes(noteTarget.student_name, noteTarget.grade, noteTarget.class_no, noteTarget.guardian_contact));
+      $('#note-content').value = '';
+    } catch (err) { toast('서버 오류로 저장하지 못했습니다.'); }
+  });
 
   // 수동 신청 추가 / 수정 저장 (editingId 유무로 분기)
   $('#m-add-btn').addEventListener('click', async () => {
@@ -501,6 +599,12 @@
 
   // 명단 테이블: 수동 건 수정/삭제 (이벤트 위임)
   $('#roster-tbody').addEventListener('click', async (e) => {
+    const noteBtn = e.target.closest('[data-note]');
+    if (noteBtn) {
+      const row = rosterRows.find(r => String(r.id) === noteBtn.getAttribute('data-note'));
+      if (row) openNoteModal(row);
+      return;
+    }
     const editBtn = e.target.closest('[data-edit]');
     const delBtn = e.target.closest('[data-del]');
     if (editBtn) {

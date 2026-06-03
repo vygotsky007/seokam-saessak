@@ -40,6 +40,24 @@
   let currentSort = 'order';
   const ALL_PROGRAMS = '__all__'; // 신청자 탭 "전체 보기" sentinel
 
+  // 학생 참고기록(노쇼/태도) — 내부 관리용
+  const NOTE_TYPE_LABELS = { noshow: '🚫 노쇼', attitude: '😠 태도', etc: '📝 기타' };
+  let studentNotesByKey = {}; // 이름|학년|반 → [기록...]
+  let noteTarget = null;      // 현재 작성 대상 { student_name, grade, class_no, program_id }
+  // 1차 매칭 식별값: 이름+학년+반
+  function studentNoteKey(name, grade, classNo) {
+    return `${String(name || '').trim()}|${grade ?? ''}|${classNo ?? ''}`;
+  }
+  // 동명이인 처리: 이름+학년+반이 같은 기록 중, 연락처가 양쪽 다 있으면 일치할 때만 같은 학생으로 간주.
+  // (한쪽이라도 연락처가 없으면 이름+학년+반으로 매칭 — 이 경우 동명이인일 수 있음)
+  function matchedNotes(name, grade, classNo, contact) {
+    const bucket = studentNotesByKey[studentNoteKey(name, grade, classNo)] || [];
+    return bucket.filter(n => {
+      const nc = n.guardian_contact;
+      return !(nc && contact) || nc === contact;
+    });
+  }
+
   const $ = sel => document.querySelector(sel);
   const $$ = sel => document.querySelectorAll(sel);
 
@@ -739,8 +757,22 @@
       const url = (pid === ALL_PROGRAMS) ? '/applications' : `/applications?program_id=${encodeURIComponent(pid)}`;
       const j = await api(url);
       applications = j.data || [];
+      await loadStudentNotes(); // 명단 그리기 전에 참고기록 일괄 조회(학생마다 N번 호출 방지)
       renderApplications();
     } catch (err) { toast(err.message); }
+  }
+
+  // 참고기록 전체를 한 번에 받아 이름|학년|반 키로 색인.
+  async function loadStudentNotes() {
+    try {
+      const j = await api('/student-notes');
+      const map = {};
+      (j.data || []).forEach(n => {
+        const k = studentNoteKey(n.student_name, n.grade, n.class_no);
+        (map[k] = map[k] || []).push(n);
+      });
+      studentNotesByKey = map;
+    } catch { studentNotesByKey = {}; }
   }
 
   function applicationComparator(a, b) {
@@ -778,10 +810,14 @@
     const reorderBtns = allView ? '' :
       `<button class="btn small" data-up="${a.id}" title="위로">▲</button>
           <button class="btn small" data-down="${a.id}" title="아래로">▼</button>`;
+    const noteCount = matchedNotes(a.student_name, a.grade, a.class_no, a.guardian_phone).length;
+    const noteFlag = noteCount
+      ? ` <button type="button" class="note-flag" data-note="${a.id}" title="참고기록 ${noteCount}건 보기">⚠️ ${noteCount}</button>`
+      : '';
     return `
       <tr data-id="${a.id}"${cancelled ? ' style="opacity:.55;"' : ''}>
         <td>${displayIndex}</td>
-        <td><b>${esc(a.student_name)}</b></td>
+        <td><b>${esc(a.student_name)}</b>${noteFlag}</td>
         <td>${a.grade ?? '?'}-${a.class_no ?? '?'}</td>
         <td>${esc(a.guardian_name || '')}<br><span class="muted">${esc(a.guardian_phone || '')}</span></td>
         <td>${esc(a.student_phone || '')}</td>
@@ -798,6 +834,7 @@
         <td>${fmtTime(a.submitted_at)}</td>
         <td class="cell-actions">
           ${reorderBtns}
+          <button class="btn small" data-note="${a.id}" title="참고기록(노쇼/태도)">📝 기록</button>
           <button class="btn small" data-copy="${a.id}">복사</button>
           <button class="btn small" data-edit-app="${a.id}">수정</button>
           <button class="btn small danger" data-del-app="${a.id}">삭제</button>
@@ -816,6 +853,7 @@
         await loadApplications(currentProgramId);
       } catch (err) { toast(err.message); }
     }));
+    $$('[data-note]').forEach(el => el.addEventListener('click', () => openNoteDialog(el.dataset.note)));
     $$('[data-up]').forEach(el => el.addEventListener('click', () => moveRow(el.dataset.up, -1)));
     $$('[data-down]').forEach(el => el.addEventListener('click', () => moveRow(el.dataset.down, +1)));
     $$('[data-copy]').forEach(el => el.addEventListener('click', () => openCopyDialog(el.dataset.copy)));
@@ -1050,6 +1088,64 @@
       $('#copy-dialog').classList.remove('open');
       toast('복사 완료');
       if (currentProgramId) await loadApplications(currentProgramId);
+    } catch (err) { toast(err.message); }
+  });
+
+  // ===== 학생 참고기록(노쇼/태도) 모달 =====
+  function fmtNoteDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const z = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}.${z(d.getMonth() + 1)}.${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`;
+  }
+  function renderNoteHistory(notes) {
+    const list = (notes || []).slice().reverse(); // 최신 먼저
+    if (!list.length) {
+      return '<p class="muted" style="margin:8px 0;">아직 기록이 없습니다.</p>';
+    }
+    return list.map(n => `
+      <div class="note-item">
+        <div class="note-item-head">
+          <span class="note-type-tag">${NOTE_TYPE_LABELS[n.note_type] || NOTE_TYPE_LABELS.etc}</span>
+          <span class="muted">${esc(fmtNoteDate(n.created_at))} · ${esc(n.created_by || '?')}</span>
+        </div>
+        ${n.content ? `<div class="note-item-body">${esc(n.content)}</div>` : ''}
+      </div>`).join('');
+  }
+  function openNoteDialog(appId) {
+    const a = applications.find(x => x.id === appId);
+    if (!a) return;
+    noteTarget = {
+      student_name: a.student_name,
+      grade: a.grade ?? null,
+      class_no: a.class_no ?? null,
+      guardian_contact: a.guardian_phone || null,
+      program_id: a.program_id || null,
+    };
+    $('#note-target-info').innerHTML =
+      `<b>${esc(a.student_name)}</b> (${a.grade ?? '?'}-${a.class_no ?? '?'})`;
+    $('#note-history').innerHTML = renderNoteHistory(
+      matchedNotes(a.student_name, a.grade, a.class_no, a.guardian_phone));
+    $('#note-type').value = 'noshow';
+    $('#note-content').value = '';
+    $('#note-dialog').classList.add('open');
+  }
+  $('#note-save')?.addEventListener('click', async () => {
+    if (!noteTarget) return;
+    const note_type = $('#note-type').value;
+    const content = $('#note-content').value.trim();
+    try {
+      await api('/student-notes', {
+        method: 'POST',
+        body: JSON.stringify({ ...noteTarget, note_type, content }),
+      });
+      toast('참고기록을 저장했습니다');
+      await loadStudentNotes();
+      renderApplications();
+      // 모달은 열어둔 채 이력 갱신(방금 추가분 즉시 확인)
+      $('#note-history').innerHTML = renderNoteHistory(
+        matchedNotes(noteTarget.student_name, noteTarget.grade, noteTarget.class_no, noteTarget.guardian_contact));
+      $('#note-content').value = '';
     } catch (err) { toast(err.message); }
   });
 

@@ -32,6 +32,21 @@
   .roster-table th { background: var(--primary-soft); font-weight: 700; }
   .roster-table .badge-wait { color: var(--danger); font-weight: 700; }
   .roster-table .badge-ok { color: var(--primary); font-weight: 700; }
+  /* 학생 참고기록(노쇼/태도) */
+  .note-flag { display:inline-block; border:1px solid #FCA5A5; background:#FEF2F2; color:#B91C1C; font-size:11px; font-weight:700; padding:1px 6px; border-radius:999px; cursor:pointer; vertical-align:middle; }
+  .note-flag:hover { background:#FEE2E2; }
+  .note-modal { position:fixed; inset:0; background:rgba(15,23,42,.45); display:flex; align-items:center; justify-content:center; z-index:50; padding:16px; }
+  .note-modal[hidden] { display:none; }
+  .note-box { background:#fff; border-radius:14px; padding:18px; width:100%; max-width:440px; max-height:88vh; overflow-y:auto; box-shadow:0 12px 40px rgba(0,0,0,.2); }
+  .note-box h2 { font-size:16px; font-weight:800; margin-bottom:6px; }
+  .note-box label { display:block; font-size:13px; font-weight:600; margin:10px 0 4px; }
+  .note-box select, .note-box textarea { width:100%; border:1px solid var(--border); border-radius:8px; padding:8px; font-size:14px; font-family:inherit; }
+  .note-box textarea { min-height:72px; resize:vertical; }
+  .note-history { max-height:240px; overflow-y:auto; }
+  .note-item { border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin-bottom:6px; background:#FFFBEB; }
+  .note-item-head { display:flex; justify-content:space-between; gap:8px; font-size:11.5px; }
+  .note-type-tag { font-weight:800; color:#B45309; }
+  .note-item-body { margin-top:4px; font-size:13px; white-space:pre-wrap; word-break:break-word; }
 </style>
 </head>
 <body>
@@ -203,6 +218,29 @@
         <button type="button" class="btn primary" id="m-add-btn">신청자 추가</button>
         <button type="button" class="btn" id="m-cancel-btn" hidden>수정 취소</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- 학생 참고기록(노쇼/태도) 모달 -->
+<div class="note-modal" id="note-modal" hidden>
+  <div class="note-box">
+    <h2>⚠️ 학생 참고기록</h2>
+    <p id="note-target-info" style="margin-bottom:4px;"></p>
+    <p class="muted" style="font-size:11.5px; margin-bottom:10px;">이름·학년·반으로 매칭한 기록입니다. 동명이인일 수 있으니 참고용으로만 활용하세요.</p>
+    <div id="note-history" class="note-history"></div>
+    <hr style="border:none; border-top:1px solid var(--border); margin:12px 0;">
+    <label>유형</label>
+    <select id="note-type">
+      <option value="noshow">🚫 노쇼</option>
+      <option value="attitude">😠 태도</option>
+      <option value="etc">📝 기타</option>
+    </select>
+    <label>상세 메모</label>
+    <textarea id="note-content" placeholder="예: 무단 불참 / 수업 방해 등"></textarea>
+    <div class="actions" style="display:flex; gap:8px; justify-content:flex-end; margin-top:14px;">
+      <button type="button" class="btn" id="note-cancel">닫기</button>
+      <button type="button" class="btn primary" id="note-save">기록 추가</button>
     </div>
   </div>
 </div>

@@ -563,6 +563,56 @@ router.post('/applications/:id/copy', async (req, res) => {
   }
 });
 
+// ===== 학생 참고기록(노쇼/태도) — 내부 관리용. 공개/내신청 화면에는 절대 노출 안 함. =====
+// student_notes 테이블만 읽고/쓴다(신청 테이블 무변경). 매칭 식별값: 이름+학년+반.
+const NOTE_TYPES = ['noshow', 'attitude', 'etc'];
+
+// GET /api/student-notes
+//  - 파라미터 없음: 전체 반환(명단 일괄 매칭용 — 학생마다 N번 호출 방지)
+//  - student_name(+grade,class_no): 특정 학생 이력만 반환
+router.get('/student-notes', async (req, res) => {
+  try {
+    const { student_name, grade, class_no } = req.query;
+    let q = supabase.from('student_notes').select('*').order('created_at', { ascending: true });
+    if (student_name) q = q.eq('student_name', String(student_name).trim());
+    if (grade !== undefined && grade !== '') q = q.eq('grade', Number(grade));
+    if (class_no !== undefined && class_no !== '') q = q.eq('class_no', Number(class_no));
+    const { data, error } = await q;
+    if (error) throw error;
+    res.json({ ok: true, data: data || [] });
+  } catch (err) {
+    console.error('[GET admin/student-notes]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// POST /api/student-notes — 참고기록 추가(관리자). 작성자는 '관리자'.
+router.post('/student-notes', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const student_name = b.student_name ? String(b.student_name).trim() : '';
+    if (!student_name) return res.status(400).json({ ok: false, error: '학생 이름이 필요합니다.' });
+    const note_type = NOTE_TYPES.includes(b.note_type) ? b.note_type : 'etc';
+    const content = b.content ? String(b.content).trim() : '';
+    const row = {
+      student_name,
+      grade: (b.grade === undefined || b.grade === null || b.grade === '') ? null : Number(b.grade),
+      class_no: (b.class_no === undefined || b.class_no === null || b.class_no === '') ? null : Number(b.class_no),
+      guardian_contact: b.guardian_contact ? String(b.guardian_contact).trim() : null, // 동명이인 구분용
+      program_id: b.program_id || null,
+      note_type,
+      content,
+      created_by: '관리자',
+    };
+    const { data, error } = await supabase.from('student_notes').insert([row]).select();
+    if (error) throw error;
+    res.json({ ok: true, data: (data && data[0]) || null });
+  } catch (err) {
+    console.error('[POST admin/student-notes]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 router.get('/dashboard', async (req, res) => {
   try {
     const { data: programs, error: pErr } = await supabase

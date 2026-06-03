@@ -330,6 +330,31 @@
   </div>
 </div>
 
+<!-- 학생 참고기록(노쇼/태도) Dialog -->
+<div class="dialog-mask" id="note-dialog">
+  <div class="dialog">
+    <h2>⚠️ 학생 참고기록</h2>
+    <p id="note-target-info" style="margin-bottom:4px;"></p>
+    <p class="muted" style="font-size:11.5px; margin-bottom:10px;">이름·학년·반으로 매칭한 기록입니다. 동명이인일 수 있으니 참고용으로만 활용하세요.</p>
+    <div id="note-history" class="note-history"></div>
+    <hr style="border:none; border-top:1px solid var(--border); margin:12px 0;">
+    <div class="form-grid">
+      <label>유형</label>
+      <select id="note-type" class="select">
+        <option value="noshow">🚫 노쇼</option>
+        <option value="attitude">😠 태도</option>
+        <option value="etc">📝 기타</option>
+      </select>
+      <label>상세 메모</label>
+      <textarea id="note-content" placeholder="예: 무단 불참 / 수업 방해 등"></textarea>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn" data-close>닫기</button>
+      <button type="button" class="btn primary" id="note-save">기록 추가</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="/js/schedule-format.js"></script>
