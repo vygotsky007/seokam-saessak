@@ -613,6 +613,76 @@ router.post('/student-notes', async (req, res) => {
   }
 });
 
+// ===== 문의사항 게시판 — 관리자 전용. 공개/내신청 화면엔 절대 노출 안 함. =====
+// 문의 원본은 saessak_applications.motivation 컬럼(읽기 전용). 답변 상태만 inquiry_status 에 기록.
+// inquiry_status(application_id text PK, answered bool, answered_by, answered_at) 만 읽고/쓴다.
+
+// GET /api/inquiries — motivation 이 비어있지 않은 신청 + 답변상태 조인(일괄 조회 후 매칭).
+router.get('/inquiries', async (req, res) => {
+  try {
+    const { data: apps, error: aErr } = await supabase
+      .from('saessak_applications')
+      .select('*, program:saessak_programs(*)')
+      .not('motivation', 'is', null)
+      .order('submitted_at', { ascending: false });
+    if (aErr) throw aErr;
+
+    const { data: statuses, error: sErr } = await supabase
+      .from('inquiry_status')
+      .select('*');
+    if (sErr) throw sErr;
+    const statusMap = {};
+    (statuses || []).forEach(s => { statusMap[String(s.application_id)] = s; });
+
+    const out = (apps || [])
+      .filter(a => a.motivation && String(a.motivation).trim()) // 빈 문자열 제외
+      .map(a => {
+        const st = statusMap[String(a.id)];
+        return {
+          id: a.id,
+          program_title: (a.program && a.program.title) || '(삭제된 프로그램)',
+          student_name: a.student_name,
+          grade: a.grade,
+          class_no: a.class_no,
+          guardian_name: a.guardian_name,
+          guardian_phone: a.guardian_phone,
+          motivation: a.motivation, // 읽기 전용
+          submitted_at: a.submitted_at,
+          status: a.status,
+          answered: !!(st && st.answered),
+          answered_by: st ? st.answered_by : null,
+          answered_at: st ? st.answered_at : null,
+        };
+      });
+    res.json({ ok: true, data: out });
+  } catch (err) {
+    console.error('[GET admin/inquiries]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// POST /api/inquiries/status — 답변 상태 upsert(application_id 기준). 신청 데이터는 건드리지 않음.
+router.post('/inquiries/status', async (req, res) => {
+  try {
+    const { application_id, answered } = req.body || {};
+    if (!application_id) return res.status(400).json({ ok: false, error: 'application_id 가 필요합니다.' });
+    const row = {
+      application_id: String(application_id),
+      answered: answered === true || answered === 'true',
+      answered_by: '관리자',
+      answered_at: new Date().toISOString(),
+    };
+    const { error } = await supabase
+      .from('inquiry_status')
+      .upsert(row, { onConflict: 'application_id' });
+    if (error) throw error;
+    res.json({ ok: true, data: row });
+  } catch (err) {
+    console.error('[POST admin/inquiries/status]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 router.get('/dashboard', async (req, res) => {
   try {
     const { data: programs, error: pErr } = await supabase

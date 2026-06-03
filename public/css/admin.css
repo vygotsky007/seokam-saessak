@@ -93,6 +93,25 @@
 }
 .tab.active { color: var(--primary-ink); border-color: var(--primary); }
 .tab:hover:not(.active) { color: var(--ink); }
+/* 문의사항 탭 미답변 개수 배지 */
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 2px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+/* 문의사항 필터 버튼 활성 상태 */
+.inq-filters { display: inline-flex; gap: 4px; }
+.btn.inq-filter.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
 .toolbar {
   display: flex;

@@ -194,6 +194,7 @@
     if (name === 'dashboard') loadDashboard();
     else if (name === 'programs') loadProgramsTab();
     else if (name === 'applicants') loadApplicantsTab();
+    else if (name === 'inquiries') loadInquiriesTab();
     else if (name === 'schedule') loadScheduleTab();
     else if (name === 'export') loadExportTab();
   }
@@ -1149,6 +1150,71 @@
     } catch (err) { toast(err.message); }
   });
 
+  // ===== 문의사항 게시판 (관리자 전용) =====
+  let inquiries = [];
+  let inquiryFilter = 'all'; // all | pending | answered
+
+  async function refreshInquiries() {
+    const j = await api('/inquiries');
+    inquiries = j.data || [];
+    updateInquiryBadge();
+  }
+  function updateInquiryBadge() {
+    const pending = inquiries.filter(x => !x.answered).length;
+    const badge = $('#inq-badge');
+    if (!badge) return;
+    if (pending > 0) { badge.textContent = pending; badge.hidden = false; }
+    else { badge.hidden = true; }
+  }
+  async function loadInquiriesTab() {
+    try { await refreshInquiries(); renderInquiries(); }
+    catch (err) { toast(err.message); }
+  }
+  function renderInquiries() {
+    $$('[data-inq-filter]').forEach(b => b.classList.toggle('active', b.dataset.inqFilter === inquiryFilter));
+    let list = inquiries.slice(); // 서버에서 신청일시 내림차순 정렬됨
+    if (inquiryFilter === 'pending') list = list.filter(x => !x.answered);
+    else if (inquiryFilter === 'answered') list = list.filter(x => x.answered);
+
+    const pending = inquiries.filter(x => !x.answered).length;
+    $('#inq-count').textContent = `전체 ${inquiries.length}건 · 대기 ${pending}건`;
+
+    const tbody = $('#inquiries-tbody');
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="6" class="empty-state">문의사항이 없습니다.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = list.map(x => `
+      <tr>
+        <td>${esc(x.program_title)}</td>
+        <td><b>${esc(x.student_name)}</b><br><span class="muted" style="font-size:11px;">${x.grade ?? '?'}-${x.class_no ?? '?'}</span></td>
+        <td>${esc(x.guardian_name || '')}<br><span class="muted">${esc(x.guardian_phone || '')}</span></td>
+        <td style="white-space:normal; max-width:380px; word-break:break-word;">${esc(x.motivation)}</td>
+        <td>${fmtTime(x.submitted_at)}</td>
+        <td>
+          ${x.answered
+            ? `<span class="badge open">답변함</span>${x.answered_at ? `<br><span class="muted" style="font-size:11px;">${fmtTime(x.answered_at)}</span>` : ''}`
+            : `<span class="badge" style="background:#FEF3C7; color:#92400E;">대기</span>`}
+          <br><button class="btn small" data-inq-toggle="${esc(x.id)}" data-answered="${x.answered ? '1' : '0'}">${x.answered ? '대기로' : '답변함'}</button>
+        </td>
+      </tr>`).join('');
+
+    $$('[data-inq-toggle]').forEach(el => el.addEventListener('click', async () => {
+      const id = el.dataset.inqToggle;
+      const next = el.dataset.answered !== '1';
+      try {
+        await api('/inquiries/status', { method: 'POST', body: JSON.stringify({ application_id: id, answered: next }) });
+        toast(next ? '답변함으로 표시했습니다' : '대기로 되돌렸습니다');
+        await refreshInquiries();
+        renderInquiries();
+      } catch (err) { toast(err.message); }
+    }));
+  }
+  $$('[data-inq-filter]').forEach(b => b.addEventListener('click', () => {
+    inquiryFilter = b.dataset.inqFilter;
+    renderInquiries();
+  }));
+
   // ===== Export =====
   async function loadExportTab() {
     // 내보내기도 매번 fresh fetch (캐시 stale 방지).
@@ -1401,5 +1467,7 @@
     } catch {}
     loadDashboard();
     startDashboardAutoRefresh();
+    // 미답변 문의 개수 배지 초기 표시(탭 방문 전에도 보이게)
+    try { await refreshInquiries(); } catch {}
   })();
 })();

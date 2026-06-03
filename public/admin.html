@@ -22,6 +22,7 @@
     <button class="tab active" data-tab="dashboard">📊 종합</button>
     <button class="tab" data-tab="programs">📚 프로그램</button>
     <button class="tab" data-tab="applicants">👥 신청자</button>
+    <button class="tab" data-tab="inquiries">💬 문의사항 <span class="tab-badge" id="inq-badge" hidden></span></button>
     <button class="tab" data-tab="schedule">📅 일정</button>
     <button class="tab" data-tab="export">📥 내보내기</button>
   </div>
@@ -146,6 +147,33 @@
           </tr>
         </thead>
         <tbody id="applicants-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="tab-pane" id="pane-inquiries" hidden>
+    <div class="toolbar">
+      <div class="inq-filters">
+        <button class="btn small inq-filter active" data-inq-filter="all">전체</button>
+        <button class="btn small inq-filter" data-inq-filter="pending">대기</button>
+        <button class="btn small inq-filter" data-inq-filter="answered">답변함</button>
+      </div>
+      <span class="muted" id="inq-count"></span>
+      <span class="muted" style="font-size:11.5px;">답변은 직접 문자·전화로 — 여기서는 처리 여부만 표시합니다.</span>
+    </div>
+    <div class="table-wrap">
+      <table id="inquiries-table">
+        <thead>
+          <tr>
+            <th>프로그램</th>
+            <th>학생</th>
+            <th>보호자 / 연락처</th>
+            <th>문의 내용</th>
+            <th>신청일시</th>
+            <th>답변 상태</th>
+          </tr>
+        </thead>
+        <tbody id="inquiries-tbody"></tbody>
       </table>
     </div>
   </section>
