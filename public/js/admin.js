@@ -350,6 +350,7 @@
   async function loadProgramsTab() {
     try {
       loadCreatorTokens();
+      loadProgramOutputs();
       const j = await api('/programs');
       programs = j.data || [];
       $('#programs-tbody').innerHTML = programs.length === 0
@@ -378,6 +379,7 @@
             </td>
             <td class="cell-actions">
               <button class="btn small" data-edit="${p.id}">수정</button>
+              <button class="btn small" data-output="${p.id}">📦 산출물</button>
               <button class="btn small danger" data-del="${p.id}">삭제</button>
             </td>
           </tr>
@@ -398,6 +400,7 @@
         });
       });
       $$('[data-edit]').forEach(el => el.addEventListener('click', () => openProgramDialog(el.dataset.edit)));
+      $$('[data-output]').forEach(el => el.addEventListener('click', () => openOutputDialog(el.dataset.output)));
       $$('[data-del]').forEach(el => el.addEventListener('click', async () => {
         if (!confirm('이 프로그램과 모든 신청 내역을 삭제할까요?')) return;
         try { await api(`/programs/${el.dataset.del}`, { method: 'DELETE' }); toast('삭제됨'); loadProgramsTab(); }
@@ -489,6 +492,36 @@
       $('#creator-label').value = '';
       toast('개설자 토큰을 발급했습니다 (허용을 켜야 접근 가능)');
       loadCreatorTokens();
+    } catch (err) { toast(err.message); }
+  });
+
+  // ===== 산출물(결과물 링크) 입력 =====
+  let outputsByPid = {};
+  async function loadProgramOutputs() {
+    try {
+      const j = await api('/program-outputs');
+      const map = {};
+      (j.data || []).forEach(o => { map[o.program_id] = o; });
+      outputsByPid = map;
+    } catch { outputsByPid = {}; }
+  }
+  function openOutputDialog(pid) {
+    const p = programs.find(x => String(x.id) === String(pid));
+    const o = outputsByPid[pid] || {};
+    $('#output-dialog-pid').value = pid;
+    $('#output-dialog-title').textContent = `📦 산출물 — ${p ? p.title : ''}`;
+    $('#output-summary').value = o.summary || '';
+    $('#output-url').value = o.output_url || '';
+    $('#output-dialog').classList.add('open');
+  }
+  $('#output-save')?.addEventListener('click', async () => {
+    const program_id = $('#output-dialog-pid').value;
+    if (!program_id) return;
+    try {
+      await api('/program-outputs', { method: 'POST', body: JSON.stringify({ program_id, summary: $('#output-summary').value, output_url: $('#output-url').value }) });
+      toast('산출물을 저장했습니다 (공개 /outputs 페이지에 노출)');
+      await loadProgramOutputs();
+      $('#output-dialog').classList.remove('open');
     } catch (err) { toast(err.message); }
   });
 

@@ -70,6 +70,7 @@ const { requireAdmin } = require('./utils/auth');
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/me', (req, res) => res.sendFile(path.join(__dirname, 'public', 'me.html')));
+app.get('/outputs', (req, res) => res.sendFile(path.join(__dirname, 'public', 'outputs.html')));
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
 // 강사용 토큰 수정 페이지 — 토큰별 프로그램 1개만 수정(관리자 인증 없이 토큰+권한으로 게이트).

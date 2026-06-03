@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>디지털새싹 산출물 | 석암초등학교</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="/css/common.css">
+<style>
+  body { background: #f3f8f2; color: #16341c; font-family: 'Pretendard','Malgun Gothic',sans-serif; }
+  .out-shell { max-width: 880px; margin: 0 auto; padding: 22px 14px 60px; }
+  .out-head { text-align: center; margin-bottom: 18px; }
+  .out-head h1 { font-size: 22px; font-weight: 900; color: #1B5E20; }
+  .out-head .sub { font-size: 13.5px; color: var(--muted); margin-top: 6px; }
+  .out-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .out-card { background: #fff; border: 1.5px solid #C8E6C9; border-radius: 14px; padding: 16px 16px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(46,125,50,.06); }
+  .out-card h2 { font-size: 16px; font-weight: 800; color: #2E7D32; }
+  .out-meta { font-size: 12.5px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+  .out-summary { font-size: 13.5px; color: #33491f; white-space: pre-wrap; word-break: break-word; line-height: 1.55; flex: 1; }
+  .out-link { display: inline-block; align-self: flex-start; margin-top: 4px; background: #2E7D32; color: #fff; font-weight: 700; font-size: 13px; padding: 7px 14px; border-radius: 8px; text-decoration: none; }
+  .out-link:hover { background: #1B5E20; }
+  .out-empty, .out-loading { text-align: center; color: var(--muted); padding: 48px 16px; font-size: 14.5px; }
+  .out-foot { text-align: center; color: var(--muted); font-size: 12px; margin-top: 28px; }
+</style>
+</head>
+<body>
+<div class="out-shell">
+  <div class="out-head">
+    <h1>🌱 디지털새싹 산출물</h1>
+    <div class="sub">석암초등학교 디지털새싹 프로그램의 결과물을 모았습니다. 카드의 ‘결과물 보기’로 확인하세요.</div>
+  </div>
+  <div class="out-loading" id="out-loading">불러오는 중…</div>
+  <div class="out-empty" id="out-empty" hidden>아직 공개된 산출물이 없습니다.</div>
+  <div class="out-grid" id="out-grid"></div>
+  <div class="out-foot">© 석암초등학교 디지털새싹</div>
+</div>
+
+<script src="/js/schedule-format.js"></script>
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function period(c){
+    try { const t = window.SaessakSchedule && window.SaessakSchedule.format({ session_dates:c.session_dates, start_time:c.start_time, end_time:c.end_time, extra_sessions:c.extra_sessions }); if (t) return t; } catch(e){}
+    return c.schedule || '';
+  }
+  (async () => {
+    try {
+      const res = await fetch('/api/public/outputs');
+      const j = await res.json().catch(() => ({ ok:false }));
+      $('#out-loading').hidden = true;
+      const list = (j && j.ok && j.data) ? j.data : [];
+      if (!list.length) { $('#out-empty').hidden = false; return; }
+      $('#out-grid').innerHTML = list.map(c => {
+        const per = period(c);
+        const link = c.output_url ? `<a class="out-link" href="${esc(c.output_url)}" target="_blank" rel="noopener noreferrer">결과물 보기 →</a>` : '';
+        return `<div class="out-card">
+          <h2>${esc(c.program_name)}</h2>
+          <div class="out-meta">
+            ${per ? `<span>📅 ${esc(per)}</span>` : ''}
+            ${c.instructors ? `<span>🧑‍🏫 ${esc(c.instructors)}</span>` : ''}
+          </div>
+          ${c.summary ? `<div class="out-summary">${esc(c.summary)}</div>` : ''}
+          ${link}
+        </div>`;
+      }).join('');
+    } catch (err) {
+      $('#out-loading').textContent = '산출물을 불러오지 못했습니다.';
+    }
+  })();
+})();
+</script>
+</body>
+</html>

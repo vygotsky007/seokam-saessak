@@ -224,8 +224,24 @@
     }
     currentProgram = j.data || {};
     fillForm(j.data || {});
+    // 산출물 프리필
+    $('#output-summary').value = (j.output && j.output.summary) || '';
+    $('#output-url').value = (j.output && j.output.output_url) || '';
     showState('form');
   }
+
+  // 산출물 저장(프로그램 수정과 동일 게이트 — 강사 비번 불요)
+  $('#output-save').addEventListener('click', async () => {
+    try {
+      const res = await fetch(API + '/program-outputs', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ summary: $('#output-summary').value, output_url: $('#output-url').value }),
+      });
+      const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
+      if (!j.ok) { toast(j.error || '저장 실패'); return; }
+      toast('산출물을 저장했습니다 (공개 /outputs 에 노출)');
+    } catch (err) { toast('서버 오류로 저장하지 못했습니다.'); }
+  });
 
   // ===== 저장 =====
   $('#type-multicultural').addEventListener('change', updateMulticulturalMinVisibility);

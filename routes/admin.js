@@ -73,6 +73,47 @@ router.get('/programs', async (req, res) => {
   }
 });
 
+// ===== 산출물(결과물 링크) — program_outputs 만 읽고/쓴다(신청 테이블 무변경). =====
+function normOutputUrl(v) {
+  const s = (v == null ? '' : String(v)).trim();
+  if (!s) return null;
+  return /^https?:\/\//i.test(s) ? s : ('https://' + s);
+}
+// GET /api/program-outputs — 전체 산출물(관리자 입력 폼 프리필용).
+router.get('/program-outputs', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('program_outputs').select('*');
+    if (error) throw error;
+    res.json({ ok: true, data: data || [] });
+  } catch (err) {
+    console.error('[GET admin/program-outputs]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+// POST /api/program-outputs — program_id 기준 upsert(관리자). program_name 은 서버에서 프로그램명으로 채움.
+router.post('/program-outputs', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const program_id = b.program_id ? String(b.program_id) : '';
+    if (!program_id) return res.status(400).json({ ok: false, error: 'program_id 가 필요합니다.' });
+    const { data: prog } = await supabase.from('saessak_programs').select('title').eq('id', program_id).maybeSingle();
+    const row = {
+      program_id,
+      program_name: prog ? prog.title : (b.program_name || null),
+      summary: b.summary ? String(b.summary).trim() : null,
+      output_url: normOutputUrl(b.output_url),
+      created_by: '관리자',
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from('program_outputs').upsert(row, { onConflict: 'program_id' });
+    if (error) throw error;
+    res.json({ ok: true, data: row });
+  } catch (err) {
+    console.error('[POST admin/program-outputs]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // ===== 개설자 토큰 관리(프로그램 개설 위임) — 관리자 전용. creator_tokens 만 읽고/쓴다. =====
 // GET /api/creator-tokens — 토큰 목록 + 토큰별 개설 프로그램 수.
 router.get('/creator-tokens', async (req, res) => {

@@ -154,7 +154,8 @@ router.get('/:token', async (req, res) => {
       // 권한 off — 프로그램 정보도 주지 않고 안내만.
       return res.json({ ok: true, edit_enabled: false, title: p.title || '' });
     }
-    res.json({ ok: true, edit_enabled: true, data: pickProgram(p) });
+    const { data: out } = await supabase.from('program_outputs').select('summary, output_url').eq('program_id', p.id).maybeSingle();
+    res.json({ ok: true, edit_enabled: true, data: pickProgram(p), output: out || null });
   } catch (err) {
     console.error('[GET /api/edit/:token]', err.message);
     res.status(500).json({ ok: false, error: err.message });
@@ -837,6 +838,32 @@ router.post('/:token/inquiries/status', rosterLimiter, async (req, res) => {
     res.json({ ok: true, data: row });
   } catch (err) {
     console.error('[POST /api/edit/:token/inquiries/status]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ===== 산출물(결과물 링크) — 강사 자기 프로그램. program_outputs upsert. =====
+function normOutputUrlE(v) { const s = (v == null ? '' : String(v)).trim(); if (!s) return null; return /^https?:\/\//i.test(s) ? s : ('https://' + s); }
+// 산출물 저장은 프로그램 수정과 동일 게이트(토큰+edit_enabled). 개인정보 아님 → 강사 비번 불요.
+router.post('/:token/program-outputs', editLimiter, async (req, res) => {
+  try {
+    const p = await findByToken(req.params.token);
+    if (!p) return res.status(404).json({ ok: false, error: '유효하지 않은 링크입니다.' });
+    if (p.edit_enabled !== true) return res.status(403).json({ ok: false, error: '현재 수정이 비활성화되어 있습니다. 관리자에게 문의하세요.' });
+    const b = req.body || {};
+    const row = {
+      program_id: String(p.id),
+      program_name: p.title || null,
+      summary: b.summary ? String(b.summary).trim() : null,
+      output_url: normOutputUrlE(b.output_url),
+      created_by: instructorNoteAuthor(p, req.params.token),
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from('program_outputs').upsert(row, { onConflict: 'program_id' });
+    if (error) throw error;
+    res.json({ ok: true, data: row });
+  } catch (err) {
+    console.error('[POST /api/edit/:token/program-outputs]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

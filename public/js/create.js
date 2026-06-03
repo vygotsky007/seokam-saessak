@@ -183,6 +183,7 @@
         <div class="row" style="gap:4px; flex-wrap:wrap;">
           <button type="button" class="btn small" data-roster="${esc(p.id)}">👥 신청자</button>
           <button type="button" class="btn small" data-inq="${esc(p.id)}">💬 문의 <span class="hidden-badge inq-badge" data-inq-badge="${esc(p.id)}" style="background:var(--danger);color:#fff;" hidden></span></button>
+          <button type="button" class="btn small" data-output="${esc(p.id)}">📦 산출물</button>
           <button type="button" class="btn small" data-edit="${esc(p.id)}">수정</button>
         </div>
       </li>`;
@@ -190,7 +191,36 @@
     ul.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => startEdit(b.getAttribute('data-edit'))));
     ul.querySelectorAll('[data-roster]').forEach(b => b.addEventListener('click', () => openRoster(b.getAttribute('data-roster'))));
     ul.querySelectorAll('[data-inq]').forEach(b => b.addEventListener('click', () => openInq(b.getAttribute('data-inq'))));
+    ul.querySelectorAll('[data-output]').forEach(b => b.addEventListener('click', () => openOutput(b.getAttribute('data-output'))));
   }
+
+  // ===== 산출물 입력 =====
+  let outputPid = null;
+  function openOutput(pid) {
+    if (!creatorPass) { toast('먼저 비밀번호를 확인하세요.'); return; }
+    const p = myPrograms.find(x => String(x.id) === String(pid));
+    outputPid = pid;
+    $('#out-title').textContent = `📦 산출물 — ${p ? p.title : ''}`;
+    $('#out-summary').value = (p && p.output && p.output.summary) || '';
+    $('#out-url').value = (p && p.output && p.output.output_url) || '';
+    $('#output-modal').hidden = false;
+  }
+  $('#out-close').addEventListener('click', () => { $('#output-modal').hidden = true; });
+  $('#output-modal').addEventListener('click', (e) => { if (e.target.id === 'output-modal') $('#output-modal').hidden = true; });
+  $('#out-save').addEventListener('click', async () => {
+    if (!outputPid || !creatorPass) return;
+    try {
+      const res = await fetch(`${API}/programs/${encodeURIComponent(outputPid)}/program-outputs`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: creatorPass, summary: $('#out-summary').value, output_url: $('#out-url').value }),
+      });
+      const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
+      if (!j.ok) { toast(j.error || '저장 실패'); return; }
+      toast('산출물을 저장했습니다 (공개 /outputs 에 노출)');
+      $('#output-modal').hidden = true;
+      await refreshList();
+    } catch (err) { toast('서버 오류로 저장하지 못했습니다.'); }
+  });
 
   function showForm(isEdit) {
     $('#form-title').textContent = isEdit ? '프로그램 수정' : '새 프로그램 개설';

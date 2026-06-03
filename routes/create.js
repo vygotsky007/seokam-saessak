@@ -90,6 +90,11 @@ router.post('/:token/programs/list', limiter, async (req, res) => {
         .from('saessak_programs').select('*').in('id', ids).order('created_at', { ascending: false });
       if (error) throw error;
       programs = (data || []).map(pickProgram);
+      // 산출물 현황 부착(프리필용)
+      const { data: outs } = await supabase.from('program_outputs').select('program_id, summary, output_url').in('program_id', ids);
+      const omap = {};
+      (outs || []).forEach(o => { omap[o.program_id] = { summary: o.summary || '', output_url: o.output_url || '' }; });
+      programs.forEach(p => { p.output = omap[p.id] || null; });
     }
     res.json({ ok: true, label: t.label || '', data: programs });
   } catch (err) {
@@ -463,6 +468,30 @@ router.post('/:token/programs/:id/inquiries/status', limiter, async (req, res) =
     res.json({ ok: true, data: row });
   } catch (err) {
     console.error('[POST /api/create/:token/programs/:id/inquiries/status]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// POST /:token/programs/:id/program-outputs — 산출물 upsert(본인 프로그램만).
+function normOutputUrlC(v) { const s = (v == null ? '' : String(v)).trim(); if (!s) return null; return /^https?:\/\//i.test(s) ? s : ('https://' + s); }
+router.post('/:token/programs/:id/program-outputs', limiter, async (req, res) => {
+  try {
+    const g = await gateOwned(req, res); if (!g) return;
+    const { t, p } = g;
+    const b = req.body || {};
+    const row = {
+      program_id: String(p.id),
+      program_name: p.title || null,
+      summary: b.summary ? String(b.summary).trim() : null,
+      output_url: normOutputUrlC(b.output_url),
+      created_by: creatorActor(t, req.params.token),
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from('program_outputs').upsert(row, { onConflict: 'program_id' });
+    if (error) throw error;
+    res.json({ ok: true, data: row });
+  } catch (err) {
+    console.error('[POST /api/create/:token/programs/:id/program-outputs]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

@@ -355,4 +355,41 @@ router.post('/apply', async (req, res) => {
   }
 });
 
+// GET /api/public/outputs — 산출물 등록 프로그램 공개 목록(읽기 전용). 학생 개인정보 절대 미포함.
+router.get('/outputs', async (req, res) => {
+  try {
+    const { data: outs, error } = await supabase.from('program_outputs').select('*');
+    if (error) throw error;
+    const list = (outs || []).filter(o => (o.output_url && String(o.output_url).trim()) || (o.summary && String(o.summary).trim()));
+    const ids = list.map(o => o.program_id);
+    const pmap = {};
+    if (ids.length) {
+      const { data: progs } = await supabase
+        .from('saessak_programs')
+        .select('id, title, instructors, schedule, session_dates, start_time, end_time, extra_sessions')
+        .in('id', ids);
+      (progs || []).forEach(p => { pmap[p.id] = p; });
+    }
+    const cards = list.map(o => {
+      const p = pmap[o.program_id] || {};
+      return {
+        program_name: o.program_name || p.title || '',
+        summary: o.summary || '',
+        output_url: o.output_url || '',
+        instructors: p.instructors || '',
+        schedule: p.schedule || null,
+        session_dates: p.session_dates || null,
+        start_time: p.start_time || null,
+        end_time: p.end_time || null,
+        extra_sessions: p.extra_sessions || null,
+        updated_at: o.updated_at || null,
+      };
+    }).sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+    res.json({ ok: true, data: cards });
+  } catch (err) {
+    console.error('[GET public/outputs]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 module.exports = router;
