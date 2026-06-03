@@ -201,17 +201,20 @@
           </tr>
         `).join('');
 
-      const maxByGrade = Math.max(1, ...Object.values(d.gradeStats.byGrade || {}));
+      // 학년별 분포: 1~6학년 카운트(집계 d.gradeStats.byGrade)를 그대로 재사용해
+      // 비례 가로 막대로 표시. 채움 너비 = (해당 학년 / 학년 중 최댓값) * 100%.
+      const byGrade = d.gradeStats.byGrade || {};
+      const maxByGrade = Math.max(1, ...[1,2,3,4,5,6].map(g => byGrade[g] || 0));
       const gradesHtml = [1,2,3,4,5,6].map(g => {
-        const v = d.gradeStats.byGrade[g] || 0;
+        const v = byGrade[g] || 0;
         const pct = (v / maxByGrade) * 100;
-        return `<div class="grade-bar">
-          <span class="name">${g}학년</span>
-          <span class="bar"><span class="fill" style="width:${pct}%"></span></span>
-          <span class="num">${v}</span>
+        return `<div class="gd-row">
+          <span class="gd-label">${g}학년</span>
+          <span class="gd-track"><span class="gd-fill" style="width:${pct}%"></span></span>
+          <span class="gd-num">${v}명</span>
         </div>`;
       }).join('');
-      $('#dash-grades').innerHTML = gradesHtml;
+      $('#dash-grades').innerHTML = `<div class="grade-dist">${gradesHtml}</div>`;
 
       $('#dash-multi').innerHTML = d.multiStudents.length === 0
         ? `<tr><td colspan="4" class="empty-state">중복 신청자가 없습니다.</td></tr>`
