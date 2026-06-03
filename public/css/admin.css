@@ -297,6 +297,14 @@ tbody tr:hover { background: #F8FAFC; }
   font-size: 14px;
 }
 
+/* 종합 탭 상태 배지: 모집예정/숨김 톤 (모집중=open녹색, 마감=full빨강, 완료=closed와 구분) */
+.badge.upcoming { background: #DBEAFE; color: #1E40AF; }
+.badge.hidden   { background: #F1F5F9; color: #94A3B8; }
+
+/* 종합 탭 마지막 갱신 시각 */
+.dash-updated-row { text-align: right; margin-bottom: 6px; min-height: 14px; }
+.dash-updated { font-size: 11.5px; color: var(--muted); }
+
 .badge.tag-multicultural { background: #E0F2FE; color: #075985; }
 .badge.tag-sibling       { background: #FCE7F3; color: #9D174D; }
 .badge.tag-custom        { background: #EDE9FE; color: #5B21B6; }

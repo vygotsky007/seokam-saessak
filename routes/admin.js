@@ -594,6 +594,7 @@ router.get('/dashboard', async (req, res) => {
         waitlist_remaining: Math.max(0, (p.waitlist_capacity || 0) - waitlist.length),
         selected: list.filter(a => a.status === 'selected').length,
         is_open: p.is_open,
+        recruit_status: p.recruit_status, // 표시용: 종합 탭 상태 배지가 실제 5단계를 읽도록 노출
         program_type: p.program_type || 'general',
         multicultural_min: p.multicultural_min,
         multicultural_count: multiculturalCount,

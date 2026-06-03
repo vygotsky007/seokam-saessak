@@ -19,6 +19,19 @@
     // 옛 데이터 fallback
     return p && p.is_open ? 'recruiting' : 'hidden';
   }
+  // 종합 탭 상태 배지: 프로그램 탭과 동일한 5단계 모집상태를 같은 라벨로 표시.
+  // 정원/남은자리로 상태를 추정하지 않고 recruit_status 를 그대로 읽는다.
+  const DASH_STATUS = {
+    recruiting: { label: '모집중',   cls: 'open' },
+    upcoming:   { label: '모집예정', cls: 'upcoming' },
+    full:       { label: '마감',     cls: 'full' },
+    closed:     { label: '완료',     cls: 'closed' },
+    hidden:     { label: '숨김',     cls: 'hidden' },
+  };
+  function dashStatusBadge(p) {
+    const s = DASH_STATUS[recruitStatusOf(p)] || DASH_STATUS.hidden;
+    return `<span class="badge ${s.cls}">${s.label}</span>`;
+  }
 
   let programs = [];
   let applications = [];
@@ -43,13 +56,12 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
-  // 강사명: 쉼표로 분리해 이름 단위로 줄바꿈(이름 내부는 nowrap, 글자 중간 끊김 방지).
+  // 강사명: 콤마/공백 무엇으로 입력돼도 콤마 없이 공백 한 칸으로만 구분.
+  // 각 이름은 .inst(inline-block+nowrap)로 감싸 이름 내부는 안 끊기고 이름 사이에서만 줄바꿈.
   function instructorsHtml(raw) {
-    const names = String(raw || '').split(',').map(s => s.trim()).filter(Boolean);
+    const names = String(raw || '').split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
     if (names.length === 0) return '';
-    return names
-      .map((n, i) => `<span class="inst">${esc(n)}${i < names.length - 1 ? ',' : ''}</span>`)
-      .join(' ');
+    return names.map(n => `<span class="inst">${esc(n)}</span>`).join(' ');
   }
   function formatSchedule(p) {
     if (window.SaessakSchedule && typeof window.SaessakSchedule.format === 'function') {
@@ -197,7 +209,7 @@
                 : p.remaining
             }<br><span class="muted" style="font-size:11px;">대기여유 ${p.waitlist_remaining || 0}</span></td>
             <td>${renderPreferenceProgress(p)}</td>
-            <td>${p.is_open ? '<span class="badge open">모집중</span>' : '<span class="badge closed">마감</span>'}</td>
+            <td>${dashStatusBadge(p)}</td>
           </tr>
         `).join('');
 
@@ -239,9 +251,32 @@
             <td>${esc(s.guardian_phone || '')}</td>
           </tr>
         `).join('');
+
+      // 마지막 갱신 시각 표시 (자동 새로고침 동작 확인용)
+      const upd = $('#dash-updated');
+      if (upd) upd.textContent = `마지막 갱신 ${fmtClock()}`;
     } catch (err) {
       toast(err.message);
     }
+  }
+
+  // HH:MM:SS (24시간) — 종합 탭 "마지막 갱신" 표시용
+  function fmtClock() {
+    const d = new Date();
+    const z = n => String(n).padStart(2, '0');
+    return `${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`;
+  }
+
+  // 종합 탭 전용 자동 새로고침: 탭이 종합이고 브라우저 탭이 보일 때만 10분마다 재호출.
+  // 전체 페이지 리로드가 아니라 loadDashboard()만 다시 불러 재렌더(스크롤/탭 상태 유지).
+  let dashAutoTimer = null;
+  function startDashboardAutoRefresh() {
+    if (dashAutoTimer) return;
+    dashAutoTimer = setInterval(() => {
+      if (currentTab === 'dashboard' && document.visibilityState === 'visible') {
+        loadDashboard();
+      }
+    }, 600000); // 10분
   }
 
   function renderPreferenceProgress(p) {
@@ -1269,5 +1304,6 @@
       $('#me-meta').textContent = j.loggedAt ? `로그인 ${fmtTime(j.loggedAt)}` : '';
     } catch {}
     loadDashboard();
+    startDashboardAutoRefresh();
   })();
 })();

@@ -46,6 +46,13 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
+  // 강사명: 콤마/공백 어떤 입력이든 콤마 없이 공백 한 칸으로만 구분.
+  // 각 이름은 .inst(inline-block+nowrap)로 감싸 이름 중간에서 안 끊기게.
+  function instructorsHtml(raw) {
+    const names = String(raw || '').split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
+    if (names.length === 0) return '';
+    return names.map(n => `<span class="inst">${esc(n)}</span>`).join(' ');
+  }
   function fmtTime(iso) {
     if (!iso) return '';
     try {
@@ -208,11 +215,13 @@
       const isFull = status === 'full' || !!p.is_fully_closed;
       const isRecruiting = status === 'recruiting';
       const cardDisabled = !isRecruiting || isFull;
+      // 마감임박: 모집중이면서 남은자리 1~5 (0은 마감이므로 제외). 남은자리는 기존 p.remaining 그대로.
+      const isClosingSoon = isRecruiting && !isFull && p.remaining >= 1 && p.remaining <= 5;
       const meta = [];
       const schedText = (window.SaessakSchedule && window.SaessakSchedule.format(p)) || p.schedule || '';
       if (schedText)     meta.push(`<span class="meta-item"><span class="meta-ic">📅</span>${esc(schedText)}</span>`);
       if (p.location)    meta.push(`<span class="meta-item"><span class="meta-ic">📍</span>${esc(p.location)}</span>`);
-      if (p.instructors) meta.push(`<span class="meta-item"><span class="meta-ic">🧑‍🏫</span>${esc(p.instructors)}</span>`);
+      if (p.instructors) meta.push(`<span class="meta-item"><span class="meta-ic">🧑‍🏫</span>${instructorsHtml(p.instructors)}</span>`);
 
       let statusBadge;
       if (status === 'upcoming')      statusBadge = '<span class="badge upcoming">⏰ 모집예정</span>';
@@ -239,6 +248,7 @@
       return `
         <article class="program-card ${cardDisabled ? 'disabled' : ''} ${isFull ? 'is-full' : ''} status-${status}">
           ${isFull ? '<div class="pc-stamp" aria-label="모집마감">마감</div>' : ''}
+          ${isClosingSoon ? `<div class="pc-soon">🔥 마감임박 ${p.remaining}자리</div>` : ''}
           <div class="pc-inner">
             <div class="pc-tags">
               ${statusBadge}

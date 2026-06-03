@@ -676,39 +676,57 @@ body.public-page {
    도장은 선명하게 두고 카드 내용만 흐리게 해서 '신청 불가' 느낌을 준다. */
 .program-card, .step2-card { position: relative; }
 
+/* 마감 도장: 카드 정중앙에 크게. 모바일에서도 카드 폭 안에 들어오게 width를 % 로 제한. */
 .pc-stamp {
   position: absolute;
-  top: 16px;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%) rotate(-13deg);
+  transform: translate(-50%, -50%) rotate(-12deg);
   z-index: 3;
-  width: 74px;
-  height: 74px;
+  width: min(150px, 62%);
+  aspect-ratio: 1 / 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 3px solid var(--danger);
+  border: 6px solid var(--danger);
   border-radius: 50%;
   color: var(--danger);
-  font-size: 22px;
+  font-size: 2.3rem;
   font-weight: 900;
-  letter-spacing: 3px;
-  padding-left: 3px; /* letter-spacing 보정(가운데 정렬) */
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.12), 0 2px 6px rgba(220, 38, 38, 0.12);
+  letter-spacing: 6px;
+  padding-left: 6px; /* letter-spacing 보정(가운데 정렬) */
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12), 0 2px 10px rgba(220, 38, 38, 0.15);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
   pointer-events: none;
-  opacity: 0.92;
+  opacity: 0.85;
 }
 .pc-stamp.pc-stamp-sm {
-  top: 10px;
-  width: 56px;
-  height: 56px;
-  font-size: 16px;
-  letter-spacing: 2px;
-  padding-left: 2px;
-  border-width: 2.5px;
+  width: min(104px, 50%);
+  font-size: 1.6rem;
+  letter-spacing: 4px;
+  padding-left: 4px;
+  border-width: 4px;
 }
+
+/* 마감임박 배지: 카드 상단 우측 모서리. 마감 도장(빨강)과 구분되는 주황 계열. */
+.pc-soon {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 4;
+  background: #F97316;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.3);
+  pointer-events: none;
+}
+
+/* 강사명: 이름 단위로만 줄바꿈(이름 내부는 nowrap), 콤마 없이 공백 구분 */
+.meta-item .inst { display: inline-block; white-space: nowrap; }
 
 /* 마감 카드: 도장은 선명하게(opacity 1), 내용만 흐리게 */
 .program-card.is-full { opacity: 1; }
