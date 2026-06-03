@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>프로그램 개설 (위임)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="/css/common.css">
+<link rel="stylesheet" href="/css/admin.css">
+<style>
+  .edit-shell { max-width: 760px; margin: 0 auto; padding: 18px 14px 60px; }
+  .edit-head { margin-bottom: 14px; }
+  .edit-head h1 { font-size: 18px; font-weight: 800; }
+  .edit-head .sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .edit-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 20px 18px; margin-bottom: 14px; }
+  .state-msg { text-align: center; padding: 48px 16px; color: var(--muted); font-size: 14.5px; line-height: 1.7; }
+  .state-msg.err { color: var(--danger); }
+  .state-msg .big { font-size: 32px; display: block; margin-bottom: 10px; }
+  .priv-note { font-size: 12.5px; color: var(--muted); background: var(--primary-soft); border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; }
+  .warn-note { font-size: 12.5px; color: #92400E; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; }
+  .edit-card .form-grid { display: grid; grid-template-columns: 110px 1fr; gap: 10px; align-items: center; }
+  .edit-card .form-grid input, .edit-card .form-grid select, .edit-card .form-grid textarea {
+    border: 1px solid var(--border-strong); border-radius: 7px; padding: 6px 9px; font-size: 13px; width: 100%;
+  }
+  .edit-card .form-grid textarea { min-height: 64px; }
+  .edit-card .form-grid label { font-size: 13px; }
+  @media (max-width: 560px) { .edit-card .form-grid { grid-template-columns: 1fr; } }
+  .prog-list { list-style: none; margin: 0; padding: 0; }
+  .prog-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid #F1F5F9; font-size: 13.5px; }
+  .prog-list .p-meta { color: var(--muted); font-size: 12px; }
+  .hidden-badge { display:inline-block; background:#F1F5F9; color:#64748B; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700; }
+</style>
+</head>
+<body>
+<div class="edit-shell">
+  <div class="edit-head">
+    <h1>🌱 디지털새싹 프로그램 개설</h1>
+    <div class="sub" id="creator-sub">위임받은 분 전용 — 프로그램을 개설하고 본인이 만든 프로그램만 관리할 수 있습니다.</div>
+  </div>
+
+  <div class="edit-card state-msg" id="state-loading">불러오는 중…</div>
+
+  <div class="edit-card" id="state-blocked" hidden>
+    <div class="state-msg err" id="blocked-msg"><span class="big">🔒</span></div>
+  </div>
+
+  <!-- 개설자 비밀번호 -->
+  <div class="edit-card" id="state-auth" hidden>
+    <div class="priv-note">ℹ️ 이 페이지에서는 프로그램 개설·수정만 가능합니다. 신청자 명단·연락처 등 학생 개인정보에는 접근할 수 없습니다.</div>
+    <div class="form-grid">
+      <label>개설자 비밀번호</label>
+      <div>
+        <input type="password" id="creator-pass" placeholder="관리자에게 받은 개설자 비밀번호" style="max-width:280px;">
+        <button type="button" class="btn primary" id="auth-btn">확인</button>
+      </div>
+    </div>
+    <div class="muted" id="auth-msg" style="font-size:12.5px; margin-top:8px;"></div>
+  </div>
+
+  <!-- 메인(인증 후) -->
+  <div id="state-main" hidden>
+    <div class="edit-card">
+      <div class="warn-note">📌 개설한 프로그램은 <b>'숨김'</b> 상태로 만들어집니다. 학부모 화면에는 보이지 않으며, <b>관리자 검토 후 공개</b>됩니다.</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+        <h2 style="font-size:15px; font-weight:800;">내가 개설한 프로그램</h2>
+        <button type="button" class="btn primary" id="new-program-btn">+ 새 프로그램 개설</button>
+      </div>
+      <ul class="prog-list" id="my-programs"></ul>
+      <div class="muted" id="my-programs-empty" hidden style="padding:14px 0; text-align:center;">아직 개설한 프로그램이 없습니다.</div>
+    </div>
+
+    <!-- 개설/수정 폼 -->
+    <div class="edit-card" id="program-form-card" hidden>
+      <h2 id="form-title" style="font-size:15px; font-weight:800; margin-bottom:12px;">새 프로그램 개설</h2>
+      <form id="program-form">
+        <div class="form-grid">
+          <label>프로그램명*</label><input type="text" name="title" required>
+          <label>설명</label><textarea name="description" rows="5" placeholder="공개 안내 카드 본문에 표시됩니다. 줄바꿈은 그대로 유지됩니다."></textarea>
+          <label>일정</label>
+          <div class="schedule-builder">
+            <div class="sb-range-row">
+              <label class="sb-lbl">시작일</label>
+              <input type="date" id="sb-start-date">
+              <label class="sb-lbl">종료일</label>
+              <input type="date" id="sb-end-date">
+            </div>
+            <div class="sb-hint muted">시작일과 종료일을 고르면 그 사이의 모든 날짜가 자동으로 체크된 목록으로 나옵니다. 빼고 싶은 날은 체크를 해제하세요.</div>
+            <div id="sb-days" class="sb-days"></div>
+            <div class="sb-time-row">
+              <label class="sb-lbl">시작 시각</label>
+              <input type="time" id="sb-start-time">
+              <label class="sb-lbl">종료 시각</label>
+              <input type="time" id="sb-end-time">
+              <span class="muted" style="font-size:12px;">모든 수업 날짜에 공통 적용</span>
+            </div>
+            <div class="sb-preview muted" id="sb-preview"></div>
+            <div class="sb-extra">
+              <div class="muted" style="font-size:12px; margin:8px 0 4px;">보충 회차 (메인 일정과 별도 시간)</div>
+              <div id="sb-extra-list"></div>
+              <button type="button" class="btn small" id="sb-extra-add">+ 보충 회차 추가</button>
+            </div>
+          </div>
+          <label>장소</label><input type="text" name="location">
+          <label>대상 학년</label>
+          <div class="grade-checks">
+            <label><input type="checkbox" class="grade-check" value="1"> 1학년</label>
+            <label><input type="checkbox" class="grade-check" value="2"> 2학년</label>
+            <label><input type="checkbox" class="grade-check" value="3"> 3학년</label>
+            <label><input type="checkbox" class="grade-check" value="4"> 4학년</label>
+            <label><input type="checkbox" class="grade-check" value="5"> 5학년</label>
+            <label><input type="checkbox" class="grade-check" value="6"> 6학년</label>
+          </div>
+          <label>정원</label>
+          <div><input type="number" name="capacity" min="1" value="20" style="width:120px;"><span class="muted" style="font-size:12px; margin-left:6px;">선착순 접수 인원</span></div>
+          <label>대기 정원</label>
+          <div><input type="number" name="waitlist_capacity" min="0" value="10" style="width:120px;"><span class="muted" style="font-size:12px; margin-left:6px;">정원 초과 시 받는 대기 인원</span></div>
+          <label>강사</label><input type="text" name="instructors">
+          <label>운영기관</label><input type="text" name="organization" placeholder="예: 한성대학교, 비페스">
+          <label>유형</label>
+          <div class="type-checks">
+            <label><input type="checkbox" id="type-multicultural"> 다문화 우대</label>
+            <label><input type="checkbox" id="type-sibling"> 형제 우대</label>
+            <label><input type="checkbox" id="type-custom"> 기타</label>
+            <span class="muted" style="font-size:12px;">모두 미체크면 일반형</span>
+          </div>
+          <label id="type-custom-label" hidden>기타 유형명</label>
+          <div id="type-custom-row" hidden>
+            <input type="text" name="type_custom" id="type-custom-input" style="width:220px;" placeholder="예: 저소득층 우대, 특별반">
+          </div>
+          <label id="multi-min-label" hidden>다문화 최소 보장</label>
+          <div id="multi-min-row" hidden>
+            <input type="number" name="multicultural_min" min="0" style="width:120px;" placeholder="예: 10">
+            <span class="muted" style="margin-left:6px; font-size:12px;">정원 중 최소 보장 인원</span>
+          </div>
+        </div>
+        <div class="actions" style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
+          <button type="button" class="btn" id="form-cancel">취소</button>
+          <button type="submit" class="btn primary" id="form-save">개설하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/js/schedule-format.js"></script>
+<script src="/js/create.js"></script>
+</body>
+</html>

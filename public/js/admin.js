@@ -349,13 +349,14 @@
   // ===== Programs Tab =====
   async function loadProgramsTab() {
     try {
+      loadCreatorTokens();
       const j = await api('/programs');
       programs = j.data || [];
       $('#programs-tbody').innerHTML = programs.length === 0
         ? `<tr><td colspan="11" class="empty-state">등록된 프로그램이 없습니다.</td></tr>`
         : programs.map(p => `
           <tr data-id="${p.id}">
-            <td><b>${esc(p.title)}</b></td>
+            <td><b>${esc(p.title)}</b>${p.created_by_label ? `<div class="creator-tag" title="위임 개설">🔗 ${esc(p.created_by_label)} 개설</div>` : ''}</td>
             <td>${typeBadges(p)}${typesOf(p).multicultural && p.multicultural_min != null ? `<div class="muted" style="font-size:11px; margin-top:2px;">최소 ${p.multicultural_min}명</div>` : ''}</td>
             <td>${esc(formatSchedule(p))}</td>
             <td>${esc(p.location || '')}</td>
@@ -434,9 +435,66 @@
     }
   }
 
+  // ===== 개설자 토큰 관리 (프로그램 개설 위임) =====
+  let creatorTokens = [];
+  async function loadCreatorTokens() {
+    try {
+      const j = await api('/creator-tokens');
+      creatorTokens = j.data || [];
+      renderCreatorTokens();
+    } catch (err) { /* 패널만 비움 — 프로그램 탭 자체는 동작 */ creatorTokens = []; renderCreatorTokens(); }
+  }
+  function renderCreatorTokens() {
+    const wrap = $('#creator-tokens-list');
+    if (!wrap) return;
+    if (!creatorTokens.length) { wrap.innerHTML = '<div class="muted" style="font-size:12.5px;">발급된 개설자 토큰이 없습니다.</div>'; return; }
+    wrap.innerHTML = creatorTokens.map(t => `
+      <div class="creator-row" data-ct-id="${t.id}">
+        <label class="te-toggle"><input type="checkbox" class="ct-enable" data-ct-toggle="${t.id}" ${t.enabled ? 'checked' : ''}> 허용</label>
+        <b>${esc(t.label || '(라벨 없음)')}</b>
+        <span class="muted" style="font-size:11.5px;">프로그램 ${t.program_count || 0}개</span>
+        <span class="grow"></span>
+        <button class="btn xsmall" data-ct-copy="${t.id}">링크복사</button>
+        <button class="btn xsmall" data-ct-regen="${t.id}">토큰재발급</button>
+        <button class="btn xsmall danger" data-ct-del="${t.id}">삭제</button>
+      </div>`).join('');
+    $$('[data-ct-toggle]').forEach(el => el.addEventListener('change', async () => {
+      try {
+        await api(`/creator-tokens/${el.dataset.ctToggle}`, { method: 'PATCH', body: JSON.stringify({ enabled: el.checked }) });
+        const t = creatorTokens.find(x => x.id == el.dataset.ctToggle); if (t) t.enabled = el.checked;
+        toast(el.checked ? '개설 링크를 허용했습니다' : '개설 링크를 차단했습니다');
+      } catch (err) { toast(err.message); el.checked = !el.checked; }
+    }));
+    $$('[data-ct-copy]').forEach(el => el.addEventListener('click', () => {
+      const t = creatorTokens.find(x => x.id == el.dataset.ctCopy);
+      if (!t || !t.token) { toast('토큰이 없습니다.'); return; }
+      copyText(`${location.origin}/create/${t.token}`, '개설 링크를 복사했습니다');
+    }));
+    $$('[data-ct-regen]').forEach(el => el.addEventListener('click', async () => {
+      if (!confirm('새 토큰을 발급하면 기존 개설 링크는 즉시 사용할 수 없게 됩니다. 계속할까요?')) return;
+      try { await api(`/creator-tokens/${el.dataset.ctRegen}/regenerate`, { method: 'POST' }); toast('토큰을 재발급했습니다'); loadCreatorTokens(); }
+      catch (err) { toast(err.message); }
+    }));
+    $$('[data-ct-del]').forEach(el => el.addEventListener('click', async () => {
+      if (!confirm('이 개설자 토큰을 삭제할까요? 링크가 즉시 차단됩니다. (개설된 프로그램은 그대로 유지됩니다)')) return;
+      try { await api(`/creator-tokens/${el.dataset.ctDel}`, { method: 'DELETE' }); toast('삭제했습니다'); loadCreatorTokens(); }
+      catch (err) { toast(err.message); }
+    }));
+  }
+  $('#creator-add')?.addEventListener('click', async () => {
+    const label = $('#creator-label').value.trim();
+    if (!label) { toast('대상 이름/업체명을 입력하세요.'); return; }
+    try {
+      await api('/creator-tokens', { method: 'POST', body: JSON.stringify({ label }) });
+      $('#creator-label').value = '';
+      toast('개설자 토큰을 발급했습니다 (허용을 켜야 접근 가능)');
+      loadCreatorTokens();
+    } catch (err) { toast(err.message); }
+  });
+
   // 클립보드 복사: navigator.clipboard → textarea fallback → prompt
-  function copyText(text) {
-    const done = () => toast('강사용 링크를 복사했습니다');
+  function copyText(text, msg) {
+    const done = () => toast(msg || '링크를 복사했습니다');
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
     } else {

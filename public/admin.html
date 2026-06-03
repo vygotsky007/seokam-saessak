@@ -92,6 +92,17 @@
   </section>
 
   <section class="tab-pane" id="pane-programs" hidden>
+    <div class="panel" id="creator-panel" style="margin-bottom:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+        <h3 style="font-size:14px;">🔗 개설자 관리 <span class="muted" style="font-weight:500;">— 비번 공유 없이 프로그램 개설 위임</span></h3>
+        <div class="row">
+          <input type="text" id="creator-label" class="input" placeholder="대상 이름/업체명" style="width:200px;">
+          <button class="btn small primary" id="creator-add">토큰 발급</button>
+        </div>
+      </div>
+      <p class="muted" style="font-size:12px; margin:6px 0 10px;">발급 후 <b>허용</b>을 켜야 접근됩니다. 개설분은 <b>'숨김'</b>으로 생성되어 관리자 검토 후 공개됩니다. (개설자는 env <code>CREATOR_PASSWORD_HASH</code> 비번 필요)</p>
+      <div id="creator-tokens-list"></div>
+    </div>
     <div class="toolbar">
       <button class="btn primary" id="new-program-btn">+ 프로그램 추가</button>
       <span class="muted">is_open 토글로 모집 열기/마감 통제</span>

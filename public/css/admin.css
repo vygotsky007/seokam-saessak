@@ -366,6 +366,11 @@ tbody tr:hover { background: #F8FAFC; }
 .sb-programs { margin: 0; padding-left: 4px; list-style: none; font-size: 13px; }
 .sb-programs li { padding: 3px 0; border-bottom: 1px solid #F1F5F9; }
 
+/* 개설자 토큰 관리 */
+.creator-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid #F1F5F9; font-size: 13px; flex-wrap: wrap; }
+.creator-row .grow { flex: 1; }
+.creator-tag { display: inline-block; margin-top: 2px; font-size: 11px; font-weight: 700; color: #7C3AED; background: #EDE9FE; border-radius: 999px; padding: 1px 7px; }
+
 .badge.tag-multicultural { background: #E0F2FE; color: #075985; }
 .badge.tag-sibling       { background: #FCE7F3; color: #9D174D; }
 .badge.tag-custom        { background: #EDE9FE; color: #5B21B6; }

@@ -49,6 +49,13 @@ router.get('/programs', async (req, res) => {
       });
     }
 
+    // 개설 위임 라벨: program_creators 에서 누가 개설했는지(위임 개설분 구분/검토용).
+    let creatorLabels = {};
+    {
+      const { data: pcs } = await supabase.from('program_creators').select('program_id, created_by_label');
+      (pcs || []).forEach(pc => { creatorLabels[pc.program_id] = pc.created_by_label || ''; });
+    }
+
     const result = (programs || []).map(p => ({
       ...p,
       applied_count: appliedCounts[p.id] || 0,
@@ -56,11 +63,87 @@ router.get('/programs', async (req, res) => {
       selected_count: selectedCounts[p.id] || 0,
       remaining: Math.max(0, (p.capacity || 0) - (appliedCounts[p.id] || 0)),
       waitlist_remaining: Math.max(0, (p.waitlist_capacity || 0) - (waitlistCounts[p.id] || 0)),
+      created_by_label: (p.id in creatorLabels) ? creatorLabels[p.id] : null, // 위임 개설분이면 라벨, 아니면 null
     }));
 
     res.json({ ok: true, data: result });
   } catch (err) {
     console.error('[GET admin/programs]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ===== 개설자 토큰 관리(프로그램 개설 위임) — 관리자 전용. creator_tokens 만 읽고/쓴다. =====
+// GET /api/creator-tokens — 토큰 목록 + 토큰별 개설 프로그램 수.
+router.get('/creator-tokens', async (req, res) => {
+  try {
+    const { data: tokens, error } = await supabase
+      .from('creator_tokens').select('*').order('created_at', { ascending: true });
+    if (error) throw error;
+    const { data: pcs } = await supabase.from('program_creators').select('created_by_token');
+    const counts = {};
+    (pcs || []).forEach(pc => { counts[pc.created_by_token] = (counts[pc.created_by_token] || 0) + 1; });
+    const out = (tokens || []).map(t => ({
+      id: t.id, label: t.label, token: t.token, enabled: t.enabled === true,
+      created_at: t.created_at, program_count: counts[t.token] || 0,
+    }));
+    res.json({ ok: true, data: out });
+  } catch (err) {
+    console.error('[GET admin/creator-tokens]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// POST /api/creator-tokens — 토큰 발급(라벨 필수). 기본 enabled=false(관리자가 켜야 접근 가능).
+router.post('/creator-tokens', async (req, res) => {
+  try {
+    const label = (req.body || {}).label ? String(req.body.label).trim() : '';
+    if (!label) return res.status(400).json({ ok: false, error: '대상 이름/업체명(라벨)을 입력하세요.' });
+    const row = { token: genEditToken(), label, enabled: false };
+    const { data, error } = await supabase.from('creator_tokens').insert([row]).select();
+    if (error) throw error;
+    res.json({ ok: true, data: data[0] });
+  } catch (err) {
+    console.error('[POST admin/creator-tokens]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// PATCH /api/creator-tokens/:id — 허용(enabled) 토글.
+router.patch('/creator-tokens/:id', async (req, res) => {
+  try {
+    const enabled = (req.body || {}).enabled === true || (req.body || {}).enabled === 'true';
+    const { data, error } = await supabase
+      .from('creator_tokens').update({ enabled }).eq('id', req.params.id).select();
+    if (error) throw error;
+    res.json({ ok: true, data: data && data[0] });
+  } catch (err) {
+    console.error('[PATCH admin/creator-tokens/:id]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// POST /api/creator-tokens/:id/regenerate — 토큰 재발급(기존 링크 즉시 무효).
+router.post('/creator-tokens/:id/regenerate', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('creator_tokens').update({ token: genEditToken() }).eq('id', req.params.id).select();
+    if (error) throw error;
+    res.json({ ok: true, data: data && data[0] });
+  } catch (err) {
+    console.error('[POST admin/creator-tokens/:id/regenerate]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// DELETE /api/creator-tokens/:id — 토큰 삭제(즉시 차단). 개설된 프로그램 자체는 보존(관리자 관리).
+router.delete('/creator-tokens/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('creator_tokens').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[DELETE admin/creator-tokens/:id]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
