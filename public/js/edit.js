@@ -812,10 +812,30 @@
       const j = await res.json().catch(() => ({ ok: false }));
       if (j.ok) stamps = j.data || [];
     } catch {}
+    // 확인증 공통 이미지(QR·로고) 설정 로드(비번 게이트). 실패해도 확인증은 출력.
+    let certImages = null;
+    try {
+      const res = await fetch(API + '/app-settings/get', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: instructorPass, key: 'cert_images' }),
+      });
+      const j = await res.json().catch(() => ({ ok: false }));
+      if (j.ok) certImages = j.value || null;
+    } catch {}
     window.SaessakCertificate.openDialog({
       groups: [{ program: currentProgram || {}, candidates: rosterRows }],
       defaultContact: (currentProgram && currentProgram.instructors) || '',
       stamps,
+      certImages,
+      // 공통 이미지 설정 저장(app_settings.cert_images · 비번 동봉)
+      onSaveImages: async (value) => {
+        const r = await fetch(API + '/app-settings/set', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: instructorPass, key: 'cert_images', value }),
+        });
+        const rj = await r.json().catch(() => ({ ok: false, error: '응답 오류' }));
+        if (!rj.ok) throw new Error(rj.error || '저장 실패');
+      },
       // 도장 찍기/취소 → 강사 API(비번 동봉) 호출 후 최신 목록 반환
       onToggleStamp: async (entry) => {
         const url = entry.stamped ? '/completion-stamps/remove' : '/completion-stamps';

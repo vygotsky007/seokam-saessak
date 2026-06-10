@@ -1103,10 +1103,18 @@
     // 이수 도장판용: 전체 도장 일괄 조회(학생별 매칭/집계). 실패해도 확인증은 출력.
     let stamps = [];
     try { const j = await api('/completion-stamps'); stamps = j.data || []; } catch {}
+    // 확인증 공통 이미지(QR·로고) 설정 로드. 실패해도 확인증은 출력.
+    let certImages = null;
+    try { const j = await api('/app-settings/cert_images'); certImages = j.value || null; } catch {}
     window.SaessakCertificate.openDialog({
       groups,
       defaultContact: (firstProg && (firstProg.organization || firstProg.instructors)) || '',
       stamps,
+      certImages,
+      // 공통 이미지 설정 저장(app_settings.cert_images)
+      onSaveImages: async (value) => {
+        await api('/app-settings/cert_images', { method: 'PUT', body: JSON.stringify({ value }) });
+      },
       // 도장 찍기/취소 → 관리자 API 호출 후 최신 도장 목록 반환(미리보기 재렌더용)
       onToggleStamp: async (entry) => {
         if (entry.stamped) await api('/completion-stamps/remove', { method: 'POST', body: JSON.stringify(entry) });

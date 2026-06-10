@@ -761,6 +761,50 @@ router.post('/:token/completion-stamps/remove', rosterLimiter, async (req, res) 
   }
 });
 
+// ===== 앱 공통 설정(app_settings) — 확인증 공통 이미지 등. 강사 비번 게이트 통과 시 읽기/저장. =====
+// 공통(학교 단위) 설정이라 개인정보 무관. value는 JSON 문자열로 저장하고 방어적으로 파싱한다.
+function parseSettingValueE(v) {
+  if (v == null) return null;
+  if (typeof v === 'object') return v;
+  try { return JSON.parse(v); } catch { return null; }
+}
+
+// POST /api/edit/:token/app-settings/get — body { password, key }
+router.post('/:token/app-settings/get', rosterLimiter, async (req, res) => {
+  try {
+    const p = await gateRoster(req, res);
+    if (!p) return;
+    const key = String((req.body && req.body.key) || '').trim();
+    if (!key) return res.status(400).json({ ok: false, error: 'key가 필요합니다.' });
+    const { data, error } = await supabase
+      .from('app_settings').select('value').eq('key', key).maybeSingle();
+    if (error) throw error;
+    res.json({ ok: true, value: parseSettingValueE(data && data.value) });
+  } catch (err) {
+    console.error('[POST /api/edit/:token/app-settings/get]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// POST /api/edit/:token/app-settings/set — body { password, key, value }
+router.post('/:token/app-settings/set', rosterLimiter, async (req, res) => {
+  try {
+    const p = await gateRoster(req, res);
+    if (!p) return;
+    const key = String((req.body && req.body.key) || '').trim();
+    if (!key) return res.status(400).json({ ok: false, error: 'key가 필요합니다.' });
+    const value = (req.body && 'value' in req.body) ? req.body.value : null;
+    const { error } = await supabase
+      .from('app_settings')
+      .upsert({ key, value: JSON.stringify(value), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[POST /api/edit/:token/app-settings/set]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // ===== 문의사항 보기 — 강사용(자기 토큰 프로그램만). 원본은 applications.motivation(읽기전용). =====
 // 답변 상태는 관리자 게시판과 동일한 inquiry_status 를 공유한다.
 

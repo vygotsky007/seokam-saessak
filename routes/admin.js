@@ -1012,6 +1012,44 @@ router.post('/completion-stamps/remove', async (req, res) => {
   }
 });
 
+// ===== 앱 공통 설정(app_settings) — key-value(JSON). 확인증 공통 이미지 등 =====
+// value 컬럼은 text/jsonb 어느 쪽이든 JSON 문자열로 저장하고 읽을 때 방어적으로 파싱한다.
+function parseSettingValue(v) {
+  if (v == null) return null;
+  if (typeof v === 'object') return v;
+  try { return JSON.parse(v); } catch { return null; }
+}
+
+router.get('/app-settings/:key', async (req, res) => {
+  try {
+    const key = String(req.params.key || '').trim();
+    if (!key) return res.status(400).json({ ok: false, error: 'key가 필요합니다.' });
+    const { data, error } = await supabase
+      .from('app_settings').select('value').eq('key', key).maybeSingle();
+    if (error) throw error;
+    res.json({ ok: true, value: parseSettingValue(data && data.value) });
+  } catch (err) {
+    console.error('[GET admin/app-settings]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.put('/app-settings/:key', async (req, res) => {
+  try {
+    const key = String(req.params.key || '').trim();
+    if (!key) return res.status(400).json({ ok: false, error: 'key가 필요합니다.' });
+    const value = (req.body && 'value' in req.body) ? req.body.value : null;
+    const { error } = await supabase
+      .from('app_settings')
+      .upsert({ key, value: JSON.stringify(value), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[PUT admin/app-settings]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 router.get('/dashboard', async (req, res) => {
   try {
     const { data: programs, error: pErr } = await supabase

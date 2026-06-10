@@ -37,8 +37,9 @@ app.locals.supabase = supabase;
 process.on('uncaughtException',  err    => console.error('[uncaughtException]',  err));
 process.on('unhandledRejection', reason => console.error('[unhandledRejection]', reason));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// 확인증 공통 이미지(QR·로고 등)를 base64로 app_settings에 저장하므로 기본 100kb 한도를 넉넉히 올린다.
+app.use(express.json({ limit: '8mb' }));
+app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 
 app.use(session({
   name: 'saessak.sid',

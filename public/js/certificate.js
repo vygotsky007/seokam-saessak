@@ -5,6 +5,8 @@
 //     program   : { title, location, instructors, organization, session_dates, start_time, end_time, extra_sessions }
 //     candidates : [{ student_name, grade, class_no, status, is_waitlist }]  (취소 제외 전 후보 — 모듈이 필터)
 //   defaultContact: 문의처 입력칸 기본값(없으면 '')
+//   certImages    : app_settings에서 불러온 공통 이미지 설정 { enabled, items:[{src,caption}] } (없으면 null)
+//   onSaveImages  : async ({enabled, items}) => void  — 설정 저장 콜백(없으면 저장 버튼 비활성)
 (function (global) {
   'use strict';
 
@@ -171,6 +173,22 @@
     </div>`;
   }
 
+  // 공통 이미지(카톡방 QR·로고 등)를 푸터(문의처) 아래에 캡션과 함께 표시.
+  // opts.images: [{ src(base64 dataURL), caption }]. 비어 있으면(표시 끔 포함) 아무것도 안 그림 → 기존과 동일.
+  function certImagesHtml(opts, layout) {
+    const imgs = (opts && opts.images) || [];
+    if (!imgs.length) return '';
+    const compact = layout !== 'a';
+    const cells = imgs.map(it => {
+      if (!it || !it.src) return '';
+      const cap = (it.caption && String(it.caption).trim())
+        ? `<figcaption class="cert-img-cap">${esc(String(it.caption).trim())}</figcaption>` : '';
+      return `<figure class="cert-img"><img src="${esc(it.src)}" alt="">${cap}</figure>`;
+    }).join('');
+    if (!cells) return '';
+    return `<div class="cert-imgs${compact ? ' compact' : ''}">${cells}</div>`;
+  }
+
   function infoRows(program, opts) {
     const sch = scheduleTexts(program);
     const rows = [];
@@ -208,6 +226,7 @@
         ${growthBoard(program, att, layout, opts)}
       </div>
       ${contact}
+      ${certImagesHtml(opts, layout)}
       ${layout === 'b' ? '<div class="cert-cut">✂ ─────────────────────────────────────────────</div>' : ''}
     </div>`;
   }
@@ -354,6 +373,32 @@ body {
 .cert-b .cert-info th, .cert-b .cert-info td { padding: 4px 8px; }
 .cert-cut { text-align: center; color: #9e9e9e; font-size: 11px; margin-top: 12px; letter-spacing: 1px; overflow: hidden; white-space: nowrap; }
 
+/* 공통 이미지(QR·로고 등) — 문의처 아래. 흑백 인쇄에도 또렷하게(테두리 + 흰 배경). */
+.cert-imgs {
+  display: flex; flex-wrap: wrap; gap: 14px 18px;
+  justify-content: center; align-items: flex-start; margin-top: 12px;
+  page-break-inside: avoid; break-inside: avoid;
+}
+.cert-img { margin: 0; display: flex; flex-direction: column; align-items: center; max-width: 160px; }
+.cert-img img {
+  display: block; width: auto; height: auto; max-width: 150px; max-height: 150px;
+  object-fit: contain; background: #fff; border: 1px solid #cfd9cf; border-radius: 6px; padding: 3px;
+  image-rendering: -webkit-optimize-contrast;
+}
+.cert-img-cap {
+  margin-top: 5px; font-size: 11.5px; line-height: 1.35; color: #33491f;
+  text-align: center; max-width: 150px; word-break: keep-all;
+}
+/* A 레이아웃: 조금 크게(빈 공간 여유) */
+.cert-a .cert-img { max-width: 170px; }
+.cert-a .cert-img img { max-width: 160px; max-height: 160px; }
+.cert-a .cert-img-cap { max-width: 160px; font-size: 12px; }
+/* B 레이아웃: 너무 커지지 않게 작게 */
+.cert-imgs.compact { gap: 8px 12px; margin-top: 8px; }
+.cert-imgs.compact .cert-img { max-width: 104px; }
+.cert-imgs.compact .cert-img img { max-width: 96px; max-height: 96px; }
+.cert-imgs.compact .cert-img-cap { font-size: 10.5px; max-width: 96px; margin-top: 3px; }
+
 @media print {
   body { background: #fff; }
   .toolbar { display: none !important; }
@@ -436,7 +481,57 @@ ${PREVIEW_SCRIPT}
     groups: [], defaultContact: '',
     stamps: [], canStamp: false, onToggleStamp: null, // 이수 도장
     win: null, lastOpts: null,
+    // 공통 이미지(QR·로고): 작업용 사본 + 표시여부 + 저장 콜백
+    imgItems: [], imgEnabled: false, onSaveImages: null,
   };
+
+  // 설정 저장 키(app_settings.key)
+  const IMG_SETTINGS_KEY = 'cert_images';
+  // base64 보관 시 용량 절약: 가로 최대 px. (세로는 비율 유지)
+  const IMG_MAX_W = 600;
+
+  // 파일을 캔버스로 리사이즈(가로 최대 IMG_MAX_W) 후 흰 배경 합성하여 jpeg base64 dataURL 반환.
+  // 흰 배경 합성으로 투명 PNG 로고가 흑백 인쇄 시 검게 나오는 문제를 막고 용량도 줄인다.
+  function resizeImageFile(file, cb) {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = function () {
+      try {
+        let w = img.naturalWidth || img.width;
+        let h = img.naturalHeight || img.height;
+        if (!w || !h) { URL.revokeObjectURL(url); cb(null); return; }
+        if (w > IMG_MAX_W) { h = Math.round(h * IMG_MAX_W / w); w = IMG_MAX_W; }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        cb(c.toDataURL('image/jpeg', 0.85));
+      } catch (e) { URL.revokeObjectURL(url); cb(null); }
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); cb(null); };
+    img.src = url;
+  }
+
+  // 모달 이미지 목록 다시 그리기(작업용 state.imgItems 기준).
+  function renderImgList() {
+    if (!dlg) return;
+    const wrap = dlg.querySelector('#cert-img-list');
+    if (!wrap) return;
+    if (!state.imgItems.length) {
+      wrap.innerHTML = '<div class="muted" style="font-size:12px; padding:4px 0;">아직 추가된 이미지가 없습니다. 아래 “＋ 이미지 추가”로 올려 주세요.</div>';
+      return;
+    }
+    wrap.innerHTML = state.imgItems.map((it, i) => `
+      <div class="cert-imgrow" data-idx="${i}" style="display:flex; gap:8px; align-items:flex-start; padding:8px 0; border-top:1px solid #eef2ee;">
+        <img src="${esc(it.src)}" alt="" style="width:54px; height:54px; object-fit:contain; border:1px solid #dde5dd; border-radius:6px; background:#fff; flex:0 0 auto;">
+        <input type="text" class="cert-imgcap" data-idx="${i}" value="${esc(it.caption || '')}" placeholder="안내문구(선택) 예: 카톡방 입장 QR"
+          style="flex:1 1 auto; min-width:0; border:1px solid #cbd5d1; border-radius:7px; padding:6px 9px; font-size:12.5px;">
+        <button type="button" class="cert-imgdel btn" data-idx="${i}" style="flex:0 0 auto; padding:6px 10px; font-size:12px;">삭제</button>
+      </div>`).join('');
+  }
 
   function ensureDialog() {
     if (dlg) return dlg;
@@ -465,6 +560,20 @@ ${PREVIEW_SCRIPT}
             <textarea id="cert-reward" rows="2" placeholder="체크 시 출력될 보상 안내를 직접 입력하세요. 예: 새싹왕 달성! 다음 학기 ○○ 안내 예정 (미입력 시 호칭만 표시)" style="width:100%; margin-top:6px; border:1px solid #cbd5d1; border-radius:7px; padding:6px 9px; font-size:13px;" hidden></textarea>
           </div>
         </div>
+        <div class="cert-imgsec" style="margin-top:14px; padding-top:12px; border-top:1px solid #e3eae3;">
+          <label class="row" style="font-size:13px; font-weight:700;">
+            <input type="checkbox" id="cert-img-show"> 확인증에 이미지 표시 <span class="muted" style="font-weight:400;">(카톡방 QR·로고 등 · 안 켜면 안 나옴)</span>
+          </label>
+          <p class="muted" style="font-size:11.5px; margin:4px 0 8px;">업로드 시 가로 최대 ${IMG_MAX_W}px로 자동 축소해 저장합니다. 설정은 다음 출력·다른 기기에서도 기억됩니다.</p>
+          <div id="cert-img-list"></div>
+          <div style="display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap;">
+            <label class="btn" style="cursor:pointer; font-size:12.5px;">＋ 이미지 추가
+              <input type="file" id="cert-img-file" accept="image/*" multiple hidden>
+            </label>
+            <button type="button" class="btn" id="cert-img-save" style="font-size:12.5px;">설정 저장</button>
+            <span id="cert-img-status" class="muted" style="font-size:12px;"></span>
+          </div>
+        </div>
         <div class="actions" style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
           <button type="button" class="btn" id="cert-cancel">취소</button>
           <button type="button" class="btn primary" id="cert-print">미리보기 · 인쇄</button>
@@ -479,6 +588,64 @@ ${PREVIEW_SCRIPT}
     const trChk = dlg.querySelector('#cert-title-reward');
     const trTa = dlg.querySelector('#cert-reward');
     trChk.addEventListener('change', () => { trTa.hidden = !trChk.checked; });
+
+    // ===== 공통 이미지 설정 =====
+    const imgStatus = dlg.querySelector('#cert-img-status');
+    const setImgStatus = (msg, ok) => {
+      imgStatus.textContent = msg || '';
+      imgStatus.style.color = ok === false ? '#c0392b' : (ok ? '#2E7D32' : '#8a9a8c');
+    };
+    dlg.querySelector('#cert-img-show').addEventListener('change', (e) => {
+      state.imgEnabled = e.target.checked;
+    });
+    // 파일 추가 → 리사이즈 후 목록에 누적
+    const fileInput = dlg.querySelector('#cert-img-file');
+    fileInput.addEventListener('change', (e) => {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+      setImgStatus('이미지 처리 중…');
+      let pending = files.length;
+      files.forEach(f => {
+        if (!/^image\//.test(f.type)) { if (--pending === 0) { renderImgList(); setImgStatus(''); } return; }
+        resizeImageFile(f, (dataUrl) => {
+          if (dataUrl) state.imgItems.push({ src: dataUrl, caption: '' });
+          if (--pending === 0) {
+            renderImgList();
+            if (!state.imgEnabled) { state.imgEnabled = true; dlg.querySelector('#cert-img-show').checked = true; }
+            setImgStatus('추가됨 (저장하려면 “설정 저장”)', true);
+          }
+        });
+      });
+      e.target.value = ''; // 같은 파일 재선택 허용
+    });
+    // 목록 영역: 캡션 수정 / 삭제 위임
+    const imgList = dlg.querySelector('#cert-img-list');
+    imgList.addEventListener('input', (e) => {
+      const cap = e.target.closest('.cert-imgcap');
+      if (!cap) return;
+      const i = Number(cap.getAttribute('data-idx'));
+      if (state.imgItems[i]) state.imgItems[i].caption = cap.value;
+    });
+    imgList.addEventListener('click', (e) => {
+      const del = e.target.closest('.cert-imgdel');
+      if (!del) return;
+      const i = Number(del.getAttribute('data-idx'));
+      state.imgItems.splice(i, 1);
+      renderImgList();
+      setImgStatus('삭제됨 (저장하려면 “설정 저장”)', true);
+    });
+    // 명시적 저장
+    dlg.querySelector('#cert-img-save').addEventListener('click', async () => {
+      if (!state.onSaveImages) { setImgStatus('이 화면에서는 저장을 지원하지 않습니다.', false); return; }
+      setImgStatus('저장 중…');
+      try {
+        await state.onSaveImages({ enabled: state.imgEnabled, items: state.imgItems });
+        setImgStatus('저장됨 ✓', true);
+      } catch (err) {
+        setImgStatus('저장 실패: ' + ((err && err.message) || err), false);
+      }
+    });
+
     dlg.querySelector('#cert-print').addEventListener('click', () => {
       const opts = {
         includeWaitlist: dlg.querySelector('#cert-waitlist').checked,
@@ -487,11 +654,17 @@ ${PREVIEW_SCRIPT}
         contact: dlg.querySelector('#cert-contact').value || '',
         showTitleReward: trChk.checked,
         rewardText: trTa.value || '',
+        // 표시 켰을 때만 이미지 전달(끄면 빈 배열 → 기존과 동일)
+        images: state.imgEnabled ? state.imgItems.slice() : [],
       };
       const cards = buildCards(state.groups, opts);
       if (cards.length === 0) {
         alert('확인증을 출력할 대상이 없습니다. (취소자는 제외됩니다)');
         return;
+      }
+      // 인쇄하면서 현재 이미지 설정도 조용히 저장(다음 출력·다른 기기에서 기억). 실패해도 인쇄는 진행.
+      if (state.onSaveImages) {
+        Promise.resolve(state.onSaveImages({ enabled: state.imgEnabled, items: state.imgItems })).catch(() => {});
       }
       state.lastOpts = opts;
       state.win = openPrintWindow(buildDoc(cards));
@@ -507,6 +680,13 @@ ${PREVIEW_SCRIPT}
     state.stamps = (payload && payload.stamps) || [];
     state.canStamp = !!(payload && payload.onToggleStamp);
     state.onToggleStamp = (payload && payload.onToggleStamp) || null;
+    // 공통 이미지 설정 로드(app_settings에서 호출측이 미리 불러와 certImages로 전달).
+    const ci = (payload && payload.certImages) || null;
+    state.imgEnabled = !!(ci && ci.enabled);
+    state.imgItems = (ci && Array.isArray(ci.items))
+      ? ci.items.filter(x => x && x.src).map(x => ({ src: x.src, caption: x.caption || '' }))
+      : [];
+    state.onSaveImages = (payload && payload.onSaveImages) || null;
     state.win = null;
     state.lastOpts = null;
     ensureDialog();
@@ -535,6 +715,14 @@ ${PREVIEW_SCRIPT}
     trChk.checked = false;
     trTa.value = '';
     trTa.hidden = true;
+
+    // 공통 이미지 섹션 초기화(로드된 설정 반영)
+    dlg.querySelector('#cert-img-show').checked = state.imgEnabled;
+    const imgSave = dlg.querySelector('#cert-img-save');
+    imgSave.disabled = !state.onSaveImages;
+    imgSave.title = state.onSaveImages ? '' : '이 화면에서는 저장을 지원하지 않습니다.';
+    dlg.querySelector('#cert-img-status').textContent = '';
+    renderImgList();
 
     dlg.classList.add('open');
   }
