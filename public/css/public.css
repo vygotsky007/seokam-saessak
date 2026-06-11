@@ -1050,6 +1050,58 @@ body.public-page {
 }
 .result-more-btn:hover { background: var(--primary-soft); }
 
+/* 카카오톡 오픈채팅 문의 안내 */
+.result-kakao {
+  margin-top: 10px;
+  background: var(--primary-soft);
+  border: 1px solid #C5E1A5;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.result-kakao-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--primary-ink);
+}
+.result-kakao-text {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #33491f;
+}
+.result-kakao-qr {
+  display: inline-block;
+  line-height: 0;
+  background: #fff;
+  border: 1px solid #C5E1A5;
+  border-radius: 10px;
+  padding: 8px;
+}
+.result-kakao-qr img {
+  display: block;
+  width: 160px;
+  height: 160px;
+  max-width: 60vw;
+  object-fit: contain;
+}
+.result-kakao-btn {
+  align-self: stretch;
+  justify-content: center;
+  min-height: 48px;
+  font-size: 15px;
+  font-weight: 700;
+  background: #FEE500;
+  border: 1.5px solid #E6CE00;
+  color: #3C1E1E;
+}
+.result-kakao-btn:hover { background: #FFEB33; }
+.result-kakao-link { font-size: 12.5px; color: var(--muted); }
+.result-kakao-link a { color: var(--primary-ink); font-weight: 700; word-break: break-all; }
+
 @media (max-width: 540px) {
   .form-row { grid-template-columns: 1fr; gap: 6px; }
   .form-row label { font-size: 13px; }

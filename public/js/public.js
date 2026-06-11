@@ -771,6 +771,17 @@
     html += '<div class="result-more-text">다른 프로그램도 같은 보호자 연락처로 추가 신청할 수 있어요.</div>';
     html += '<a class="btn result-more-btn" href="/">+ 프로그램 더 신청하기</a>';
     html += '</div>';
+    // 카카오톡 오픈채팅 문의 안내(공개 정보 · 개인정보 무관). 이미지 없어도 문구+링크는 정상 표시.
+    const KAKAO_URL = 'https://open.kakao.com/o/gWzAidyi';
+    html += '<div class="result-kakao">';
+    html += '<div class="result-kakao-title">💬 카카오톡 문의</div>';
+    html += '<div class="result-kakao-text">문의사항이 있으시면 아래 카카오톡 오픈채팅방에 들어오셔서 석암초 담당자에게 1:1로 문의해 주세요.</div>';
+    html += `<a class="result-kakao-qr" href="${KAKAO_URL}" target="_blank" rel="noopener" aria-label="카카오톡 오픈채팅 QR 코드 (탭하면 열림)">`;
+    html += '<img src="/images/kakao-qr.png" alt="카카오톡 오픈채팅 QR" onerror="this.parentNode.style.display=\'none\'">';
+    html += '</a>';
+    html += `<a class="btn result-kakao-btn" href="${KAKAO_URL}" target="_blank" rel="noopener">📨 카카오톡 오픈채팅방 열기</a>`;
+    html += `<div class="result-kakao-link">또는 주소창에 직접 입력: <a href="${KAKAO_URL}" target="_blank" rel="noopener">open.kakao.com/o/gWzAidyi</a></div>`;
+    html += '</div>';
     html += '</div>';
     resultArea.innerHTML = html;
     form.style.display = 'none';
