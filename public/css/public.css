@@ -71,6 +71,8 @@ body.public-page {
 }
 /* 유형 필터: 학년 필터 바로 아래 붙여서 두 줄 그룹으로(모바일 flex-wrap 동일 적용) */
 .type-filter { padding-top: 0; margin-top: -4px; }
+/* 모집상태 필터: 유형 필터 바로 아래 같은 간격으로 붙임 */
+.status-filter { padding-top: 0; margin-top: -4px; }
 .header {
   text-align: center;
   margin-bottom: 14px;

@@ -109,6 +109,8 @@
   // 유형 필터: null=전체 | 'multicultural' | 'sibling' | 'custom:<type_custom 값>'
   // 고정 유형은 다문화·형제 2개뿐. 그 외(늘봄 등)는 type_custom 자유 입력이 칩으로 자동 반영.
   let activeTypeFilter = null;
+  // 모집상태 필터: null=전체 | 'open'=모집중 | 'upcoming'=모집예정 | 'ended'=모집종료
+  let activeStatusFilter = null;
 
   // === DOM ===
   const detailListEl = document.getElementById('program-detail-list');
@@ -191,11 +193,30 @@
     return true;
   }
 
-  // === 학년 + 유형 필터 (AND 조건) ===
+  // === 모집상태 필터 ===
+  // 표시되는 모집상태를 칩 버킷으로 분류. 기존 recruitStatusOf + is_fully_closed 로직 재사용(새 기준 안 만듦).
+  //  'open'     = 모집중 (대기접수·마감임박 포함, 아직 신청 받는 중)
+  //  'upcoming' = 모집예정
+  //  'ended'    = 모집종료 (모집마감 full + 자동소진 is_fully_closed + 모집완료 closed)
+  // hidden 은 서버에서 이미 제외되므로 공개 목록엔 들어오지 않음(공개 미노출 유지).
+  function recruitBucketOf(p) {
+    const status = recruitStatusOf(p);
+    if (status === 'upcoming') return 'upcoming';
+    if (status === 'closed') return 'ended';
+    if (status === 'full' || p.is_fully_closed) return 'ended'; // 모집중이어도 정원+대기 자동소진 → 모집마감(종료)
+    return 'open'; // recruiting & 아직 신청 받는 중
+  }
+  function statusMatchesFilter(p) {
+    if (activeStatusFilter == null) return true;
+    return recruitBucketOf(p) === activeStatusFilter;
+  }
+
+  // === 학년 + 유형 + 모집상태 필터 (AND 조건) ===
   function filteredPrograms() {
     return programs.filter(p =>
       (activeGradeFilter == null || gradeIncluded(p, activeGradeFilter)) &&
-      typeMatchesFilter(p));
+      typeMatchesFilter(p) &&
+      statusMatchesFilter(p));
   }
 
   // === 상단: 안내 카드 ===
@@ -810,6 +831,27 @@
     });
   }
 
+  // === 모집상태 필터 칩 와이어링 (학년 필터와 동일 패턴) ===
+  function wireStatusFilter() {
+    const filterEl = document.getElementById('status-filter');
+    if (!filterEl) return;
+    filterEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('.chip');
+      if (!btn || !filterEl.contains(btn)) return;
+      const raw = btn.dataset.status;
+      const next = (raw === '' || raw == null) ? null : raw;
+      if (next === activeStatusFilter) return;
+      activeStatusFilter = next;
+      filterEl.querySelectorAll('.chip').forEach(c => {
+        const isActive = c === btn;
+        c.classList.toggle('active', isActive);
+        c.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+      renderDetailList();
+      renderStep2();
+    });
+  }
+
   // === 유형 필터: 기타(type_custom) 값이 있는 프로그램이면 칩으로 동적 추가 ===
   function renderTypeFilterCustomChips() {
     const el = document.getElementById('type-filter');
@@ -887,6 +929,7 @@
   attachPhoneFormatter(document.getElementById('guardian_phone'));
   wireGradeFilter();
   wireTypeFilter();
+  wireStatusFilter();
   wireGuardianInputs();
   prefillGuardianFromSession();
   loadPrograms();
