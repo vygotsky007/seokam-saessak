@@ -1,5 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const router = express.Router();
 const ExcelJS = require('exceljs');
 const supabase = require('../utils/supabase');
@@ -1176,9 +1178,114 @@ router.get('/dashboard', async (req, res) => {
   }
 });
 
-// 새싹(KOFAC) 등록양식 드롭다운 목록
+// 새싹(KOFAC) 등록양식 드롭다운 목록 (D열=지역, F열=학년)
 const SAESSAK_REGION_LIST = ['서울특별시','인천광역시','경기도','대전광역시','세종특별자치시','강원특별자치도','충청북도','충청남도','부산광역시','대구광역시','울산광역시','경상북도','경상남도','광주광역시','전북특별자치도','전라남도','제주특별자치도'];
 const SAESSAK_GRADE_LIST = ['초등학교 1학년','초등학교 2학년','초등학교 3학년','초등학교 4학년','초등학교 5학년','초등학교 6학년','중학교 1학년','중학교 2학년','중학교 3학년','고등학교 1학년','고등학교 2학년','고등학교 3학년'];
+const SAESSAK_REGION_FORMULA = `"${SAESSAK_REGION_LIST.join(',')}"`;
+const SAESSAK_GRADE_FORMULA  = `"${SAESSAK_GRADE_LIST.join(',')}"`;
+const SAESSAK_HEADER = ['학생명','연락처','이메일','지역','학교','학년','반','일반학생 여부'];
+const SAESSAK_TEMPLATE_PATH = path.join(__dirname, '..', 'templates', 'saessak_kofac_template.xlsx');
+
+// 공식 양식 풀-컬럼 데이터유효성(D2:D1048576, F2:F1048576)만 남긴다.
+// exceljs 는 양식을 "읽을 때" 풀-컬럼 범위를 셀 단위(약 200만 개)로 폭발시키므로,
+// 양식 그대로 다시 쓰면 잘리고/중복된 거대한 파일이 된다(=KOFAC '초과인원' 거부).
+// → 읽은 뒤 데이터유효성을 비우고 공식 범위를 단일 항목으로 재설정한다.
+function saessakApplyCleanDV(ws) {
+  ws.dataValidations.model = {};
+  ws.dataValidations.add('D2:D1048576', { type: 'list', allowBlank: true, formulae: [SAESSAK_REGION_FORMULA] });
+  ws.dataValidations.add('F2:F1048576', { type: 'list', allowBlank: true, formulae: [SAESSAK_GRADE_FORMULA] });
+}
+
+// 학생 행을 2행부터 채운다(매핑은 기존과 동일). 헤더·데이터유효성·서식은 건드리지 않음.
+function saessakFillRows(ws, rows) {
+  rows.forEach((r, i) => {
+    const row = ws.getRow(i + 2);
+    row.getCell(1).value = r.student_name;                                   // 학생명
+    row.getCell(2).value = r.guardian_phone;                                 // 연락처(보호자)
+    row.getCell(3).value = 'abc@gmail.com';                                  // 이메일(고정)
+    row.getCell(4).value = '인천광역시';                                      // 지역(고정)
+    row.getCell(5).value = '인천석암초등학교';                                // 학교(고정)
+    row.getCell(6).value = (r.grade === null || r.grade === undefined || r.grade === '')
+      ? '' : `초등학교 ${r.grade}학년`;                                       // 학년
+    row.getCell(7).value = r.class_no;                                       // 반
+    row.getCell(8).value = r.is_multicultural ? '' : 'Y';                    // 일반학생 여부(다문화면 빈칸)
+  });
+}
+
+function saessakSheetName(title, idx, used) {
+  // 엑셀 금지문자(\ / ? * [ ] : !) 제거, 31자 이내
+  let base = String(title || '').replace(/[\\/?*\[\]:!]/g, '').trim().slice(0, 31) || `프로그램${idx + 1}`;
+  let name = base, n = 2;
+  while (used.has(name)) {
+    const suffix = `_${n}`;
+    name = base.slice(0, 31 - suffix.length) + suffix;
+    n++;
+  }
+  used.add(name);
+  return name;
+}
+
+// 공식 KOFAC 양식을 불러와 구조(시트·데이터유효성·서식) 보존한 채 학생 행만 채운다.
+// 양식이 없으면 공식 사양(헤더 + 풀-컬럼 드롭다운)에 맞춰 깨끗하게 생성하는 폴백.
+async function buildSaessakWorkbook(grouped, opts) {
+  const pids = Object.keys(grouped);
+  const used = new Set();
+
+  // 1) 공식 양식 로드 시도
+  let tplWb = null, tplModel = null;
+  try {
+    if (fs.existsSync(SAESSAK_TEMPLATE_PATH)) {
+      tplWb = new ExcelJS.Workbook();
+      await tplWb.xlsx.readFile(SAESSAK_TEMPLATE_PATH);
+      const base = tplWb.worksheets[0];
+      saessakApplyCleanDV(base);                       // 읽으며 폭발한 DV 제거 → 공식 풀-컬럼만
+      tplModel = JSON.parse(JSON.stringify(base.model)); // 전체 프로그램용 시트 복제 원본(헤더·서식·DV 포함)
+    }
+  } catch (e) {
+    console.warn('[saessak export] 공식 양식 로드 실패, 폴백 생성:', e.message);
+    tplWb = null;
+  }
+
+  if (tplWb) {
+    const base = tplWb.worksheets[0];
+    pids.forEach((pid, idx) => {
+      const g = grouped[pid];
+      let ws;
+      if (idx === 0) {
+        ws = base;
+        // 특정 프로그램 1개 → 공식 시트명 그대로 유지. 전체 → 프로그램명으로 변경.
+        if (!opts.singleProgram) ws.name = saessakSheetName(g.title, idx, used);
+        else used.add(ws.name);
+      } else {
+        const name = saessakSheetName(g.title, idx, used);
+        ws = tplWb.addWorksheet(name);
+        const m = JSON.parse(JSON.stringify(tplModel)); // 공식 양식 시트 구조 복제(헤더+두 드롭다운)
+        m.name = name; m.id = ws.id;
+        ws.model = m; ws.name = name;
+      }
+      saessakApplyCleanDV(ws);  // 모든 시트에 공식 풀-컬럼 드롭다운만 보장
+      saessakFillRows(ws, g.rows);
+    });
+    return tplWb;
+  }
+
+  // 2) 폴백: 양식 없이 공식 사양대로 깨끗하게 생성
+  const wb = new ExcelJS.Workbook();
+  wb.creator = '석암 디지털새싹';
+  wb.created = new Date();
+  const widths = [12, 16, 20, 14, 18, 14, 6, 12];
+  pids.forEach((pid, idx) => {
+    const g = grouped[pid];
+    const name = saessakSheetName(g.title, idx, used);
+    const ws = wb.addWorksheet(name);
+    ws.getRow(1).values = SAESSAK_HEADER;
+    ws.getRow(1).font = { bold: true };
+    widths.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+    saessakApplyCleanDV(ws);
+    saessakFillRows(ws, g.rows);
+  });
+  return wb;
+}
 
 router.get('/export', async (req, res) => {
   try {
@@ -1198,7 +1305,7 @@ router.get('/export', async (req, res) => {
     const { data, error } = await appQ;
     if (error) throw error;
 
-    const wb = new ExcelJS.Workbook();
+    let wb = new ExcelJS.Workbook();
     wb.creator = '석암 디지털새싹';
     wb.created = new Date();
 
@@ -1213,50 +1320,8 @@ router.get('/export', async (req, res) => {
       const ws = wb.addWorksheet('명단');
       ws.addRow(['데이터가 없습니다.']);
     } else if (isSaessak) {
-      // ===== 새싹(KOFAC) 등록양식 =====
-      Object.keys(grouped).forEach((pid, idx) => {
-        const g = grouped[pid];
-        const safe = g.title.replace(/[\\/?*\[\]:]/g, '_').slice(0, 28) || `프로그램${idx + 1}`;
-        const ws = wb.addWorksheet(safe);
-        ws.columns = [
-          { header: '학생명', key: 'student_name', width: 12 },
-          { header: '연락처', key: 'phone', width: 16 },
-          { header: '이메일', key: 'email', width: 20 },
-          { header: '지역', key: 'region', width: 14 },
-          { header: '학교', key: 'school', width: 18 },
-          { header: '학년', key: 'grade', width: 14 },
-          { header: '반', key: 'class_no', width: 6 },
-          { header: '일반학생 여부', key: 'is_general', width: 12 },
-        ];
-        ws.getRow(1).font = { bold: true };
-        g.rows.forEach((r) => {
-          ws.addRow({
-            student_name: r.student_name,
-            phone: r.guardian_phone,
-            email: 'abc@gmail.com',
-            region: '인천광역시',
-            school: '인천석암초등학교',
-            grade: (r.grade === null || r.grade === undefined || r.grade === '') ? '' : `초등학교 ${r.grade}학년`,
-            class_no: r.class_no,
-            // 다문화 신청(우대/플래그)이면 빈칸, 그 외 'Y'
-            is_general: r.is_multicultural ? '' : 'Y',
-          });
-        });
-        // 지역(D열)·학년(F열) 드롭다운(데이터 유효성) — 데이터 행에만 적용
-        const lastRow = g.rows.length + 1; // 헤더(1행) + 데이터
-        if (lastRow >= 2) {
-          for (let rowNo = 2; rowNo <= lastRow; rowNo++) {
-            ws.getCell(`D${rowNo}`).dataValidation = {
-              type: 'list', allowBlank: true,
-              formulae: [`"${SAESSAK_REGION_LIST.join(',')}"`],
-            };
-            ws.getCell(`F${rowNo}`).dataValidation = {
-              type: 'list', allowBlank: true,
-              formulae: [`"${SAESSAK_GRADE_LIST.join(',')}"`],
-            };
-          }
-        }
-      });
+      // ===== 새싹(KOFAC) 등록양식: 공식 양식을 채워서 내보내기 =====
+      wb = await buildSaessakWorkbook(grouped, { singleProgram: !!program_id });
     } else {
       Object.keys(grouped).forEach((pid, idx) => {
         const g = grouped[pid];
