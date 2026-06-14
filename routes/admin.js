@@ -1230,31 +1230,57 @@ async function buildSaessakXlsxBuffer(rows) {
     return idx;
   }
 
-  // --- 학생 행 XML 만들기(2행부터). 매핑은 기존과 동일 ---
+  // --- sheet1.xml 파싱: sheetData 영역 + 공식 행/열 서식(s=) 확보 ---
+  sheetXml = sheetXml.replace(/<sheetData\s*\/>/, '<sheetData></sheetData>');
+  const sdMatch = sheetXml.match(/<sheetData[^>]*>([\s\S]*?)<\/sheetData>/);
+  if (!sdMatch) throw new Error('sheet1.xml: sheetData 영역을 찾을 수 없음');
+  const sdInner = sdMatch[1];
+
+  // 공식 양식의 첫 데이터행(r>=2)에서 행 속성(spans·dyDescent 등)과 열별 셀 스타일을 캡처해
+  // 새로 채우는 행에 그대로 적용한다(서식 보존 = 최소 수정).
+  const dataRowMatch = sdInner.match(/<row\b([^>]*)\br="(?:[2-9]|[1-9]\d+)"([^>]*)>([\s\S]*?)<\/row>/);
+  let rowAttr = ' spans="1:9"';
+  const colStyle = {};
+  if (dataRowMatch) {
+    const rawAttr = (dataRowMatch[1] + ' ' + dataRowMatch[2]).replace(/\s+/g, ' ').trim();
+    if (rawAttr) rowAttr = ' ' + rawAttr;
+    const cellRe = /<c\s+r="([A-Z]+)\d+"([^>]*?)(?:\/>|>[\s\S]*?<\/c>)/g;
+    let cm;
+    while ((cm = cellRe.exec(dataRowMatch[3]))) {
+      colStyle[cm[1]] = (cm[2].match(/\bs="\d+"/) || [''])[0]; // 예: 's="2"'
+    }
+  }
+  const styleOf = (col) => (colStyle[col] ? ' ' + colStyle[col] : '');
+
+  // --- 학생 행 XML 만들기(2행부터). 매핑은 기존과 동일, 공식 서식 유지 ---
   let stringCellRefs = 0;
+  const COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
   const rowXmls = rows.map((r, i) => {
     const rowNo = i + 2;
-    const cells = [];
-    const strCell = (col, value) => {
-      if (value === '' || value === null || value === undefined) return; // 빈 셀은 생략
-      cells.push(`<c r="${col}${rowNo}" t="s"><v>${internString(value)}</v></c>`);
+    const valueOf = {
+      A: { t: 's', v: r.student_name },               // 학생명
+      B: { t: 's', v: r.guardian_phone },             // 연락처(보호자)
+      C: { t: 's', v: 'abc@gmail.com' },              // 이메일(고정)
+      D: { t: 's', v: '인천광역시' },                  // 지역(고정)
+      E: { t: 's', v: '인천석암초등학교' },            // 학교(고정)
+      F: { t: 's', v: saessakGradeText(r.grade) },    // 학년
+      G: { t: 'n', v: r.class_no },                   // 반(숫자)
+      H: { t: 's', v: (r.is_multicultural ? '' : 'Y') }, // 일반학생 여부: 다문화면 빈칸
+    };
+    const cells = COLS.map((col) => {
+      const ref = `${col}${rowNo}`;
+      const st = styleOf(col);
+      const cell = valueOf[col];
+      const blank = cell.v === '' || cell.v === null || cell.v === undefined;
+      if (blank) return `<c r="${ref}"${st}/>`;                        // 빈 셀(공식 서식 유지)
+      if (cell.t === 'n') {
+        const n = Number(cell.v);
+        if (Number.isFinite(n)) return `<c r="${ref}"${st}><v>${n}</v></c>`;
+      }
       stringCellRefs++;
-    };
-    const numCell = (col, value) => {
-      if (value === '' || value === null || value === undefined) return;
-      const n = Number(value);
-      if (Number.isFinite(n)) cells.push(`<c r="${col}${rowNo}"><v>${n}</v></c>`);
-      else strCell(col, value);
-    };
-    strCell('A', r.student_name);                 // 학생명
-    strCell('B', r.guardian_phone);               // 연락처(보호자)
-    strCell('C', 'abc@gmail.com');                // 이메일(고정)
-    strCell('D', '인천광역시');                    // 지역(고정)
-    strCell('E', '인천석암초등학교');              // 학교(고정)
-    strCell('F', saessakGradeText(r.grade));      // 학년
-    numCell('G', r.class_no);                      // 반(숫자)
-    if (!r.is_multicultural) strCell('H', 'Y');   // 일반학생 여부: 다문화면 셀 생략
-    return `<row r="${rowNo}">${cells.join('')}</row>`;
+      return `<c r="${ref}"${st} t="s"><v>${internString(cell.v)}</v></c>`;
+    }).join('');
+    return `<row r="${rowNo}"${rowAttr}>${cells}</row>`;
   });
 
   // --- sharedStrings.xml 갱신 ---
@@ -1273,16 +1299,13 @@ async function buildSaessakXlsxBuffer(rows) {
     : sstOpenNew.replace(/<sst\b/, `<sst uniqueCount="${newUnique}"`);
   sstXml = sstXml.replace(/<sst\b[^>]*>/, sstOpenNew);
 
-  // --- sheet1.xml: 기존 데이터행(r>=2) 제거 후 내 행 삽입(헤더 1행·DV·메모는 보존) ---
-  sheetXml = sheetXml.replace(/<sheetData\s*\/>/, '<sheetData></sheetData>');
-  const sdMatch = sheetXml.match(/<sheetData[^>]*>([\s\S]*?)<\/sheetData>/);
-  if (!sdMatch) throw new Error('sheet1.xml: sheetData 영역을 찾을 수 없음');
-  let sdInner = sdMatch[1].replace(
+  // --- sheetData 재구성: 헤더 1행(및 기타) 보존 + 기존 빈 데이터행(r>=2) 제거 후 내 행 삽입 ---
+  const preserved = sdInner.replace(
     /<row\b[^>]*\br="(\d+)"[^>]*?(?:\/>|>[\s\S]*?<\/row>)/g,
     (m, rn) => (parseInt(rn, 10) >= 2 ? '' : m)
   );
-  sdInner += rowXmls.join('');
-  sheetXml = sheetXml.replace(/<sheetData[^>]*>[\s\S]*?<\/sheetData>/, `<sheetData>${sdInner}</sheetData>`);
+  const newSdInner = preserved + rowXmls.join('');
+  sheetXml = sheetXml.replace(/<sheetData[^>]*>[\s\S]*?<\/sheetData>/, `<sheetData>${newSdInner}</sheetData>`);
 
   // --- dimension 갱신: I1 메모 포함 A1:I{마지막행} ---
   const lastRow = rows.length + 1;
