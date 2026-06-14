@@ -1569,6 +1569,11 @@ th { color:#2E7D32; font-weight:800; background:#F1F8E9; }
     const pid = $('#export-program').value;
     const onlySel = $('#export-only-selected').checked;
     const saessak = $('#export-saessak').checked;
+    // 새싹용은 KOFAC 업로드 단위(프로그램 1개)로만 출력. 전체는 프로그램별로 따로.
+    if (saessak && !pid) {
+      toast('새싹용은 프로그램을 1개 선택해 받아주세요. 전체는 프로그램별로 따로 받으세요.');
+      return;
+    }
     const params = new URLSearchParams();
     if (pid) params.set('program_id', pid);
     if (onlySel) params.set('only_selected', '1');

@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const router = express.Router();
 const ExcelJS = require('exceljs');
+const JSZip = require('jszip');
 const supabase = require('../utils/supabase');
 const { normalizeMobile } = require('../utils/phone');
 
@@ -1178,113 +1179,123 @@ router.get('/dashboard', async (req, res) => {
   }
 });
 
-// 새싹(KOFAC) 등록양식 드롭다운 목록 (D열=지역, F열=학년)
-const SAESSAK_REGION_LIST = ['서울특별시','인천광역시','경기도','대전광역시','세종특별자치시','강원특별자치도','충청북도','충청남도','부산광역시','대구광역시','울산광역시','경상북도','경상남도','광주광역시','전북특별자치도','전라남도','제주특별자치도'];
-const SAESSAK_GRADE_LIST = ['초등학교 1학년','초등학교 2학년','초등학교 3학년','초등학교 4학년','초등학교 5학년','초등학교 6학년','중학교 1학년','중학교 2학년','중학교 3학년','고등학교 1학년','고등학교 2학년','고등학교 3학년'];
-const SAESSAK_REGION_FORMULA = `"${SAESSAK_REGION_LIST.join(',')}"`;
-const SAESSAK_GRADE_FORMULA  = `"${SAESSAK_GRADE_LIST.join(',')}"`;
-const SAESSAK_HEADER = ['학생명','연락처','이메일','지역','학교','학년','반','일반학생 여부'];
+// 공식 KOFAC 등록양식 원본(zip). 이 파일을 거의 그대로 두고 학생 행만 끼운다.
 const SAESSAK_TEMPLATE_PATH = path.join(__dirname, '..', 'templates', 'saessak_kofac_template.xlsx');
 
-// 공식 양식 풀-컬럼 데이터유효성(D2:D1048576, F2:F1048576)만 남긴다.
-// exceljs 는 양식을 "읽을 때" 풀-컬럼 범위를 셀 단위(약 200만 개)로 폭발시키므로,
-// 양식 그대로 다시 쓰면 잘리고/중복된 거대한 파일이 된다(=KOFAC '초과인원' 거부).
-// → 읽은 뒤 데이터유효성을 비우고 공식 범위를 단일 항목으로 재설정한다.
-function saessakApplyCleanDV(ws) {
-  ws.dataValidations.model = {};
-  ws.dataValidations.add('D2:D1048576', { type: 'list', allowBlank: true, formulae: [SAESSAK_REGION_FORMULA] });
-  ws.dataValidations.add('F2:F1048576', { type: 'list', allowBlank: true, formulae: [SAESSAK_GRADE_FORMULA] });
+function saessakXmlEscape(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function saessakGradeText(grade) {
+  return (grade === null || grade === undefined || grade === '') ? '' : `초등학교 ${grade}학년`;
 }
 
-// 학생 행을 2행부터 채운다(매핑은 기존과 동일). 헤더·데이터유효성·서식은 건드리지 않음.
-function saessakFillRows(ws, rows) {
-  rows.forEach((r, i) => {
-    const row = ws.getRow(i + 2);
-    row.getCell(1).value = r.student_name;                                   // 학생명
-    row.getCell(2).value = r.guardian_phone;                                 // 연락처(보호자)
-    row.getCell(3).value = 'abc@gmail.com';                                  // 이메일(고정)
-    row.getCell(4).value = '인천광역시';                                      // 지역(고정)
-    row.getCell(5).value = '인천석암초등학교';                                // 학교(고정)
-    row.getCell(6).value = (r.grade === null || r.grade === undefined || r.grade === '')
-      ? '' : `초등학교 ${r.grade}학년`;                                       // 학년
-    row.getCell(7).value = r.class_no;                                       // 반
-    row.getCell(8).value = r.is_multicultural ? '' : 'Y';                    // 일반학생 여부(다문화면 빈칸)
+// 공식 양식 zip을 열어 xl/worksheets/sheet1.xml 과 xl/sharedStrings.xml "두 파일만" 최소 수정한다.
+// - sheet1.xml: sheetData 2행부터 학생 <row> 추가 + <dimension>을 A1:I{마지막행}(I1 메모 포함)로 갱신.
+// - sharedStrings.xml: 새 문자열 <si> 추가 + count/uniqueCount 갱신.
+// 나머지(workbook.xml=Sheet0, comments1.xml, vmlDrawing1.vml, styles.xml, [Content_Types].xml 등)와
+// sheet1.xml 안의 데이터유효성·I1 메모 영역은 원본 그대로 보존(재직렬화 없음). 시트명 Sheet0 절대 변경 안 함.
+async function buildSaessakXlsxBuffer(rows) {
+  if (!fs.existsSync(SAESSAK_TEMPLATE_PATH)) {
+    throw new Error('공식 양식 파일이 없습니다: templates/saessak_kofac_template.xlsx 를 추가해주세요.');
+  }
+  const zip = await JSZip.loadAsync(fs.readFileSync(SAESSAK_TEMPLATE_PATH));
+
+  const SHEET_PATH = 'xl/worksheets/sheet1.xml';
+  const SST_PATH = 'xl/sharedStrings.xml';
+  const sheetFile = zip.file(SHEET_PATH);
+  const sstFile = zip.file(SST_PATH);
+  if (!sheetFile) throw new Error('양식 구조 오류: xl/worksheets/sheet1.xml 없음');
+  if (!sstFile) throw new Error('양식 구조 오류: xl/sharedStrings.xml 없음(공식 양식 필요)');
+
+  let sheetXml = await sheetFile.async('string');
+  let sstXml = await sstFile.async('string');
+
+  // --- sharedStrings: 기존 count/uniqueCount 파악 ---
+  const sstOpen = (sstXml.match(/<sst\b[^>]*>/) || [])[0];
+  if (!sstOpen) throw new Error('sharedStrings.xml 형식 오류');
+  const uMatch = sstOpen.match(/uniqueCount="(\d+)"/);
+  const cMatch = sstOpen.match(/\bcount="(\d+)"/);
+  const existingUnique = uMatch ? parseInt(uMatch[1], 10) : (sstXml.match(/<si\b/g) || []).length;
+  const existingCount = cMatch ? parseInt(cMatch[1], 10) : existingUnique;
+
+  // 내가 추가하는 문자열만 모은 테이블(중복 제거). 인덱스는 기존 uniqueCount 뒤에 이어붙임.
+  const newStrings = [];
+  const newIndex = new Map();
+  function internString(v) {
+    const key = String(v);
+    if (newIndex.has(key)) return newIndex.get(key);
+    const idx = existingUnique + newStrings.length;
+    newStrings.push(key);
+    newIndex.set(key, idx);
+    return idx;
+  }
+
+  // --- 학생 행 XML 만들기(2행부터). 매핑은 기존과 동일 ---
+  let stringCellRefs = 0;
+  const rowXmls = rows.map((r, i) => {
+    const rowNo = i + 2;
+    const cells = [];
+    const strCell = (col, value) => {
+      if (value === '' || value === null || value === undefined) return; // 빈 셀은 생략
+      cells.push(`<c r="${col}${rowNo}" t="s"><v>${internString(value)}</v></c>`);
+      stringCellRefs++;
+    };
+    const numCell = (col, value) => {
+      if (value === '' || value === null || value === undefined) return;
+      const n = Number(value);
+      if (Number.isFinite(n)) cells.push(`<c r="${col}${rowNo}"><v>${n}</v></c>`);
+      else strCell(col, value);
+    };
+    strCell('A', r.student_name);                 // 학생명
+    strCell('B', r.guardian_phone);               // 연락처(보호자)
+    strCell('C', 'abc@gmail.com');                // 이메일(고정)
+    strCell('D', '인천광역시');                    // 지역(고정)
+    strCell('E', '인천석암초등학교');              // 학교(고정)
+    strCell('F', saessakGradeText(r.grade));      // 학년
+    numCell('G', r.class_no);                      // 반(숫자)
+    if (!r.is_multicultural) strCell('H', 'Y');   // 일반학생 여부: 다문화면 셀 생략
+    return `<row r="${rowNo}">${cells.join('')}</row>`;
   });
-}
 
-function saessakSheetName(title, idx, used) {
-  // 엑셀 금지문자(\ / ? * [ ] : !) 제거, 31자 이내
-  let base = String(title || '').replace(/[\\/?*\[\]:!]/g, '').trim().slice(0, 31) || `프로그램${idx + 1}`;
-  let name = base, n = 2;
-  while (used.has(name)) {
-    const suffix = `_${n}`;
-    name = base.slice(0, 31 - suffix.length) + suffix;
-    n++;
+  // --- sharedStrings.xml 갱신 ---
+  if (newStrings.length) {
+    const siXml = newStrings.map(s => `<si><t xml:space="preserve">${saessakXmlEscape(s)}</t></si>`).join('');
+    sstXml = sstXml.replace(/<\/sst>\s*$/, siXml + '</sst>');
   }
-  used.add(name);
-  return name;
-}
+  const newUnique = existingUnique + newStrings.length;
+  const newCount = existingCount + stringCellRefs;
+  let sstOpenNew = sstOpen;
+  sstOpenNew = /\bcount="\d+"/.test(sstOpenNew)
+    ? sstOpenNew.replace(/\bcount="\d+"/, `count="${newCount}"`)
+    : sstOpenNew.replace(/<sst\b/, `<sst count="${newCount}"`);
+  sstOpenNew = /uniqueCount="\d+"/.test(sstOpenNew)
+    ? sstOpenNew.replace(/uniqueCount="\d+"/, `uniqueCount="${newUnique}"`)
+    : sstOpenNew.replace(/<sst\b/, `<sst uniqueCount="${newUnique}"`);
+  sstXml = sstXml.replace(/<sst\b[^>]*>/, sstOpenNew);
 
-// 공식 KOFAC 양식을 불러와 구조(시트·데이터유효성·서식) 보존한 채 학생 행만 채운다.
-// 양식이 없으면 공식 사양(헤더 + 풀-컬럼 드롭다운)에 맞춰 깨끗하게 생성하는 폴백.
-async function buildSaessakWorkbook(grouped, opts) {
-  const pids = Object.keys(grouped);
-  const used = new Set();
+  // --- sheet1.xml: 기존 데이터행(r>=2) 제거 후 내 행 삽입(헤더 1행·DV·메모는 보존) ---
+  sheetXml = sheetXml.replace(/<sheetData\s*\/>/, '<sheetData></sheetData>');
+  const sdMatch = sheetXml.match(/<sheetData[^>]*>([\s\S]*?)<\/sheetData>/);
+  if (!sdMatch) throw new Error('sheet1.xml: sheetData 영역을 찾을 수 없음');
+  let sdInner = sdMatch[1].replace(
+    /<row\b[^>]*\br="(\d+)"[^>]*?(?:\/>|>[\s\S]*?<\/row>)/g,
+    (m, rn) => (parseInt(rn, 10) >= 2 ? '' : m)
+  );
+  sdInner += rowXmls.join('');
+  sheetXml = sheetXml.replace(/<sheetData[^>]*>[\s\S]*?<\/sheetData>/, `<sheetData>${sdInner}</sheetData>`);
 
-  // 1) 공식 양식 로드 시도
-  let tplWb = null, tplModel = null;
-  try {
-    if (fs.existsSync(SAESSAK_TEMPLATE_PATH)) {
-      tplWb = new ExcelJS.Workbook();
-      await tplWb.xlsx.readFile(SAESSAK_TEMPLATE_PATH);
-      const base = tplWb.worksheets[0];
-      saessakApplyCleanDV(base);                       // 읽으며 폭발한 DV 제거 → 공식 풀-컬럼만
-      tplModel = JSON.parse(JSON.stringify(base.model)); // 전체 프로그램용 시트 복제 원본(헤더·서식·DV 포함)
-    }
-  } catch (e) {
-    console.warn('[saessak export] 공식 양식 로드 실패, 폴백 생성:', e.message);
-    tplWb = null;
-  }
-
-  if (tplWb) {
-    const base = tplWb.worksheets[0];
-    pids.forEach((pid, idx) => {
-      const g = grouped[pid];
-      let ws;
-      if (idx === 0) {
-        ws = base;
-        // 특정 프로그램 1개 → 공식 시트명 그대로 유지. 전체 → 프로그램명으로 변경.
-        if (!opts.singleProgram) ws.name = saessakSheetName(g.title, idx, used);
-        else used.add(ws.name);
-      } else {
-        const name = saessakSheetName(g.title, idx, used);
-        ws = tplWb.addWorksheet(name);
-        const m = JSON.parse(JSON.stringify(tplModel)); // 공식 양식 시트 구조 복제(헤더+두 드롭다운)
-        m.name = name; m.id = ws.id;
-        ws.model = m; ws.name = name;
-      }
-      saessakApplyCleanDV(ws);  // 모든 시트에 공식 풀-컬럼 드롭다운만 보장
-      saessakFillRows(ws, g.rows);
-    });
-    return tplWb;
+  // --- dimension 갱신: I1 메모 포함 A1:I{마지막행} ---
+  const lastRow = rows.length + 1;
+  if (/<dimension\b[^>]*\/>/.test(sheetXml)) {
+    sheetXml = sheetXml.replace(/<dimension\b[^>]*\/>/, `<dimension ref="A1:I${lastRow}"/>`);
+  } else if (/<dimension\b[^>]*>[\s\S]*?<\/dimension>/.test(sheetXml)) {
+    sheetXml = sheetXml.replace(/<dimension\b[^>]*>[\s\S]*?<\/dimension>/, `<dimension ref="A1:I${lastRow}"/>`);
   }
 
-  // 2) 폴백: 양식 없이 공식 사양대로 깨끗하게 생성
-  const wb = new ExcelJS.Workbook();
-  wb.creator = '석암 디지털새싹';
-  wb.created = new Date();
-  const widths = [12, 16, 20, 14, 18, 14, 6, 12];
-  pids.forEach((pid, idx) => {
-    const g = grouped[pid];
-    const name = saessakSheetName(g.title, idx, used);
-    const ws = wb.addWorksheet(name);
-    ws.getRow(1).values = SAESSAK_HEADER;
-    ws.getRow(1).font = { bold: true };
-    widths.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
-    saessakApplyCleanDV(ws);
-    saessakFillRows(ws, g.rows);
-  });
-  return wb;
+  // 딱 두 파일만 교체. 나머지는 원본 그대로 다시 압축.
+  zip.file(SHEET_PATH, sheetXml);
+  zip.file(SST_PATH, sstXml);
+  return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
 }
 
 router.get('/export', async (req, res) => {
@@ -1305,6 +1316,24 @@ router.get('/export', async (req, res) => {
     const { data, error } = await appQ;
     if (error) throw error;
 
+    // ===== 새싹(KOFAC) 등록양식: 공식 양식 zip의 XML만 최소 수정해 내보내기 =====
+    // KOFAC 업로드 단위는 "프로그램 1개"라서 특정 프로그램 선택만 지원(전체는 프로그램별로 따로).
+    if (isSaessak) {
+      if (!program_id) {
+        return res.status(400).json({
+          ok: false,
+          error: '새싹용은 프로그램을 1개 선택해 받아주세요. 전체는 프로그램별로 따로 받으세요.',
+        });
+      }
+      // 취소(cancelled) 제외. 다문화 판정은 기존 is_multicultural 플래그 재사용.
+      const rows = (data || []).filter(r => r.status !== 'cancelled');
+      const buf = await buildSaessakXlsxBuffer(rows);
+      const fname = `saessak_kofac_${only_selected ? 'selected_' : ''}${new Date().toISOString().slice(0,10)}.xlsx`;
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
+      return res.send(Buffer.from(buf));
+    }
+
     let wb = new ExcelJS.Workbook();
     wb.creator = '석암 디지털새싹';
     wb.created = new Date();
@@ -1319,9 +1348,6 @@ router.get('/export', async (req, res) => {
     if (Object.keys(grouped).length === 0) {
       const ws = wb.addWorksheet('명단');
       ws.addRow(['데이터가 없습니다.']);
-    } else if (isSaessak) {
-      // ===== 새싹(KOFAC) 등록양식: 공식 양식을 채워서 내보내기 =====
-      wb = await buildSaessakWorkbook(grouped, { singleProgram: !!program_id });
     } else {
       Object.keys(grouped).forEach((pid, idx) => {
         const g = grouped[pid];
@@ -1366,7 +1392,7 @@ router.get('/export', async (req, res) => {
     }
 
     const buf = await wb.xlsx.writeBuffer();
-    const fname = `saessak_${isSaessak ? 'kofac_' : ''}${only_selected ? 'selected_' : ''}${new Date().toISOString().slice(0,10)}.xlsx`;
+    const fname = `saessak_${only_selected ? 'selected_' : ''}${new Date().toISOString().slice(0,10)}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
     res.send(Buffer.from(buf));
