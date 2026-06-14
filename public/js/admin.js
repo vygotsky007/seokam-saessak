@@ -1568,9 +1568,11 @@ th { color:#2E7D32; font-weight:800; background:#F1F8E9; }
   $('#export-btn').addEventListener('click', () => {
     const pid = $('#export-program').value;
     const onlySel = $('#export-only-selected').checked;
+    const saessak = $('#export-saessak').checked;
     const params = new URLSearchParams();
     if (pid) params.set('program_id', pid);
     if (onlySel) params.set('only_selected', '1');
+    if (saessak) params.set('saessak', '1');
     const url = API + '/export' + (params.toString() ? '?' + params.toString() : '');
     location.href = url;
   });

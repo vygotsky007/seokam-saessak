@@ -1176,9 +1176,14 @@ router.get('/dashboard', async (req, res) => {
   }
 });
 
+// 새싹(KOFAC) 등록양식 드롭다운 목록
+const SAESSAK_REGION_LIST = ['서울특별시','인천광역시','경기도','대전광역시','세종특별자치시','강원특별자치도','충청북도','충청남도','부산광역시','대구광역시','울산광역시','경상북도','경상남도','광주광역시','전북특별자치도','전라남도','제주특별자치도'];
+const SAESSAK_GRADE_LIST = ['초등학교 1학년','초등학교 2학년','초등학교 3학년','초등학교 4학년','초등학교 5학년','초등학교 6학년','중학교 1학년','중학교 2학년','중학교 3학년','고등학교 1학년','고등학교 2학년','고등학교 3학년'];
+
 router.get('/export', async (req, res) => {
   try {
-    const { program_id, only_selected } = req.query;
+    const { program_id, only_selected, saessak } = req.query;
+    const isSaessak = saessak === '1' || saessak === 'true';
 
     let appQ = supabase
       .from('saessak_applications')
@@ -1207,6 +1212,51 @@ router.get('/export', async (req, res) => {
     if (Object.keys(grouped).length === 0) {
       const ws = wb.addWorksheet('명단');
       ws.addRow(['데이터가 없습니다.']);
+    } else if (isSaessak) {
+      // ===== 새싹(KOFAC) 등록양식 =====
+      Object.keys(grouped).forEach((pid, idx) => {
+        const g = grouped[pid];
+        const safe = g.title.replace(/[\\/?*\[\]:]/g, '_').slice(0, 28) || `프로그램${idx + 1}`;
+        const ws = wb.addWorksheet(safe);
+        ws.columns = [
+          { header: '학생명', key: 'student_name', width: 12 },
+          { header: '연락처', key: 'phone', width: 16 },
+          { header: '이메일', key: 'email', width: 20 },
+          { header: '지역', key: 'region', width: 14 },
+          { header: '학교', key: 'school', width: 18 },
+          { header: '학년', key: 'grade', width: 14 },
+          { header: '반', key: 'class_no', width: 6 },
+          { header: '일반학생 여부', key: 'is_general', width: 12 },
+        ];
+        ws.getRow(1).font = { bold: true };
+        g.rows.forEach((r) => {
+          ws.addRow({
+            student_name: r.student_name,
+            phone: r.guardian_phone,
+            email: 'abc@gmail.com',
+            region: '인천광역시',
+            school: '인천석암초등학교',
+            grade: (r.grade === null || r.grade === undefined || r.grade === '') ? '' : `초등학교 ${r.grade}학년`,
+            class_no: r.class_no,
+            // 다문화 신청(우대/플래그)이면 빈칸, 그 외 'Y'
+            is_general: r.is_multicultural ? '' : 'Y',
+          });
+        });
+        // 지역(D열)·학년(F열) 드롭다운(데이터 유효성) — 데이터 행에만 적용
+        const lastRow = g.rows.length + 1; // 헤더(1행) + 데이터
+        if (lastRow >= 2) {
+          for (let rowNo = 2; rowNo <= lastRow; rowNo++) {
+            ws.getCell(`D${rowNo}`).dataValidation = {
+              type: 'list', allowBlank: true,
+              formulae: [`"${SAESSAK_REGION_LIST.join(',')}"`],
+            };
+            ws.getCell(`F${rowNo}`).dataValidation = {
+              type: 'list', allowBlank: true,
+              formulae: [`"${SAESSAK_GRADE_LIST.join(',')}"`],
+            };
+          }
+        }
+      });
     } else {
       Object.keys(grouped).forEach((pid, idx) => {
         const g = grouped[pid];
@@ -1251,7 +1301,7 @@ router.get('/export', async (req, res) => {
     }
 
     const buf = await wb.xlsx.writeBuffer();
-    const fname = `saessak_${only_selected ? 'selected_' : ''}${new Date().toISOString().slice(0,10)}.xlsx`;
+    const fname = `saessak_${isSaessak ? 'kofac_' : ''}${only_selected ? 'selected_' : ''}${new Date().toISOString().slice(0,10)}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
     res.send(Buffer.from(buf));
