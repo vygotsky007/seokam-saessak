@@ -77,6 +77,8 @@ app.get('/healthz', (req, res) => res.json({ ok: true }));
 // 강사용 토큰 수정 페이지 — 토큰별 프로그램 1개만 수정(관리자 인증 없이 토큰+권한으로 게이트).
 app.get('/edit/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'edit.html')));
 app.get('/create/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'create.html')));
+// 이수 학생용 후기 작성 페이지 — 토큰으로 게이트(서버 검증).
+app.get('/review/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'review.html')));
 
 app.use('/api/public', require('./routes/public'));
 app.use('/api/public', require('./routes/me'));

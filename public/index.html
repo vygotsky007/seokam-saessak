@@ -194,6 +194,17 @@
   </div>
 </template>
 
+<!-- 후기보기 모달 (공개·읽기 전용) -->
+<div class="rvv-mask" id="reviews-modal" onclick="if(event.target===this)window.__closeReviewsModal()">
+  <div class="rvv-modal">
+    <div class="rvv-modal-head">
+      <h3 id="reviews-modal-title">프로그램 후기</h3>
+      <button type="button" class="rvv-close" aria-label="닫기" onclick="window.__closeReviewsModal()">×</button>
+    </div>
+    <div class="rvv-modal-body" id="reviews-modal-body"></div>
+  </div>
+</div>
+
 <script src="/js/schedule-format.js"></script>
 <script src="/js/schedule-conflict.js"></script>
 <script src="/js/public.js"></script>

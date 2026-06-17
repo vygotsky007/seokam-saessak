@@ -473,6 +473,27 @@
   </div>
 </div>
 
+<!-- 프로그램 후기(리뷰) 관리 Dialog -->
+<div class="dialog-mask" id="review-dialog">
+  <div class="dialog" style="max-width:560px;">
+    <h2 id="review-dialog-title">📝 후기</h2>
+    <p class="muted" style="font-size:11.5px; margin-bottom:10px;">아래 <b>작성 링크/QR</b>을 이수 학생에게 배포하면 후기를 남길 수 있어요. 부적절한 후기는 숨김/삭제하세요. (숨김은 학부모 화면에서 즉시 제외)</p>
+    <div class="rv-link-box">
+      <div class="rv-link-row">
+        <input type="text" id="review-link-url" readonly>
+        <button type="button" class="btn small" id="review-link-copy">복사</button>
+      </div>
+      <div class="rv-qr"><img id="review-qr-img" alt="후기 작성 QR"></div>
+      <div class="muted" style="font-size:11px; text-align:center;">QR을 인쇄/공유해 배포하세요</div>
+    </div>
+    <h3 style="font-size:14px; margin:16px 0 8px;">등록된 후기</h3>
+    <div id="review-list" class="rv-mod-list"><div class="muted" style="font-size:13px;">불러오는 중…</div></div>
+    <div class="actions">
+      <button type="button" class="btn" data-close>닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- 학생 상세(학생 기록 게시판) Dialog -->
 <div class="dialog-mask" id="sb-detail">
   <div class="dialog" style="max-width:560px;">

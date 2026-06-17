@@ -608,3 +608,20 @@ tbody tr:hover { background: #F8FAFC; }
   .cal-event .ev-time, .cal-event .ev-inst { display: none; }
   .sched-month-label { min-width: 100px; font-size: 14px; }
 }
+
+/* ===== 프로그램 후기(리뷰) 관리 모달 ===== */
+.rv-link-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
+.rv-link-row { display: flex; gap: 6px; }
+.rv-link-row input { flex: 1; min-width: 0; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #334155; background: #fff; }
+.rv-qr { text-align: center; margin: 10px 0 4px; }
+.rv-qr img { width: 180px; height: 180px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.rv-mod-list { display: flex; flex-direction: column; gap: 10px; max-height: 44vh; overflow-y: auto; }
+.rv-mod-item { border: 1px solid #e5e7eb; border-radius: 10px; padding: 11px 12px; background: #fff; }
+.rv-mod-item.is-hidden { opacity: 0.6; background: #f8fafc; }
+.rv-mod-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 5px; }
+.rv-mod-stars { color: #f59e0b; font-size: 14px; letter-spacing: 1px; }
+.rv-mod-grade { font-size: 11px; font-weight: 700; color: #15803d; background: #dcfce7; border-radius: 999px; padding: 1px 8px; }
+.rv-mod-date { font-size: 11px; color: #94a3b8; }
+.rv-mod-badge { font-size: 11px; font-weight: 700; color: #64748b; background: #e2e8f0; border-radius: 999px; padding: 1px 8px; }
+.rv-mod-content { font-size: 13px; color: #334155; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+.rv-mod-actions { display: flex; gap: 6px; margin-top: 8px; }

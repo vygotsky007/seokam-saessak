@@ -384,6 +384,7 @@
             <td class="cell-actions">
               <button class="btn small" data-edit="${p.id}">수정</button>
               <button class="btn small" data-output="${p.id}">📦 산출물</button>
+              <button class="btn small" data-review="${p.id}">📝 후기</button>
               <button class="btn small danger" data-del="${p.id}">삭제</button>
             </td>
           </tr>
@@ -405,6 +406,7 @@
       });
       $$('[data-edit]').forEach(el => el.addEventListener('click', () => openProgramDialog(el.dataset.edit)));
       $$('[data-output]').forEach(el => el.addEventListener('click', () => openOutputDialog(el.dataset.output)));
+      $$('[data-review]').forEach(el => el.addEventListener('click', () => openReviewDialog(el.dataset.review)));
       $$('[data-del]').forEach(el => el.addEventListener('click', async () => {
         if (!confirm('이 프로그램과 모든 신청 내역을 삭제할까요?')) return;
         try { await api(`/programs/${el.dataset.del}`, { method: 'DELETE' }); toast('삭제됨'); loadProgramsTab(); }
@@ -527,6 +529,76 @@
       await loadProgramOutputs();
       $('#output-dialog').classList.remove('open');
     } catch (err) { toast(err.message); }
+  });
+
+  // ===== 프로그램 후기(리뷰) 관리 =====
+  let reviewDialogPid = null;
+  function reviewStars(n) {
+    if (!n) return '<span class="muted" style="font-size:12px;">별점 없음</span>';
+    return '<span class="rv-mod-stars">' + '★'.repeat(n) + '☆'.repeat(5 - n) + '</span>';
+  }
+  async function openReviewDialog(pid) {
+    reviewDialogPid = pid;
+    const p = programs.find(x => String(x.id) === String(pid));
+    $('#review-dialog-title').textContent = `📝 후기 — ${p ? p.title : ''}`;
+    $('#review-link-url').value = '';
+    $('#review-qr-img').removeAttribute('src');
+    $('#review-list').innerHTML = '<div class="muted" style="font-size:13px;">불러오는 중…</div>';
+    $('#review-dialog').classList.add('open');
+    try {
+      const j = await api(`/programs/${pid}/review-link`);
+      $('#review-link-url').value = j.url;
+      $('#review-qr-img').src = j.qr;
+    } catch (err) { toast(err.message); }
+    loadReviewList();
+  }
+  async function loadReviewList() {
+    if (!reviewDialogPid) return;
+    try {
+      const j = await api(`/programs/${reviewDialogPid}/reviews`);
+      const list = j.data || [];
+      const el = $('#review-list');
+      if (!list.length) {
+        el.innerHTML = '<div class="muted" style="font-size:13px; padding:8px 0;">아직 등록된 후기가 없습니다.</div>';
+        return;
+      }
+      el.innerHTML = list.map(r => {
+        const hidden = r.status === '숨김';
+        const date = (r.created_at || '').slice(0, 10);
+        return `<div class="rv-mod-item${hidden ? ' is-hidden' : ''}">
+          <div class="rv-mod-head">
+            ${reviewStars(r.rating)}
+            ${r.grade_label ? `<span class="rv-mod-grade">${esc(r.grade_label)}</span>` : ''}
+            <span class="rv-mod-date">${esc(date)}</span>
+            ${hidden ? '<span class="rv-mod-badge">숨김</span>' : ''}
+          </div>
+          <div class="rv-mod-content">${esc(r.content)}</div>
+          <div class="rv-mod-actions">
+            <button class="btn xsmall" data-rv-toggle="${r.id}" data-rv-status="${hidden ? '게시' : '숨김'}">${hidden ? '다시 게시' : '숨김'}</button>
+            <button class="btn xsmall danger" data-rv-del="${r.id}">삭제</button>
+          </div>
+        </div>`;
+      }).join('');
+      el.querySelectorAll('[data-rv-toggle]').forEach(b => b.addEventListener('click', async () => {
+        try {
+          await api(`/reviews/${b.dataset.rvToggle}`, { method: 'PATCH', body: JSON.stringify({ status: b.dataset.rvStatus }) });
+          toast(b.dataset.rvStatus === '숨김' ? '후기를 숨겼습니다 (학부모 화면에서 제외)' : '후기를 다시 게시했습니다');
+          loadReviewList();
+        } catch (err) { toast(err.message); }
+      }));
+      el.querySelectorAll('[data-rv-del]').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm('이 후기를 삭제할까요?')) return;
+        try {
+          await api(`/reviews/${b.dataset.rvDel}`, { method: 'DELETE' });
+          toast('후기를 삭제했습니다');
+          loadReviewList();
+        } catch (err) { toast(err.message); }
+      }));
+    } catch (err) { toast(err.message); }
+  }
+  $('#review-link-copy')?.addEventListener('click', () => {
+    const url = $('#review-link-url').value;
+    if (url) copyText(url, '후기 작성 링크를 복사했습니다');
   });
 
   // 클립보드 복사: navigator.clipboard → textarea fallback → prompt

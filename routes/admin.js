@@ -5,8 +5,10 @@ const path = require('path');
 const router = express.Router();
 const ExcelJS = require('exceljs');
 const JSZip = require('jszip');
+const QRCode = require('qrcode');
 const supabase = require('../utils/supabase');
 const { normalizeMobile } = require('../utils/phone');
+const { makeReviewToken } = require('../utils/review-token');
 
 // 강사용 수정 링크 토큰: 48자 hex(24바이트) — 추측 불가능한 길이.
 function genEditToken() {
@@ -466,6 +468,73 @@ router.post('/programs/:id/regenerate-token', async (req, res) => {
     res.json({ ok: true, data: data[0], edit_token: token });
   } catch (err) {
     console.error('[POST admin/programs/:id/regenerate-token]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ===== 프로그램 후기(리뷰) 관리 =====
+
+// 후기 작성 링크 + QR(dataURL PNG). 이수 학생에게 배포(인쇄/공유)용.
+router.get('/programs/:id/review-link', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const token = makeReviewToken(id);
+    if (!token) return res.status(400).json({ ok: false, error: '프로그램 id가 올바르지 않습니다.' });
+    const base = `${req.protocol}://${req.get('host')}`;
+    const url = `${base}/review/${token}`;
+    const qr = await QRCode.toDataURL(url, { width: 320, margin: 1, errorCorrectionLevel: 'M' });
+    res.json({ ok: true, url, qr });
+  } catch (err) {
+    console.error('[GET admin/programs/:id/review-link]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 프로그램 후기 전체(게시+숨김) — 모더레이션용.
+router.get('/programs/:id/reviews', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('program_reviews')
+      .select('*')
+      .eq('program_id', String(req.params.id))
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ ok: true, data: data || [] });
+  } catch (err) {
+    console.error('[GET admin/programs/:id/reviews]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 후기 상태 변경(게시/숨김). 숨김은 학부모 화면에서 즉시 제외.
+router.patch('/reviews/:id', async (req, res) => {
+  try {
+    const status = (req.body || {}).status;
+    if (status !== '게시' && status !== '숨김') {
+      return res.status(400).json({ ok: false, error: '유효하지 않은 상태값입니다.' });
+    }
+    const { data, error } = await supabase
+      .from('program_reviews')
+      .update({ status })
+      .eq('id', req.params.id)
+      .select();
+    if (error) throw error;
+    if (!data || !data.length) return res.status(404).json({ ok: false, error: '후기를 찾을 수 없습니다.' });
+    res.json({ ok: true, data: data[0] });
+  } catch (err) {
+    console.error('[PATCH admin/reviews/:id]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 후기 삭제.
+router.delete('/reviews/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('program_reviews').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[DELETE admin/reviews/:id]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

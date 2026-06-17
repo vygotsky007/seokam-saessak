@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>후기 작성 · 디지털새싹</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="/css/common.css">
+<link rel="stylesheet" href="/css/public.css">
+<style>
+  .rv-wrap{max-width:560px;margin:0 auto;padding:18px 16px 40px;}
+  .rv-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:20px 18px;box-shadow:0 1px 3px rgba(15,23,42,.05);}
+  .rv-prog{font-size:13px;color:#64748b;}
+  .rv-prog b{color:#0f172a;font-size:16px;display:block;margin-top:3px;}
+  .rv-label{font-size:13.5px;font-weight:700;color:#334155;margin:18px 0 7px;}
+  .rv-label .req{color:#ef4444;}
+  .rv-stars{display:flex;gap:4px;font-size:34px;line-height:1;user-select:none;}
+  .rv-star{cursor:pointer;color:#e2e8f0;transition:color .1s,transform .1s;}
+  .rv-star.on{color:#f59e0b;}
+  .rv-star:active{transform:scale(.9);}
+  .rv-star-clear{align-self:center;margin-left:8px;font-size:12px;color:#94a3b8;background:none;border:none;cursor:pointer;text-decoration:underline;}
+  .rv-input,.rv-textarea{width:100%;border:1.5px solid #e2e8f0;border-radius:10px;padding:11px 12px;font-family:inherit;font-size:14px;color:#0f172a;background:#fff;}
+  .rv-textarea{resize:vertical;min-height:120px;line-height:1.6;}
+  .rv-hint{font-size:11.5px;color:#94a3b8;margin-top:6px;}
+  .rv-submit{width:100%;margin-top:22px;padding:14px;border:none;border-radius:12px;background:#16a34a;color:#fff;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;}
+  .rv-submit:disabled{background:#cbd5e1;cursor:not-allowed;}
+  .rv-done{text-align:center;padding:42px 18px;}
+  .rv-done .ic{font-size:54px;}
+  .rv-done h2{font-size:20px;font-weight:800;color:#0f172a;margin:14px 0 8px;}
+  .rv-done p{font-size:14px;color:#64748b;line-height:1.6;}
+  .rv-state{padding:50px 18px;text-align:center;color:#94a3b8;font-size:14px;}
+  .rv-grade-row{display:flex;flex-wrap:wrap;gap:7px;}
+  .rv-grade-chip{border:1.5px solid #e2e8f0;background:#fff;border-radius:999px;padding:7px 13px;font-size:13px;font-weight:600;color:#475569;cursor:pointer;font-family:inherit;}
+  .rv-grade-chip.on{border-color:#16a34a;background:#dcfce7;color:#15803d;}
+</style>
+</head>
+<body>
+<div class="rv-wrap">
+  <div class="header" style="text-align:center;margin-bottom:14px;">
+    <h1>📝 프로그램 후기</h1>
+    <p class="sub">참여한 프로그램이 어땠는지 들려주세요. (실명은 적지 마세요)</p>
+  </div>
+  <div id="rv-root"><div class="rv-state">불러오는 중…</div></div>
+</div>
+<script src="/js/review.js"></script>
+</body>
+</html>

@@ -4,6 +4,7 @@ const router = express.Router();
 const supabase = require('../utils/supabase');
 const { normalizeMobile, isValidMobile } = require('../utils/phone');
 const { programsConflict } = require('../public/js/schedule-conflict');
+const { parseReviewToken } = require('../utils/review-token');
 
 function formatGradesLabel(grades) {
   if (!Array.isArray(grades) || grades.length === 0) return '';
@@ -388,6 +389,84 @@ router.get('/outputs', async (req, res) => {
     res.json({ ok: true, data: cards });
   } catch (err) {
     console.error('[GET public/outputs]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ===== 프로그램 후기(리뷰) =====
+
+// GET /api/public/review/:token — 후기 작성 페이지용. 토큰 검증 후 프로그램 제목만 반환(개인정보 없음).
+router.get('/review/:token', async (req, res) => {
+  try {
+    const programId = parseReviewToken(req.params.token);
+    if (!programId) return res.status(404).json({ ok: false, error: '유효하지 않은 후기 링크입니다.' });
+    const { data, error } = await supabase
+      .from('saessak_programs')
+      .select('id, title')
+      .eq('id', programId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ ok: false, error: '프로그램을 찾을 수 없습니다.' });
+    res.json({ ok: true, program: { id: data.id, title: data.title } });
+  } catch (err) {
+    console.error('[GET public/review/:token]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// POST /api/public/review/:token — 후기 제출(토큰 검증). status='게시'로 저장. 실명 미수집.
+router.post('/review/:token', async (req, res) => {
+  try {
+    const programId = parseReviewToken(req.params.token);
+    if (!programId) return res.status(404).json({ ok: false, error: '유효하지 않은 후기 링크입니다.' });
+    const body = req.body || {};
+    const content = body.content ? String(body.content).trim() : '';
+    if (!content) return res.status(400).json({ ok: false, error: '후기 내용을 입력해 주세요.' });
+    if (content.length > 2000) return res.status(400).json({ ok: false, error: '후기는 2000자 이내로 입력해 주세요.' });
+    let rating = null;
+    if (body.rating != null && body.rating !== '') {
+      rating = Number(body.rating);
+      if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+        return res.status(400).json({ ok: false, error: '별점은 1~5 사이로 선택해 주세요.' });
+      }
+    }
+    const gradeLabel = body.grade_label ? String(body.grade_label).trim().slice(0, 20) : null;
+    const { error } = await supabase
+      .from('program_reviews')
+      .insert([{
+        program_id: String(programId),
+        rating,
+        content,
+        grade_label: gradeLabel || null,
+        status: '게시',
+      }]);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[POST public/review/:token]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// GET /api/public/programs/:id/reviews — 공개(게시) 후기 + 요약(평균 별점·개수). 실명 미노출.
+router.get('/programs/:id/reviews', async (req, res) => {
+  try {
+    const programId = String(req.params.id);
+    const { data, error } = await supabase
+      .from('program_reviews')
+      .select('id, rating, content, grade_label, created_at')
+      .eq('program_id', programId)
+      .eq('status', '게시')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const reviews = data || [];
+    const rated = reviews.filter(r => typeof r.rating === 'number' && r.rating >= 1);
+    const avg = rated.length
+      ? Math.round((rated.reduce((s, r) => s + r.rating, 0) / rated.length) * 10) / 10
+      : null;
+    res.json({ ok: true, data: reviews, summary: { count: reviews.length, rated_count: rated.length, avg } });
+  } catch (err) {
+    console.error('[GET public/programs/:id/reviews]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
