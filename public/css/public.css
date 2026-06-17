@@ -690,6 +690,19 @@ body.public-page {
 .program-card.status-closed::before {
   background: linear-gradient(90deg, #94A3B8 0%, #CBD5E1 100%);
 }
+/* 모집종료(지난 프로그램) — 한 단계 더 흐리게 + 무채색 톤 */
+.program-card.status-closed { opacity: 0.6; filter: grayscale(0.25); }
+/* "지난 프로그램" 구분선 */
+.past-divider {
+  grid-column: 1 / -1;   /* 2열 그리드에서 전체 폭 차지 */
+  display: flex; align-items: center; gap: 10px;
+  margin: 22px 2px 4px; color: #94A3B8;
+  font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
+}
+.past-divider::before, .past-divider::after {
+  content: ''; flex: 1; height: 1px; background: #E2E8F0;
+}
+.past-divider span { flex: 0 0 auto; }
 /* full(모집마감) 카드 좌측 띠 — 빨강 */
 .program-card.status-full::before {
   background: linear-gradient(90deg, var(--danger) 0%, #FCA5A5 100%);
@@ -1113,3 +1126,46 @@ body.public-page {
   .header .sub { font-size: 13.5px; }
   .section-title { font-size: 15.5px; }
 }
+
+/* ===== 후기보기 (공개) ===== */
+.pc-review-row { margin-top: 10px; }
+.pc-review-btn {
+  border: 1.5px solid #cbd5e1; background: #fff; color: #334155;
+  border-radius: 999px; padding: 7px 14px; font-size: 12.5px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+}
+.pc-review-btn:hover { background: #f1f5f9; }
+.program-card.status-closed .pc-review-btn { border-color: #94a3b8; }
+.rvv-mask {
+  position: fixed; inset: 0; background: rgba(15,23,42,.55);
+  display: none; align-items: center; justify-content: center; z-index: 80; padding: 18px;
+}
+.rvv-mask.open { display: flex; }
+.rvv-modal {
+  background: #fff; border-radius: 18px; width: 100%; max-width: 520px;
+  max-height: 86vh; display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 22px 60px rgba(0,0,0,.32);
+}
+.rvv-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px; border-bottom: 1px solid #eef0f3;
+}
+.rvv-modal-head h3 { font-size: 17px; font-weight: 800; color: #0f172a; margin: 0; }
+.rvv-close { border: none; background: none; font-size: 26px; line-height: 1; color: #64748b; cursor: pointer; }
+.rvv-modal-body { padding: 16px 18px 22px; overflow-y: auto; }
+.rvv-state { padding: 40px 16px; text-align: center; color: #94a3b8; font-size: 14px; }
+.rvv-summary {
+  display: flex; align-items: center; gap: 12px;
+  background: #f8fafc; border: 1px solid #e8eef5; border-radius: 12px;
+  padding: 13px 15px; margin-bottom: 14px;
+}
+.rvv-avg { display: flex; align-items: center; gap: 8px; }
+.rvv-avg-num { font-size: 26px; font-weight: 800; color: #0f172a; }
+.rvv-count { font-size: 13px; color: #475569; }
+.rvv-stars { color: #f59e0b; font-size: 15px; letter-spacing: 1px; }
+.rvv-list { display: flex; flex-direction: column; gap: 12px; }
+.rvv-item { border: 1px solid #e8eaed; border-radius: 12px; padding: 12px 13px; }
+.rvv-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.rvv-grade { font-size: 11px; font-weight: 700; color: #15803d; background: #dcfce7; border-radius: 999px; padding: 1px 8px; }
+.rvv-date { font-size: 11.5px; color: #94a3b8; }
+.rvv-content { font-size: 13.5px; color: #334155; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }

@@ -8,6 +8,23 @@
     return p && p.is_open ? 'recruiting' : 'hidden';
   }
 
+  // 모집 상태 정렬 우선순위: 모집중(신청 가능) 0 → 모집예정 1 → 모집마감 2 → 모집종료 3(맨 아래).
+  // 정원+대기 자동소진(is_fully_closed)도 마감으로 간주.
+  function recruitRank(p) {
+    const st = recruitStatusOf(p);
+    if (st === 'closed') return 3;
+    if (st === 'full' || p.is_fully_closed) return 2;
+    if (st === 'upcoming') return 1;
+    return 0; // recruiting (대기 접수 포함 — 신청 가능)
+  }
+  // 안정 정렬: 같은 상태 내에선 기존(created_at) 순서 유지.
+  function sortByRecruit(list) {
+    return list
+      .map((p, i) => [p, i])
+      .sort((a, b) => (recruitRank(a[0]) - recruitRank(b[0])) || (a[1] - b[1]))
+      .map(x => x[0]);
+  }
+
   // === 운영 문구 ===
   const PRIVACY_TEXT = {
     intro: '다음 개인정보 수집·이용 및 초상권에 동의하십니까?',
@@ -230,8 +247,15 @@
       detailListEl.innerHTML = `<div class="empty-state">선택한 학년이 신청 가능한 프로그램이 없습니다.</div>`;
       return;
     }
+    let pastDividerDone = false;
     detailListEl.innerHTML = list.map(p => {
       const status = recruitStatusOf(p);
+      // 모집종료(closed)는 하단에 "지난 프로그램" 구분선으로 시각적 분리.
+      let pastDivider = '';
+      if (status === 'closed' && !pastDividerDone) {
+        pastDividerDone = true;
+        pastDivider = '<div class="past-divider"><span>지난 프로그램</span></div>';
+      }
       // 마감: 관리자가 수동으로 건 full 또는 정원+대기 자동 소진(is_fully_closed) — 동일 도장 표시
       const isFull = status === 'full' || !!p.is_fully_closed;
       const isRecruiting = status === 'recruiting';
@@ -269,7 +293,9 @@
       const descBlock = desc
         ? `<details class="pc-details"><summary><span class="pc-toggle-text"></span></summary><div class="pc-body">${esc(desc)}</div></details>`
         : '';
+      const reviewBtn = `<button type="button" class="pc-review-btn" data-review-view="${p.id}">💬 후기보기</button>`;
       return `
+        ${pastDivider}
         <article class="program-card ${cardDisabled ? 'disabled' : ''} ${isFull ? 'is-full' : ''} ${isWaitOnly ? 'is-waitlist' : ''} status-${status}">
           ${isFull ? '<div class="pc-stamp" aria-label="모집마감">마감</div>' : ''}
           ${isClosingSoon ? `<div class="pc-soon">🔥 마감임박 ${p.remaining}자리</div>` : ''}
@@ -283,11 +309,62 @@
             <div class="pc-meta-row">${meta.join('')}</div>
             <div class="pc-seats-line">${seatsLine}</div>
             ${descBlock}
+            <div class="pc-review-row">${reviewBtn}</div>
           </div>
         </article>
       `;
     }).join('');
+
+    detailListEl.querySelectorAll('[data-review-view]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const p = programs.find(x => String(x.id) === String(btn.dataset.reviewView));
+        openReviewsModal(btn.dataset.reviewView, p ? p.title : '');
+      });
+    });
   }
+
+  // === 후기보기 모달 (학부모/공개) ===
+  function starsHtml(n) {
+    const v = Math.round(n || 0);
+    return '<span class="rvv-stars">' + '★'.repeat(v) + '☆'.repeat(5 - v) + '</span>';
+  }
+  async function openReviewsModal(programId, title) {
+    const mask = document.getElementById('reviews-modal');
+    const titleEl = document.getElementById('reviews-modal-title');
+    const bodyEl = document.getElementById('reviews-modal-body');
+    titleEl.textContent = title || '프로그램 후기';
+    bodyEl.innerHTML = '<div class="rvv-state">불러오는 중…</div>';
+    mask.classList.add('open');
+    try {
+      const res = await fetch(`/api/public/programs/${encodeURIComponent(programId)}/reviews`);
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error || '불러오기 실패');
+      const list = j.data || [];
+      const s = j.summary || { count: 0, avg: null };
+      if (!list.length) {
+        bodyEl.innerHTML = '<div class="rvv-state">아직 등록된 후기가 없어요.</div>';
+        return;
+      }
+      const summaryHtml = `
+        <div class="rvv-summary">
+          ${s.avg != null ? `<div class="rvv-avg"><span class="rvv-avg-num">${s.avg}</span>${starsHtml(s.avg)}</div>` : ''}
+          <div class="rvv-count">후기 <strong>${s.count}</strong>개${s.avg != null ? ` · 별점 ${s.rated_count}개 평균` : ''}</div>
+        </div>`;
+      const itemsHtml = list.map(r => `
+        <div class="rvv-item">
+          <div class="rvv-head">
+            ${r.rating ? starsHtml(r.rating) : ''}
+            ${r.grade_label ? `<span class="rvv-grade">${esc(r.grade_label)}</span>` : ''}
+            <span class="rvv-date">${esc((r.created_at || '').slice(0, 10))}</span>
+          </div>
+          <div class="rvv-content">${esc(r.content)}</div>
+        </div>`).join('');
+      bodyEl.innerHTML = summaryHtml + '<div class="rvv-list">' + itemsHtml + '</div>';
+    } catch (err) {
+      bodyEl.innerHTML = `<div class="rvv-state">후기를 불러올 수 없어요.</div>`;
+    }
+  }
+  window.__closeReviewsModal = () => document.getElementById('reviews-modal').classList.remove('open');
 
   // === 1단계: 학생 블록 ===
   function addStudent() {
@@ -628,7 +705,8 @@
       const res = await fetch('/api/public/programs');
       const j = await res.json();
       if (!j.ok) throw new Error(j.error || '불러오기 실패');
-      programs = j.data || [];
+      // 모집 상태순 정렬: 모집중 위 → 모집예정 → 모집마감 → 모집종료 아래 (같은 상태는 기존 순서 유지).
+      programs = sortByRecruit(j.data || []);
       renderTypeFilterCustomChips();
       renderDetailList();
       if (students.length === 0) addStudent();
