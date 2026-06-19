@@ -1,10 +1,9 @@
 // 프로그램 개설 위임 라우터 — /api/create 아래 마운트(관리자 인증 없음).
-// 보안: 무작위 토큰(creator_tokens.token) + enabled=true + 개설자 비밀번호(CREATOR_PASSWORD_HASH).
-// 강사 수정 페이지(routes/edit.js)의 토큰+허용+비번 게이트 패턴을 그대로 본떴다.
+// 보안: 무작위 토큰(creator_tokens.token) + enabled=true 만으로 통과(비번 없이 토큰 위임).
+// 강사 수정 페이지(routes/edit.js)의 토큰+허용 게이트 패턴을 본떴다.
 // 중요: 개설분은 항상 '숨김'으로 생성, 본인이 만든 프로그램만 스코프(서버 강제). 학생 개인정보 접근 없음.
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const bcrypt = require('bcryptjs');
 const ExcelJS = require('exceljs');
 const router = express.Router();
 const supabase = require('../utils/supabase');
@@ -13,15 +12,6 @@ const { buildCreatePayload, buildCreatorUpdatePatch } = require('../utils/progra
 
 const MIN_TOKEN_LEN = 16;
 
-function creatorPassConfigured() {
-  return !!(process.env.CREATOR_PASSWORD_HASH && process.env.CREATOR_PASSWORD_HASH.trim());
-}
-async function checkCreatorPass(pw) {
-  if (!creatorPassConfigured()) return false;
-  if (!pw || typeof pw !== 'string') return false;
-  try { return await bcrypt.compare(pw, process.env.CREATOR_PASSWORD_HASH); }
-  catch { return false; }
-}
 async function findCreatorToken(token) {
   if (!token || String(token).length < MIN_TOKEN_LEN) return null;
   const { data, error } = await supabase
@@ -29,17 +19,11 @@ async function findCreatorToken(token) {
   if (error) return null;
   return data || null;
 }
-// 공통 게이트: 토큰 유효 + enabled=true + 개설자 비번 일치. 통과 시 토큰행 반환, 실패 시 res 응답 후 null.
+// 공통 게이트: 토큰 유효 + enabled=true 만으로 통과(비번 없음). 통과 시 토큰행 반환, 실패 시 res 응답 후 null.
 async function gateCreator(req, res) {
-  if (!creatorPassConfigured()) {
-    res.status(503).json({ ok: false, error: '개설 기능이 아직 설정되지 않았습니다. 관리자에게 문의하세요.' });
-    return null;
-  }
   const t = await findCreatorToken(req.params.token);
   if (!t) { res.status(404).json({ ok: false, error: '유효하지 않은 링크입니다.' }); return null; }
   if (t.enabled !== true) { res.status(403).json({ ok: false, error: '현재 비활성화된 링크입니다. 관리자에게 문의하세요.' }); return null; }
-  const ok = await checkCreatorPass((req.body || {}).password);
-  if (!ok) { res.status(401).json({ ok: false, error: '개설자 비밀번호가 올바르지 않습니다.' }); return null; }
   return t;
 }
 
@@ -61,21 +45,20 @@ function pickProgram(p) {
   };
 }
 
-// GET /api/create/:token — 페이지 부트스트랩(비번 없이): 토큰 유효/활성 + 라벨만.
+// GET /api/create/:token — 페이지 부트스트랩: 토큰 유효/활성 + 라벨만.
 router.get('/:token', async (req, res) => {
   try {
-    if (!creatorPassConfigured()) return res.status(503).json({ ok: false, error: '개설 기능이 아직 설정되지 않았습니다.' });
     const t = await findCreatorToken(req.params.token);
     if (!t) return res.status(404).json({ ok: false, error: '유효하지 않은 링크입니다.' });
     if (t.enabled !== true) return res.status(403).json({ ok: false, error: '현재 비활성화된 링크입니다. 관리자에게 문의하세요.' });
-    res.json({ ok: true, label: t.label || '', needsPassword: true });
+    res.json({ ok: true, label: t.label || '' });
   } catch (err) {
     console.error('[GET /api/create/:token]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// POST /api/create/:token/programs/list — 내가 만든 프로그램만(비번 게이트).
+// POST /api/create/:token/programs/list — 내가 만든 프로그램만(토큰 게이트).
 router.post('/:token/programs/list', limiter, async (req, res) => {
   try {
     const t = await gateCreator(req, res);
@@ -152,7 +135,7 @@ router.put('/:token/programs/:id', limiter, async (req, res) => {
 });
 
 // ===== 자기 프로그램 신청자·문의 관리 (개설자) =====
-// 모든 동작: gateCreator(토큰+허용+비번) 통과 + program_creators 에 (내 토큰, :id) 링크 있어야 함.
+// 모든 동작: gateCreator(토큰+허용) 통과 + program_creators 에 (내 토큰, :id) 링크 있어야 함.
 // 학생 개인정보(명단)는 본인이 개설한 프로그램에 한해서만 노출. 모집상태 변경 권한은 없음(관리자 전용).
 
 // 게이트 통과한 토큰 t 가 program(:id) 의 소유주인지 확인하고 프로그램 행 반환. 아니면 403/404.

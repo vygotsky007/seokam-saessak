@@ -17,7 +17,7 @@
     clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
   }
   function setView(which) {
-    ['state-loading', 'state-blocked', 'state-auth'].forEach(id => { const el = $('#' + id); if (el) el.hidden = id !== which; });
+    ['state-loading', 'state-blocked'].forEach(id => { const el = $('#' + id); if (el) el.hidden = id !== which; });
     $('#state-main').hidden = which !== 'main';
   }
   function blocked(msg, icon) {
@@ -25,7 +25,6 @@
     setView('state-blocked');
   }
 
-  let creatorPass = null;
   let myPrograms = [];
   let editingId = null;
 
@@ -197,7 +196,6 @@
   // ===== 산출물 입력 =====
   let outputPid = null;
   function openOutput(pid) {
-    if (!creatorPass) { toast('먼저 비밀번호를 확인하세요.'); return; }
     const p = myPrograms.find(x => String(x.id) === String(pid));
     outputPid = pid;
     $('#out-title').textContent = `📦 산출물 — ${p ? p.title : ''}`;
@@ -208,11 +206,11 @@
   $('#out-close').addEventListener('click', () => { $('#output-modal').hidden = true; });
   $('#output-modal').addEventListener('click', (e) => { if (e.target.id === 'output-modal') $('#output-modal').hidden = true; });
   $('#out-save').addEventListener('click', async () => {
-    if (!outputPid || !creatorPass) return;
+    if (!outputPid) return;
     try {
       const res = await fetch(`${API}/programs/${encodeURIComponent(outputPid)}/program-outputs`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: creatorPass, summary: $('#out-summary').value, output_url: $('#out-url').value }),
+        body: JSON.stringify({ summary: $('#out-summary').value, output_url: $('#out-url').value }),
       });
       const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
       if (!j.ok) { toast(j.error || '저장 실패'); return; }
@@ -242,23 +240,17 @@
 
   // ===== 통신 =====
   async function fetchList() {
-    const res = await fetch(API + '/programs/list', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: creatorPass }) });
+    const res = await fetch(API + '/programs/list', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
     const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
     return { res, j };
   }
 
-  async function authAndLoad() {
-    const pw = $('#creator-pass').value;
-    if (!pw) { $('#auth-msg').textContent = '비밀번호를 입력하세요.'; return; }
-    $('#auth-msg').textContent = '확인 중…';
-    creatorPass = pw;
+  async function loadMain() {
     try {
       const { res, j } = await fetchList();
       if (!j.ok) {
-        creatorPass = null;
-        if (res.status === 503) $('#auth-msg').textContent = j.error || '개설 기능이 설정되지 않았습니다.';
-        else if (res.status === 403) blocked(j.error || '비활성화된 링크입니다.', '🔒');
-        else $('#auth-msg').textContent = j.error || '확인 실패';
+        if (res.status === 403) blocked(j.error || '비활성화된 링크입니다.', '🔒');
+        else blocked(j.error || '불러오지 못했습니다.', '⚠️');
         return;
       }
       myPrograms = j.data || [];
@@ -266,16 +258,13 @@
       renderList();
       setView('main');
       loadInqBadges(); // 각 프로그램 미답변 문의 배지(비동기)
-    } catch (err) { creatorPass = null; $('#auth-msg').textContent = '서버에 연결하지 못했습니다.'; }
+    } catch (err) { blocked('서버에 연결하지 못했습니다.', '⚠️'); }
   }
-  $('#auth-btn').addEventListener('click', authAndLoad);
-  $('#creator-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); authAndLoad(); } });
 
   async function refreshList() { const { j } = await fetchList(); if (j.ok) { myPrograms = j.data || []; renderList(); loadInqBadges(); } }
 
   $('#program-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!creatorPass) { toast('먼저 비밀번호를 확인하세요.'); return; }
     const body = gatherForm();
     if (!body.title) { toast('프로그램명을 입력하세요.'); return; }
     if (!body.grades.length) { toast('대상 학년을 1개 이상 선택하세요.'); return; }
@@ -283,9 +272,9 @@
     try {
       let res, j;
       if (editingId) {
-        res = await fetch(API + '/programs/' + encodeURIComponent(editingId), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: creatorPass, ...body }) });
+        res = await fetch(API + '/programs/' + encodeURIComponent(editingId), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body }) });
       } else {
-        res = await fetch(API + '/programs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: creatorPass, ...body }) });
+        res = await fetch(API + '/programs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body }) });
       }
       j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
       if (!j.ok) { toast(j.error || '저장 실패'); return; }
@@ -360,12 +349,12 @@
   }
 
   async function fetchRoster() {
-    const res = await fetch(rApi('/roster'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: creatorPass }) });
+    const res = await fetch(rApi('/roster'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
     return res.json().catch(() => ({ ok: false, error: '응답 오류' }));
   }
   async function fetchNotes() {
     try {
-      const res = await fetch(rApi('/student-notes/list'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: creatorPass }) });
+      const res = await fetch(rApi('/student-notes/list'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
       const j = await res.json().catch(() => ({ ok: false }));
       const map = {};
       if (j.ok) (j.data || []).forEach(n => { const k = noteKey(n.student_name, n.grade, n.class_no); (map[k] = map[k] || []).push(n); });
@@ -375,7 +364,6 @@
   async function refreshRoster() { const j = await fetchRoster(); if (j.ok) { await fetchNotes(); renderRoster(j); } }
 
   async function openRoster(pid) {
-    if (!creatorPass) { toast('먼저 비밀번호를 확인하세요.'); return; }
     rosterPid = pid; editingAppId = null; resetMForm();
     const j = await fetchRoster();
     if (!j.ok) { toast(j.error || '명단을 불러오지 못했습니다.'); return; }
@@ -402,12 +390,12 @@
   }
   $('#m-cancel-btn').addEventListener('click', resetMForm);
   $('#m-add-btn').addEventListener('click', async () => {
-    if (!creatorPass || !rosterPid) return;
+    if (!rosterPid) return;
     const name = $('#m-name').value.trim(), grade = $('#m-grade').value, classNo = $('#m-class').value;
     if (!name) { toast('학생 이름을 입력하세요.'); return; }
     if (!grade) { toast('학년을 선택하세요.'); return; }
     if (!classNo) { toast('반을 선택하세요.'); return; }
-    const fields = { password: creatorPass, student_name: name, grade: Number(grade), class_no: Number(classNo), guardian_name: $('#m-guardian').value.trim() || null, guardian_phone: $('#m-phone').value.trim() || null };
+    const fields = { student_name: name, grade: Number(grade), class_no: Number(classNo), guardian_name: $('#m-guardian').value.trim() || null, guardian_phone: $('#m-phone').value.trim() || null };
     try {
       let res;
       if (editingAppId) res = await fetch(rApi('/applications/' + encodeURIComponent(editingAppId)), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) });
@@ -423,7 +411,7 @@
   $('#roster-tbody').addEventListener('change', async (e) => {
     const sel = e.target.closest('.x-status'); if (!sel) return;
     try {
-      const res = await fetch(rApi('/applications/' + encodeURIComponent(sel.getAttribute('data-status-id')) + '/status'), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: creatorPass, status: sel.value }) });
+      const res = await fetch(rApi('/applications/' + encodeURIComponent(sel.getAttribute('data-status-id')) + '/status'), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: sel.value }) });
       const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
       if (!j.ok) { toast(j.error || '상태 변경 실패'); return; }
       toast('상태가 변경되었습니다'); await refreshRoster();
@@ -438,7 +426,7 @@
     if (delBtn) {
       if (!confirm('이 수동 신청을 삭제할까요? 복구할 수 없습니다.')) return;
       try {
-        const res = await fetch(rApi('/applications/' + encodeURIComponent(delBtn.getAttribute('data-app-del'))), { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: creatorPass }) });
+        const res = await fetch(rApi('/applications/' + encodeURIComponent(delBtn.getAttribute('data-app-del'))), { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
         const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
         if (!j.ok) { toast(j.error || '삭제 실패'); return; }
         toast('삭제되었습니다'); resetMForm(); await refreshRoster();
@@ -455,10 +443,10 @@
 
   // 엑셀 다운로드
   $('#roster-xlsx-btn').addEventListener('click', async () => {
-    if (!creatorPass || !rosterPid) return;
+    if (!rosterPid) return;
     const btn = $('#roster-xlsx-btn'); btn.disabled = true;
     try {
-      const res = await fetch(rApi('/roster.xlsx'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: creatorPass }) });
+      const res = await fetch(rApi('/roster.xlsx'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
       if (!res.ok) { toast('엑셀 다운로드 실패'); return; }
       const blob = await res.blob();
       const cd = res.headers.get('Content-Disposition') || '';
@@ -485,9 +473,9 @@
   $('#note-cancel').addEventListener('click', () => { $('#note-modal').hidden = true; noteTarget = null; });
   $('#note-modal').addEventListener('click', (e) => { if (e.target.id === 'note-modal') { $('#note-modal').hidden = true; noteTarget = null; } });
   $('#note-save').addEventListener('click', async () => {
-    if (!noteTarget || !creatorPass || !rosterPid) return;
+    if (!noteTarget || !rosterPid) return;
     try {
-      const res = await fetch(rApi('/student-notes'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: creatorPass, ...noteTarget, note_type: $('#note-type').value, content: $('#note-content').value.trim() }) });
+      const res = await fetch(rApi('/student-notes'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...noteTarget, note_type: $('#note-type').value, content: $('#note-content').value.trim() }) });
       const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
       if (!j.ok) { toast(j.error || '저장 실패'); return; }
       toast('참고기록을 저장했습니다');
@@ -500,7 +488,7 @@
   // ===== 문의사항 모달 =====
   let inqPid = null, inquiries = [], inqFilter = 'all';
   async function fetchInq(pid) {
-    const res = await fetch(`${API}/programs/${encodeURIComponent(pid)}/inquiries/list`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: creatorPass }) });
+    const res = await fetch(`${API}/programs/${encodeURIComponent(pid)}/inquiries/list`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
     const j = await res.json().catch(() => ({ ok: false }));
     return j.ok ? (j.data || []) : null;
   }
@@ -526,7 +514,6 @@
     </div>`).join('');
   }
   async function openInq(pid) {
-    if (!creatorPass) { toast('먼저 비밀번호를 확인하세요.'); return; }
     inqPid = pid;
     const list = await fetchInq(pid);
     if (list === null) { toast('문의를 불러오지 못했습니다.'); return; }
@@ -541,7 +528,7 @@
     const btn = e.target.closest('[data-inq-toggle]'); if (!btn || !inqPid) return;
     const next = btn.getAttribute('data-answered') !== '1'; btn.disabled = true;
     try {
-      const res = await fetch(`${API}/programs/${encodeURIComponent(inqPid)}/inquiries/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: creatorPass, application_id: btn.getAttribute('data-inq-toggle'), answered: next }) });
+      const res = await fetch(`${API}/programs/${encodeURIComponent(inqPid)}/inquiries/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ application_id: btn.getAttribute('data-inq-toggle'), answered: next }) });
       const j = await res.json().catch(() => ({ ok: false, error: '응답 오류' }));
       if (!j.ok) { toast(j.error || '처리 실패'); btn.disabled = false; return; }
       toast(next ? '답변함으로 표시했습니다' : '대기로 되돌렸습니다');
@@ -560,17 +547,15 @@
   (async () => {
     if (!token || token.length < 16) { blocked('유효하지 않은 링크입니다.', '⚠️'); return; }
     try {
-      const res = await fetch(API, { method: 'GET' }); // GET /api/create/:token (비번 없이 토큰 유효/활성 확인)
+      const res = await fetch(API, { method: 'GET' }); // GET /api/create/:token (토큰 유효/활성 확인)
       const j = await res.json().catch(() => ({ ok: false }));
       if (!j.ok) {
         if (res.status === 403) blocked(j.error || '현재 비활성화된 링크입니다.', '🔒');
-        else if (res.status === 503) blocked(j.error || '개설 기능이 아직 설정되지 않았습니다.', '🛠️');
         else blocked(j.error || '유효하지 않은 링크입니다.', '⚠️');
         return;
       }
-      if (j.label) $('#creator-sub').textContent = `${j.label} 님 — 비밀번호 확인 후 개설할 수 있습니다.`;
-      setView('state-auth');
-      $('#creator-pass').focus();
+      if (j.label) $('#creator-sub').textContent = `${j.label} 님 — 프로그램을 개설하고 본인 프로그램만 관리합니다.`;
+      await loadMain(); // 비번 게이트 없이 토큰만으로 바로 개설 화면
     } catch (err) { blocked('서버에 연결하지 못했습니다.', '⚠️'); }
   })();
 })();
