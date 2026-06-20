@@ -54,6 +54,25 @@ app.use(session({
   },
 }));
 
+// 에듀테크 페이지: 정적 서빙보다 먼저 가로채서, 관리자 세션이면 관리자 플래그를 주입한다.
+// (express.static 이 그냥 파일을 보내면 주입 기회가 없으므로 이 라우트가 앞에 와야 한다.)
+const fs = require('fs');
+const EDUTECH_HTML_PATH = path.join(__dirname, 'public', 'edutech.html');
+function serveEdutech(req, res) {
+  fs.readFile(EDUTECH_HTML_PATH, 'utf8', (err, html) => {
+    if (err) {
+      console.error('[serveEdutech]', err.message);
+      return res.status(500).send('에듀테크 페이지를 불러올 수 없습니다.');
+    }
+    // 관리자만 ＋도구 추가·삭제 UI 가 보이도록 플래그 주입. 비관리자는 주입하지 않는다.
+    if (req.session && req.session.isAdmin === true) {
+      html = html.replace('</body>', '<script>window.EDUTECH_ADMIN=true;</script>\n</body>');
+    }
+    res.type('html').send(html);
+  });
+}
+app.get(['/edutech', '/edutech.html'], serveEdutech);
+
 app.use(express.static(path.join(__dirname, 'public'), {
   index: false,
   extensions: ['html'],
@@ -84,6 +103,8 @@ app.use('/api/public', require('./routes/public'));
 app.use('/api/public', require('./routes/me'));
 app.use('/api/edit', require('./routes/edit'));
 app.use('/api/create', require('./routes/create'));
+// 에듀테크 도구: GET 공개, POST/DELETE 는 라우터 내부에서 관리자 세션 검사(403).
+app.use('/api/edutech', require('./routes/edutech'));
 
 app.get(ADMIN_PATH + '/login', (req, res) => {
   if (req.session && req.session.isAdmin) {

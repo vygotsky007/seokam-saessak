@@ -1,0 +1,5202 @@
+[
+  {
+    "name": "언어습관 자가진단도구",
+    "one_liner": "스스로 해보는 언어 진단",
+    "url": "",
+    "category": "국어",
+    "subjects": [
+      "국어"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 1
+  },
+  {
+    "name": "구글 검색 AI 모드",
+    "one_liner": "Ai로 모든 것을 쉽게 검색해요",
+    "url": "https://www.google.com",
+    "category": "AI",
+    "subjects": [
+      "AI"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": true,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 2
+  },
+  {
+    "name": "일편단심 AI",
+    "one_liner": "수업, 업무, 학급 경영에 AI를 쉽게 활용해요",
+    "url": "",
+    "category": "AI",
+    "subjects": [
+      "AI"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 3
+  },
+  {
+    "name": "ZEP QUIZ",
+    "one_liner": "학생들이 좋아하는 게임으로 배우는 즐거운 수업",
+    "url": "https://zep.us",
+    "category": "평가",
+    "subjects": [
+      "평가"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": true,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 4
+  },
+  {
+    "name": "아이스크림 일일학습",
+    "one_liner": "하루 한 장 학습지",
+    "url": "",
+    "category": "공통",
+    "subjects": [
+      "공통"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 5
+  },
+  {
+    "name": "퍼플렉시티",
+    "one_liner": "내가 모르는 모든 것을 검색해서 알려줘요",
+    "url": "https://www.perplexity.ai",
+    "category": "AI",
+    "subjects": [
+      "AI"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": true,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 6
+  },
+  {
+    "name": "스쿨토리 생각카드",
+    "one_liner": "생각 카드를 선택하고 이야기를 나누어요",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 7
+  },
+  {
+    "name": "스쿨토리 마음카드",
+    "one_liner": "마음 카드를 선택하고 이야기를 나누어요",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 8
+  },
+  {
+    "name": "해적 룰렛 뽑기",
+    "one_liner": "뽑기를 해적 룰렛으로",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 9
+  },
+  {
+    "name": "지스쿨 교육 게임 모음 (인문)",
+    "one_liner": "국어, 사회, 도덕, 영어의 다양한 게임을 즐겨요",
+    "url": "",
+    "category": "국어",
+    "subjects": [
+      "국어"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 10
+  },
+  {
+    "name": "한글 박물관에 놀러와!",
+    "one_liner": "다양한 한글 놀이와 퀴즈를 즐겨요",
+    "url": "",
+    "category": "국어",
+    "subjects": [
+      "국어"
+    ],
+    "grades": [
+      1,
+      2
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 11
+  },
+  {
+    "name": "YES24 독서지도안",
+    "one_liner": "온책읽기 자료를 모두 모았어요.",
+    "url": "",
+    "category": "국어",
+    "subjects": [
+      "국어"
+    ],
+    "grades": [],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": true,
+    "visible": true,
+    "sort_order": 12
+  },
+  {
+    "name": "투닝 캐릭터",
+    "one_liner": "교과서 속 인물과 대화해요",
+    "url": "https://character.tooning.io",
+    "category": "국어",
+    "subjects": [
+      "국어"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 13
+  },
+  {
+    "name": "두클래스 온북",
+    "one_liner": "온 책 읽기 수업을 위한",
+    "url": "",
+    "category": "국어",
+    "subjects": [
+      "국어"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 14
+  },
+  {
+    "name": "한국어 기초사전",
+    "one_liner": "국어사전 쉽게 활용해요",
+    "url": "https://krdict.korean.go.kr",
+    "category": "국어",
+    "subjects": [
+      "국어"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 15
+  },
+  {
+    "name": "온라인 롤링페이퍼",
+    "one_liner": "온라인으로 롤링페이퍼를 해요",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 16
+  },
+  {
+    "name": "김킷 Gimkit",
+    "one_liner": "문제로 다양한 게임을 해요",
+    "url": "https://www.gimkit.com",
+    "category": "평가",
+    "subjects": [
+      "평가"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 17
+  },
+  {
+    "name": "캔바",
+    "one_liner": "뭐든 만든다.",
+    "url": "https://www.canva.com",
+    "category": "공통",
+    "subjects": [
+      "공통"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": true,
+    "is_featured": true,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 18
+  },
+  {
+    "name": "클래스툴",
+    "one_liner": "에듀테크 수업 이거 하나로 끝",
+    "url": "",
+    "category": "공통",
+    "subjects": [
+      "공통"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": true,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 19
+  },
+  {
+    "name": "띵커벨",
+    "one_liner": "수업을 참여형으로 바꿔요",
+    "url": "https://www.tkbell.co.kr",
+    "category": "평가",
+    "subjects": [
+      "평가"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": true,
+    "is_featured": true,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 20
+  },
+  {
+    "name": "T셀파 클래스보드",
+    "one_liner": "협업 마인드맵, 만다르트, 게시판까지",
+    "url": "",
+    "category": "공통",
+    "subjects": [
+      "공통"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 21
+  },
+  {
+    "name": "EBS 문해력 테스트",
+    "one_liner": "내 문해력은 몇 점?",
+    "url": "",
+    "category": "국어",
+    "subjects": [
+      "국어"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 22
+  },
+  {
+    "name": "블루킷",
+    "one_liner": "퀴즈로 여러가지 게임을 즐겨요",
+    "url": "https://www.blooket.com",
+    "category": "평가",
+    "subjects": [
+      "평가"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": true,
+    "is_featured": true,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 23
+  },
+  {
+    "name": "패들렛",
+    "one_liner": "누구나 의견을 쓸 수 있어",
+    "url": "https://padlet.com",
+    "category": "공통",
+    "subjects": [
+      "공통"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": true,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 24
+  },
+  {
+    "name": "대교 크리드",
+    "one_liner": "내가 쓴 글의 수준을 알아봐요",
+    "url": "",
+    "category": "국어",
+    "subjects": [
+      "국어"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 25
+  },
+  {
+    "name": "다했니",
+    "one_liner": "다했는지 쉽게 확인",
+    "url": "",
+    "category": "공통",
+    "subjects": [
+      "공통"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 26
+  },
+  {
+    "name": "우리아이 AI",
+    "one_liner": "뭐든 물어봐. AI가 알려줄게.",
+    "url": "",
+    "category": "AI",
+    "subjects": [
+      "AI"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 27
+  },
+  {
+    "name": "오토드로우",
+    "one_liner": "인공지능으로 그림을 그려요",
+    "url": "https://www.autodraw.com",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": true,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 28
+  },
+  {
+    "name": "북크리에이터",
+    "one_liner": "나도 베스트셀러 작가",
+    "url": "https://bookcreator.com",
+    "category": "국어",
+    "subjects": [
+      "국어"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": true,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 29
+  },
+  {
+    "name": "지학사 주제 글쓰기",
+    "one_liner": "오늘은 어떤 글을 써볼까?",
+    "url": "",
+    "category": "국어",
+    "subjects": [
+      "국어"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 30
+  },
+  {
+    "name": "팩트아이",
+    "one_liner": "무엇이 진짜 사실일까?",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 31
+  },
+  {
+    "name": "마블룰렛",
+    "one_liner": "뽑기를 게임처럼",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 32
+  },
+  {
+    "name": "우리학교 도서검색",
+    "one_liner": "우리 학교에는 무슨 책이 있지?",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 33
+  },
+  {
+    "name": "아이스크림 점수판",
+    "one_liner": "칠판에 쓰지 않아요. 모둠 점수판",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 34
+  },
+  {
+    "name": "커스텀 글씨 연습장 만들기",
+    "one_liner": "커스텀 글씨 연습장 만들기",
+    "url": "",
+    "category": "국어",
+    "subjects": [
+      "국어"
+    ],
+    "grades": [
+      1,
+      2
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 35
+  },
+  {
+    "name": "아이스크림 수학 게임",
+    "one_liner": "학년별 5분 수학 놀이 게임 모음",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 36
+  },
+  {
+    "name": "[큰 수] 나라별 주문을 해결하라!",
+    "one_liner": "무역 게임으로 큰 수 익히기",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      4
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 37
+  },
+  {
+    "name": "곱셈 아일랜드 생존 게임",
+    "one_liner": "곱셈 문제를 풀고 섬에서 생존해요",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 38
+  },
+  {
+    "name": "똑똑수학탐험대 교구활동",
+    "one_liner": "태블릿으로 만나는 우리 반 디지털 수학 교구",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 39
+  },
+  {
+    "name": "성냥개비 연산 퀴즈",
+    "one_liner": "성냥개비를 옮겨 수식을 완성하는 두뇌 퍼즐",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 40
+  },
+  {
+    "name": "전개도 맞추기",
+    "one_liner": "색칠하고 접으며 입체도형의 원리를 배워요",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      5
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 41
+  },
+  {
+    "name": "분수 만들기",
+    "one_liner": "조각을 맞추며 분수의 개념을 배워요",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 42
+  },
+  {
+    "name": "두클래스 Ai 출제 마법사",
+    "one_liner": "학생들은 종이 시험지로, 채점은 AI가 자동으로",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 43
+  },
+  {
+    "name": "쌓기나무 시뮬레이터",
+    "one_liner": "쌓기나무를 쌓아보고 퀴즈를 풀어요",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 44
+  },
+  {
+    "name": "EBS 수해력 테스트",
+    "one_liner": "내 수해력은 몇 점?",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 45
+  },
+  {
+    "name": "지스쿨 교육 게임 모음 (자연)",
+    "one_liner": "수학, 과학, 실과, 창의 다양한 게임을 즐겨요",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 46
+  },
+  {
+    "name": "수와 연산 따라잡기",
+    "one_liner": "충남교육청이 만든 수와 연산 문제 풀기",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 47
+  },
+  {
+    "name": "시계 공부",
+    "one_liner": "시계를 조작하며 시간과 시각 공부를 쉽게 해요",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      1,
+      2,
+      3
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 48
+  },
+  {
+    "name": "아이스크림 미니북",
+    "one_liner": "수업이 끝나고 미니북으로 학습내용을 정리해요.",
+    "url": "",
+    "category": "공통",
+    "subjects": [
+      "공통"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 49
+  },
+  {
+    "name": "분수 모형",
+    "one_liner": "분수를 눈으로 확인해요",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      3,
+      4
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 50
+  },
+  {
+    "name": "온라인 수모형",
+    "one_liner": "수모형을 태블릿으로",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      1,
+      2,
+      3
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 51
+  },
+  {
+    "name": "매쓰포올",
+    "one_liner": "수학 문제지 모음",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": true,
+    "visible": true,
+    "sort_order": 52
+  },
+  {
+    "name": "입체도형 전개도 접어보기",
+    "one_liner": "전개도를 접어봐요",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 53
+  },
+  {
+    "name": "비바샘 도형 길잡이 각기둥",
+    "one_liner": "각기둥을 조작해봐요",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 54
+  },
+  {
+    "name": "사과게임",
+    "one_liner": "합이 10이 되게 묶는 게임",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 55
+  },
+  {
+    "name": "두클래스 쌓기나무",
+    "one_liner": "쌓기나무를 태블릿으로",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 56
+  },
+  {
+    "name": "T셀파 수학 스마트 교구관",
+    "one_liner": "태블릿으로 조작하며 수학을 배워요",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 57
+  },
+  {
+    "name": "비바샘 수학 놀이터",
+    "one_liner": "수학놀이터에서 복습 게임을 즐겨요",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 58
+  },
+  {
+    "name": "공룡수학닷컴",
+    "one_liner": "문제 풀고, 스스로 확인해요",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 59
+  },
+  {
+    "name": "Ai 매일수학",
+    "one_liner": "학생 스스로 문제 풀고, 채점까지",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 60
+  },
+  {
+    "name": "Geometry Nets Helper",
+    "one_liner": "정육면체 전개도를 접어봐요",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 61
+  },
+  {
+    "name": "일일수학",
+    "one_liner": "전학년 연산 문제지를 무료로",
+    "url": "https://www.11math.com",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 62
+  },
+  {
+    "name": "완벽한 원 그리기",
+    "one_liner": "누가 더 원을 잘 그릴까?",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 63
+  },
+  {
+    "name": "칠교놀이",
+    "one_liner": "태블릿으로 칠교놀이 해봐요",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      1,
+      2
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 64
+  },
+  {
+    "name": "EBS Math 게임존",
+    "one_liner": "게임으로 배우는 수학",
+    "url": "https://www.ebsmath.co.kr",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 65
+  },
+  {
+    "name": "초등 이지통계",
+    "one_liner": "숫자만 입력하면 그래프가 완성",
+    "url": "",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 66
+  },
+  {
+    "name": "나만의 생존가방 준비하기",
+    "one_liner": "지진 대피 요령과 생존 필수품 챙기기",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 67
+  },
+  {
+    "name": "인권보호 체험하기",
+    "one_liner": "가상 현실로 인권 보호 체험하기",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 68
+  },
+  {
+    "name": "어린이 민속 놀이터 게임",
+    "one_liner": "우리 민속 놀이를 게임으로 체험해요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 69
+  },
+  {
+    "name": "우리 땅, 독도 탐험하기",
+    "one_liner": "3D로 독도를 비행하며 탐험해요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 70
+  },
+  {
+    "name": "독도를 지켜라",
+    "one_liner": "독도가 우리 땅인 이유를 알고 지키자",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 71
+  },
+  {
+    "name": "시켜줘, 독도 명예주민",
+    "one_liner": "독도 명예주민증을 발급받아요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 72
+  },
+  {
+    "name": "3D 블럭 쌓기",
+    "one_liner": "마인크래프트처럼 3D로 블럭을 쌓아요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 73
+  },
+  {
+    "name": "어린이 국가유산청",
+    "one_liner": "국가유산에 대해 소개해요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 74
+  },
+  {
+    "name": "국립중앙박물관 e뮤지엄",
+    "one_liner": "박물관에 있는 유물을 태블릿으로 봐요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 75
+  },
+  {
+    "name": "갯벌은 어떤 곳일까",
+    "one_liner": "갯벌의 생물을 채집해보고 체험해요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      3,
+      4
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 76
+  },
+  {
+    "name": "세계 여러 나라 거리뷰",
+    "one_liner": "세계 여러 나라의 길거리 풍경을 즐겨요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 77
+  },
+  {
+    "name": "어린이 국세청 세금게임",
+    "one_liner": "세금에 대한 다양한 게임을 즐겨요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 78
+  },
+  {
+    "name": "재미있는 초등역사",
+    "one_liner": "초등학교 역사를 재미있게 학습해요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 79
+  },
+  {
+    "name": "오늘의 역사",
+    "one_liner": "과거의 오늘엔 무슨 일이 있었을까?",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 80
+  },
+  {
+    "name": "지역문화 틀린그림찾기",
+    "one_liner": "지역문화 이야기와 함께 틀린 그림 찾기를 즐겨요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 81
+  },
+  {
+    "name": "독도체험관 Zep",
+    "one_liner": "다양한 독도 게임을 메타버스에서 즐겨요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 82
+  },
+  {
+    "name": "민속놀이 즐기기",
+    "one_liner": "팽이치기, 연날리기, 투호 등을 체험해요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 83
+  },
+  {
+    "name": "독도의 보물을 찾아라",
+    "one_liner": "스스로 독도를 탐험하며 독도에 대해 알아봐요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 84
+  },
+  {
+    "name": "내가 왕이 될 상인가?",
+    "one_liner": "Ai가 나와 닮은 역사 인물을 찾아줍니다.",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 85
+  },
+  {
+    "name": "비바샘 VR 역사 체험관",
+    "one_liner": "시대별 가상 공간으로 시간 여행을 떠나요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 86
+  },
+  {
+    "name": "국립고궁박물관 소장품",
+    "one_liner": "조선 왕실의 소장품 감상하고 내 소장품 만들기",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 87
+  },
+  {
+    "name": "독수리작전 게임",
+    "one_liner": "광복군이 되어 독수리작전을 훈련하는 경험을 해봐요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 88
+  },
+  {
+    "name": "고구려 고분벽화 3D 가상전시관",
+    "one_liner": "고구려 고분벽화를 3D로 감상해요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 89
+  },
+  {
+    "name": "광제호 구조 요청 VR 체험",
+    "one_liner": "광제호의 역사와 선박 안전을 체험해요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 90
+  },
+  {
+    "name": "비바샘 VR 역사 답사",
+    "one_liner": "역사의 현장을 만나봐요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 91
+  },
+  {
+    "name": "한국사 단어 퍼즐 게임",
+    "one_liner": "한국사 기초 퍼즐 게임",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 92
+  },
+  {
+    "name": "한국사 기초 문장 완성 게임",
+    "one_liner": "한국사 기초 문장 완성 게임",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 93
+  },
+  {
+    "name": "양형체험 프로그램",
+    "one_liner": "판사가 되어 재판을 해요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 94
+  },
+  {
+    "name": "비바샘 실감형 사회관",
+    "one_liner": "실감나게 사회를 공부해요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      3,
+      4
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 95
+  },
+  {
+    "name": "우리지역 국가유산",
+    "one_liner": "우리 지역에는 어떤 국가유산이 있을까?",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 96
+  },
+  {
+    "name": "헌법재판소 게임",
+    "one_liner": "헌법 게임을 해봐요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 97
+  },
+  {
+    "name": "투닝",
+    "one_liner": "그리지 않아요. 클릭으로 만드세요. \"웹툰\"",
+    "url": "https://tooning.io",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": true,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 98
+  },
+  {
+    "name": "독도야 뭐하니 AR",
+    "one_liner": "독도를 만나봐요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 99
+  },
+  {
+    "name": "지도 퍼즐맞추기",
+    "one_liner": "다양한 나라의 지도 퍼즐을 맞춰요",
+    "url": "",
+    "category": "사회",
+    "subjects": [
+      "사회"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 100
+  },
+  {
+    "name": "빛과 그림자 시뮬레이터",
+    "one_liner": "빛의 위치로 명암을 관찰해요",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 101
+  },
+  {
+    "name": "달 위상 시뮬레이션",
+    "one_liner": "직접 조작하는 달의 위상 변화",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 102
+  },
+  {
+    "name": "공에 컵 넣기",
+    "one_liner": "공을 컵에 넣는 물리 퍼즐 게임",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 103
+  },
+  {
+    "name": "런치볼",
+    "one_liner": "과학 블록을 놓아 공을 목적지까지 보내요",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 104
+  },
+  {
+    "name": "동물 소리 맞추기",
+    "one_liner": "어떤 동물의 소리일까요?",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      1,
+      2,
+      3
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 105
+  },
+  {
+    "name": "위기 탈출! 소방 실험실",
+    "one_liner": "AI 소방관과 함께 화재를 진압해요",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 106
+  },
+  {
+    "name": "우리 몸 속 소화기관",
+    "one_liner": "AR로 우리 몸의 소화 과정을 탐험해요",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 107
+  },
+  {
+    "name": "국립생태원 에코버스 ZEP",
+    "one_liner": "국립생태원의 생태 교육을 ZEP으로 즐겨요",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 108
+  },
+  {
+    "name": "행성의 크기 비교",
+    "one_liner": "행성의 크기를 비교해요",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 109
+  },
+  {
+    "name": "지구온난화 생태변화",
+    "one_liner": "온도가 상승하면서 멸종하는 생물들",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 110
+  },
+  {
+    "name": "내셔널 지오그래픽 버블 슈터 게임",
+    "one_liner": "생물에 관한 버블 슈터 게임을 즐겨요",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 111
+  },
+  {
+    "name": "내셔널 지오그래픽 퍼즐",
+    "one_liner": "동물 퍼즐을 즐겨요",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 112
+  },
+  {
+    "name": "달 표면 관찰",
+    "one_liner": "달의 표면을 관찰해요",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 113
+  },
+  {
+    "name": "지학사 과학 가상실험실",
+    "one_liner": "자기 주도형 실감형 콘텐츠",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 114
+  },
+  {
+    "name": "우주의 크기",
+    "one_liner": "우주의 다양한 천체 크기를 비교해봐요",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 115
+  },
+  {
+    "name": "비바샘 실감형 과학관",
+    "one_liner": "실감나게 실험, 관찰 등을 가상으로",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      3,
+      4
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 116
+  },
+  {
+    "name": "Solar System Scope",
+    "one_liner": "우주를 3D로 돌려보며 관찰해요",
+    "url": "https://www.solarsystemscope.com",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 117
+  },
+  {
+    "name": "스타워크 StarWalk",
+    "one_liner": "우리 지역의 달의 위상, 주기, 모양",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 118
+  },
+  {
+    "name": "비바샘 AR 식물도감",
+    "one_liner": "우리 교실에 식물이 나타났다",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      3
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 119
+  },
+  {
+    "name": "비바샘 AR 동물도감",
+    "one_liner": "우리 교실에 동물이 나타났다",
+    "url": "",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      3
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 120
+  },
+  {
+    "name": "퀴버 Quiver",
+    "one_liner": "내가 색칠한게 튀어 나와요",
+    "url": "https://quivervision.com",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      1,
+      2,
+      3
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 121
+  },
+  {
+    "name": "알파벳 찾기",
+    "one_liner": "알파벳 스피드 퀴즈",
+    "url": "",
+    "category": "영어",
+    "subjects": [
+      "영어"
+    ],
+    "grades": [
+      3,
+      4
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 122
+  },
+  {
+    "name": "영어 이름 컬러링",
+    "one_liner": "내 영어 이름과 문장 색칠하기",
+    "url": "",
+    "category": "영어",
+    "subjects": [
+      "영어"
+    ],
+    "grades": [
+      3,
+      4
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 123
+  },
+  {
+    "name": "과일 알파벳 맞추기 퍼즐",
+    "one_liner": "조각을 움직여 알파벳을 완성해요",
+    "url": "",
+    "category": "영어",
+    "subjects": [
+      "영어"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 124
+  },
+  {
+    "name": "과일 영어 단어 맞추기",
+    "one_liner": "상자를 들어 과일 영어 철자를 완성해요",
+    "url": "",
+    "category": "영어",
+    "subjects": [
+      "영어"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 125
+  },
+  {
+    "name": "May I help you? 상점 운영하기",
+    "one_liner": "손님 맞이하고, 주문받은 물건 제공하는 게임하기",
+    "url": "",
+    "category": "영어",
+    "subjects": [
+      "영어"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 126
+  },
+  {
+    "name": "아이스크림 맛 맞추기",
+    "one_liner": "손님이 원하는 아이스크림 맛을 제공해요",
+    "url": "",
+    "category": "영어",
+    "subjects": [
+      "영어"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 127
+  },
+  {
+    "name": "영어 전자책 도서관",
+    "one_liner": "원어민 음성으로 보고 듣는 무료 논픽션 영어 리딩 도서관",
+    "url": "",
+    "category": "영어",
+    "subjects": [
+      "영어"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 128
+  },
+  {
+    "name": "Get Yarn",
+    "one_liner": "단어, 문장을 입력하면 그 표현을 쓴 영상을 보여줘요",
+    "url": "",
+    "category": "영어",
+    "subjects": [
+      "영어"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 129
+  },
+  {
+    "name": "온라인 워드서치",
+    "one_liner": "단어를 찾아요",
+    "url": "",
+    "category": "영어",
+    "subjects": [
+      "영어"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 130
+  },
+  {
+    "name": "YBM 쌍방향 영어 게임 초등",
+    "one_liner": "교과서 내용으로 영어 게임을 즐겨요",
+    "url": "",
+    "category": "영어",
+    "subjects": [
+      "영어"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 131
+  },
+  {
+    "name": "Y클라우드 파닉스 게임",
+    "one_liner": "알파벳을 게임으로 배워요",
+    "url": "",
+    "category": "영어",
+    "subjects": [
+      "영어"
+    ],
+    "grades": [
+      3,
+      4
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 132
+  },
+  {
+    "name": "영어 따라쓰기 공책 만들기",
+    "one_liner": "따라쓰기 공책을 만들어요",
+    "url": "",
+    "category": "영어",
+    "subjects": [
+      "영어"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 133
+  },
+  {
+    "name": "Accent Oracle",
+    "one_liner": "내 영어 발음은 어디 나라 사람일까?",
+    "url": "",
+    "category": "영어",
+    "subjects": [
+      "영어"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 134
+  },
+  {
+    "name": "슈퍼마켓 물건 맞추기",
+    "one_liner": "이 물건의 이름은?",
+    "url": "",
+    "category": "영어",
+    "subjects": [
+      "영어"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 135
+  },
+  {
+    "name": "LG Radio Optimism",
+    "one_liner": "우리 학급 노래를 만들어요",
+    "url": "",
+    "category": "음악",
+    "subjects": [
+      "음악"
+    ],
+    "grades": [],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": true,
+    "visible": true,
+    "sort_order": 136
+  },
+  {
+    "name": "T셀파 나만의 악보 만들기",
+    "one_liner": "작곡가가 되어 나만의 노래를 만들어요",
+    "url": "",
+    "category": "음악",
+    "subjects": [
+      "음악"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 137
+  },
+  {
+    "name": "T셀파 스마트악기",
+    "one_liner": "태블릿으로 다양한 악기를 연주해요",
+    "url": "",
+    "category": "음악",
+    "subjects": [
+      "음악"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 138
+  },
+  {
+    "name": "인크레디박스",
+    "one_liner": "옷을 입히면 비트박스와 아카펠라 노래를 만들어줘요",
+    "url": "https://www.incredibox.com",
+    "category": "음악",
+    "subjects": [
+      "음악"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 139
+  },
+  {
+    "name": "키림바",
+    "one_liner": "칼림바를 태블릿으로 연주해요",
+    "url": "",
+    "category": "음악",
+    "subjects": [
+      "음악"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 140
+  },
+  {
+    "name": "블롭 비트",
+    "one_liner": "클래식 음악으로 펌프 게임을 해봐요",
+    "url": "",
+    "category": "음악",
+    "subjects": [
+      "음악"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 141
+  },
+  {
+    "name": "뮤지컬 캔버스",
+    "one_liner": "내가 그린 그림이 음악으로",
+    "url": "",
+    "category": "음악",
+    "subjects": [
+      "음악"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 142
+  },
+  {
+    "name": "Wonder of Wonder art",
+    "one_liner": "내 캐릭터가 노래와 함께 춤을 춰요",
+    "url": "",
+    "category": "음악",
+    "subjects": [
+      "음악"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 143
+  },
+  {
+    "name": "실로폰 연주",
+    "one_liner": "태블릿으로 실로폰 연주하기",
+    "url": "",
+    "category": "음악",
+    "subjects": [
+      "음악"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 144
+  },
+  {
+    "name": "블롭 오페라",
+    "one_liner": "인형이 오페라를 불러요",
+    "url": "https://artsandculture.google.com/experiment/blob-opera",
+    "category": "음악",
+    "subjects": [
+      "음악"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 145
+  },
+  {
+    "name": "두클래스 스마트 악기 연주",
+    "one_liner": "악기가 없어도 연주해요",
+    "url": "",
+    "category": "음악",
+    "subjects": [
+      "음악"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 146
+  },
+  {
+    "name": "국악놀이터",
+    "one_liner": "펌프게임으로 국악을 배워요",
+    "url": "",
+    "category": "음악",
+    "subjects": [
+      "음악"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 147
+  },
+  {
+    "name": "아일오브튠 Isle of Tune",
+    "one_liner": "내가 만든 섬이 음악으로",
+    "url": "",
+    "category": "음악",
+    "subjects": [
+      "음악"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 148
+  },
+  {
+    "name": "돈 터치 더 아트",
+    "one_liner": "그림을 피해 내려가자",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 149
+  },
+  {
+    "name": "아바타 메이커",
+    "one_liner": "내 캐릭터를 만들어요",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 150
+  },
+  {
+    "name": "8비트 화가",
+    "one_liner": "나도 픽셀아트 화가!",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 151
+  },
+  {
+    "name": "어려운 점잇기 도안",
+    "one_liner": "200~800 사이의 점잇기 도안 모음",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 152
+  },
+  {
+    "name": "쿠키런 코믹 스튜디오",
+    "one_liner": "쿠키런 캐릭터로 만화를 만들어요",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 153
+  },
+  {
+    "name": "쿠키런 오븐",
+    "one_liner": "쿠키런 캐릭터 만들기",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 154
+  },
+  {
+    "name": "온라인 점잇기",
+    "one_liner": "태블릿으로 점잇기를 해요",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 155
+  },
+  {
+    "name": "사진 색칠놀이로 만들기",
+    "one_liner": "사진 선화 만들기",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 156
+  },
+  {
+    "name": "타이포그래피 만들기",
+    "one_liner": "타이포그래피 작품을 클릭으로 만들어요",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 157
+  },
+  {
+    "name": "이모지 키친",
+    "one_liner": "두 개의 이모티콘을 합쳐 새로운 이모티콘을 만들어요",
+    "url": "https://emojikitchen.dev",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 158
+  },
+  {
+    "name": "비바샘 미술관 VR 전시관",
+    "one_liner": "4개의 가상공간에서 펼쳐지는 생생한 예술 여행",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 159
+  },
+  {
+    "name": "나만의 아이폰 만들기",
+    "one_liner": "나만의 아이폰을 디자인해요",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 160
+  },
+  {
+    "name": "봉봉 미니 캐릭터 만들기",
+    "one_liner": "내 캐릭터를 만들어요",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 161
+  },
+  {
+    "name": "온라인 색칠하기",
+    "one_liner": "태블릿으로 그림에 색칠해요",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      1,
+      2,
+      3
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 162
+  },
+  {
+    "name": "크롬 캔버스",
+    "one_liner": "심플하게 태블릿으로 그림을 그려요",
+    "url": "https://canvas.apps.chrome",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 163
+  },
+  {
+    "name": "픽셀아트 piskel",
+    "one_liner": "픽셀아트로 그림을 그려",
+    "url": "https://www.piskelapp.com",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 164
+  },
+  {
+    "name": "해피 아일랜드 디자이너",
+    "one_liner": "나만의 섬 꾸미기",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 165
+  },
+  {
+    "name": "Portrait AI",
+    "one_liner": "내 얼굴 초상화",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 166
+  },
+  {
+    "name": "애니메이티드 드로잉",
+    "one_liner": "내 그림이 살아 움직여요",
+    "url": "https://sketch.metademolab.com",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 167
+  },
+  {
+    "name": "아트앤컬쳐 3D 도자기",
+    "one_liner": "우리 학급 도자기 공방",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 168
+  },
+  {
+    "name": "페이퍼 크래프트",
+    "one_liner": "교실에서 즐기는 입체 종이접기",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 169
+  },
+  {
+    "name": "내 마음 쏙 박물관",
+    "one_liner": "나만의 박물관을 만들어요",
+    "url": "",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      1,
+      2,
+      3
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 170
+  },
+  {
+    "name": "퀵드로우",
+    "one_liner": "인공지능이 내 그림을 맞춰요",
+    "url": "https://quickdraw.withgoogle.com",
+    "category": "미술",
+    "subjects": [
+      "미술"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": true,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 171
+  },
+  {
+    "name": "요리조리 레시피",
+    "one_liner": "차근차근 쉽게 배우는 요리 레시피",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 172
+  },
+  {
+    "name": "분리수거 게임",
+    "one_liner": "분리수거 게임을 해봐요",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 173
+  },
+  {
+    "name": "컴퓨터 기초 연습",
+    "one_liner": "컴퓨터실 첫 시간 기초 익히기",
+    "url": "",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 174
+  },
+  {
+    "name": "왕과 코딩 기초 연습",
+    "one_liner": "세종대왕을 목적지까지 데려다줘요",
+    "url": "",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 175
+  },
+  {
+    "name": "여우 코딩 게임",
+    "one_liner": "여우가 목적지까지 갈 수 있도록 도와줘요",
+    "url": "",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 176
+  },
+  {
+    "name": "구글 두들 코딩",
+    "one_liner": "귀여운 토끼를 집으로 데려다줘요",
+    "url": "",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 177
+  },
+  {
+    "name": "로도코도 Rodocodo",
+    "one_liner": "코딩을 게임으로 배워요",
+    "url": "",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 178
+  },
+  {
+    "name": "Odd One Out",
+    "one_liner": "무엇이 인공지능이 만든 사진일까요?",
+    "url": "",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 179
+  },
+  {
+    "name": "Ai for oceans",
+    "one_liner": "바다 쏙 쓰레기를 찾아봐요",
+    "url": "",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 180
+  },
+  {
+    "name": "공룡타자연습",
+    "one_liner": "타자연습 해봐요",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 181
+  },
+  {
+    "name": "비바샘 학습심리정서검사",
+    "one_liner": "학습종합검사부터 결과 해석까지 한 번에",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 182
+  },
+  {
+    "name": "한국가이던스 심리검사",
+    "one_liner": "5분 만에 끝내는 마음 진단",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 183
+  },
+  {
+    "name": "K마블 : 마우스, 타자연습",
+    "one_liner": "게임을 하며 타자와 마우스 조작을 익혀요",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 184
+  },
+  {
+    "name": "그라운드",
+    "one_liner": "그라운드로 우리 교실을 행복하게",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 185
+  },
+  {
+    "name": "몽당분필 계기교육",
+    "one_liner": "몽당분필의 계기교육 자료를 모두 모았습니다.",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 186
+  },
+  {
+    "name": "문화다양성 감수성 테스트",
+    "one_liner": "나의 문화다양성 점수는 몇 점일까요?",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 187
+  },
+  {
+    "name": "안전스쿨",
+    "one_liner": "안전교육을 태블릿 게임으로 배워요",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 188
+  },
+  {
+    "name": "안전한줄",
+    "one_liner": "알림장에 쓸 한 줄, 영상 자료까지",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 189
+  },
+  {
+    "name": "스마트폰 과의존 테스트",
+    "one_liner": "나는 스마트폰에 얼마나 중독되었을까?",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 190
+  },
+  {
+    "name": "열렸다! 보물창고 게임",
+    "one_liner": "일일 학예사 체험하기",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 191
+  },
+  {
+    "name": "포근포근 디지털 세상 게임",
+    "one_liner": "디지털성범죄로부터 안전한 SNS 이용법",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 192
+  },
+  {
+    "name": "디클빌 모험 게임",
+    "one_liner": "디지털 성범죄 알아차리기",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 193
+  },
+  {
+    "name": "오늘의 감정 기록",
+    "one_liner": "오늘의 나의 감정은?",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 194
+  },
+  {
+    "name": "리와일드더월드",
+    "one_liner": "야생 동물을 만나고, 환경을 회복하는 데 도와주세요.",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 195
+  },
+  {
+    "name": "쎈 진로교육 몽땅",
+    "one_liner": "진로교육의 모든 것을 몽땅 드립니다.",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": true,
+    "visible": true,
+    "sort_order": 196
+  },
+  {
+    "name": "용돈탐험대",
+    "one_liner": "용돈 부루마블 게임을 해요",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 197
+  },
+  {
+    "name": "클래시파이",
+    "one_liner": "학급 친구들의 성격 유형을 분석해요",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 198
+  },
+  {
+    "name": "꿈이머니",
+    "one_liner": "경제+진로 시뮬레이션 게임",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 199
+  },
+  {
+    "name": "우리반 관계 읽기",
+    "one_liner": "AI로 우리 반 학생 관계 파악하기",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 200
+  },
+  {
+    "name": "주니어 커리어넷",
+    "one_liner": "나는 커서 뭐가 될까?",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 201
+  },
+  {
+    "name": "1388 웹 심리검사",
+    "one_liner": "스스로 진단하고 상담해봐요.",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 202
+  },
+  {
+    "name": "MBTI 테스트",
+    "one_liner": "우리 반 친구들의 MBTI는?",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 203
+  },
+  {
+    "name": "인터랜드",
+    "one_liner": "게임으로 디지털 시민교육 배우기",
+    "url": "https://beinternetawesome.withgoogle.com/ko_kr/interland",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 204
+  },
+  {
+    "name": "디지털 윤리 수사대",
+    "one_liner": "디지털 수사대원이 되어줘",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 205
+  },
+  {
+    "name": "누가 진짜 얼굴일까?",
+    "one_liner": "진짜 사람과 인공지능이 만든 사람이 누구인지 구별해봐요",
+    "url": "",
+    "category": "창체",
+    "subjects": [
+      "창체"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 206
+  },
+  {
+    "name": "구글 팝콘 게임",
+    "one_liner": "튀기지 말고 버티기",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 207
+  },
+  {
+    "name": "구스 게임",
+    "one_liner": "주사위를 굴려 결승점에 먼저 도착해요",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 208
+  },
+  {
+    "name": "숫자 맞히기",
+    "one_liner": "최고의 숫자 추리왕은 누구?",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 209
+  },
+  {
+    "name": "한붓 구슬 감싸기 게임",
+    "one_liner": "한붓으로 구슬을 감싸는 밧줄을 그어요",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 210
+  },
+  {
+    "name": "데굴데굴 구슬 길찾기",
+    "one_liner": "박스를 터치해서 구슬을 목적지에 데려다줘요",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 211
+  },
+  {
+    "name": "숫자 지뢰찾기",
+    "one_liner": "숫자 지뢰찾기를 즐겨요",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 212
+  },
+  {
+    "name": "직소 퍼즐",
+    "one_liner": "온라인에서 우리 학급 사진으로 퍼즐 맞추기",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 213
+  },
+  {
+    "name": "방탈출닷컴",
+    "one_liner": "다양한 방탈출 게임을 즐겨요",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 214
+  },
+  {
+    "name": "체스 키즈",
+    "one_liner": "체스를 배우고 경기를 해봐요",
+    "url": "https://www.chesskid.com",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 215
+  },
+  {
+    "name": "온라인 타자교실",
+    "one_liner": "레트로 온라인 타자연습",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 216
+  },
+  {
+    "name": "국정원 추리퀴즈",
+    "one_liner": "내가 국정원 요원?",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 217
+  },
+  {
+    "name": "타이핑 RPG",
+    "one_liner": "타자연습으로 RPG 게임하기",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 218
+  },
+  {
+    "name": "온라인 오목",
+    "one_liner": "혼자 또는 친구와 오목을 즐겨요",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 219
+  },
+  {
+    "name": "구글 두들 크리켓",
+    "one_liner": "곤충 타자 홈런입니다.",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 220
+  },
+  {
+    "name": "한컴타자연습",
+    "one_liner": "타자연습 해봐요",
+    "url": "https://www.hancomtaja.com",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 221
+  },
+  {
+    "name": "월리를 찾아라",
+    "one_liner": "숨은 인물을 찾아 클릭하세요",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 222
+  },
+  {
+    "name": "퍼즐 파티",
+    "one_liner": "혼자, 친구와 함께 퍼즐을 맞춰요.",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 223
+  },
+  {
+    "name": "우노 UNO",
+    "one_liner": "태블릿으로 우노를 즐겨요",
+    "url": "https://www.unoonline.io",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 224
+  },
+  {
+    "name": "러시아워",
+    "one_liner": "교통정리 퍼즐",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 225
+  },
+  {
+    "name": "정원의 시간들",
+    "one_liner": "나만의 사계절 정원 느끼기",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 226
+  },
+  {
+    "name": "온라인 숨은 그림찾기",
+    "one_liner": "숨은 그림을 찾아봐요",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 227
+  },
+  {
+    "name": "예능 게임 모음",
+    "one_liner": "예능에서 보던 게임을 교실에서 직접 해봐요",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 228
+  },
+  {
+    "name": "인생네컷 찍기",
+    "one_liner": "친구들과 인생 네 컷을 찍어요",
+    "url": "",
+    "category": "놀이",
+    "subjects": [
+      "놀이"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 229
+  },
+  {
+    "name": "Pureref",
+    "one_liner": "작품 예시 사진을 모아 항상 화면에 띄워둬요",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 230
+  },
+  {
+    "name": "에듀뱅크",
+    "one_liner": "학급 환경 자료를 다 모아뒀어요.",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 231
+  },
+  {
+    "name": "Snipaste",
+    "one_liner": "캡처한 사진을 공지사항처럼 항상 위에 둘 수 있어요.",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": true,
+    "visible": true,
+    "sort_order": 232
+  },
+  {
+    "name": "브레이브 브라우저",
+    "one_liner": "유튜브 광고 없이 보기",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": true,
+    "visible": true,
+    "sort_order": 233
+  },
+  {
+    "name": "디지털 라이브러리",
+    "one_liner": "다양한 에듀테크 메뉴얼",
+    "url": "",
+    "category": "공통",
+    "subjects": [
+      "공통"
+    ],
+    "grades": [],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": true,
+    "visible": true,
+    "sort_order": 234
+  },
+  {
+    "name": "클래스룸 스크린",
+    "one_liner": "수업 도구 올인원",
+    "url": "https://classroomscreen.com",
+    "category": "공통",
+    "subjects": [
+      "공통"
+    ],
+    "grades": [],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": true,
+    "visible": true,
+    "sort_order": 235
+  },
+  {
+    "name": "단순 에듀테크",
+    "one_liner": "떠먹여줄게. 에듀테크 수업",
+    "url": "",
+    "category": "공통",
+    "subjects": [
+      "공통"
+    ],
+    "grades": [],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": true,
+    "visible": true,
+    "sort_order": 236
+  },
+  {
+    "name": "줌잇 ZoomIt",
+    "one_liner": "확대해서 보여줘요",
+    "url": "",
+    "category": "학급",
+    "subjects": [
+      "학급"
+    ],
+    "grades": [],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": true,
+    "visible": true,
+    "sort_order": 237
+  },
+  {
+    "name": "서식편의점",
+    "one_liner": "업무 경감을 위한 맞춤형 서식",
+    "url": "",
+    "category": "업무",
+    "subjects": [
+      "업무"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 238
+  },
+  {
+    "name": "민화샵 행사계획서",
+    "one_liner": "선생님이 작성한 행사 계획서",
+    "url": "",
+    "category": "업무",
+    "subjects": [
+      "업무"
+    ],
+    "grades": [],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": true,
+    "visible": true,
+    "sort_order": 239
+  },
+  {
+    "name": "에듀독스",
+    "one_liner": "무료 올인원(행발/과목/창체/행정업무) 웹 서비스",
+    "url": "",
+    "category": "업무",
+    "subjects": [
+      "업무"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 240
+  },
+  {
+    "name": "스쿨위키",
+    "one_liner": "선생님들의 업무경감 솔루션",
+    "url": "",
+    "category": "업무",
+    "subjects": [
+      "업무"
+    ],
+    "grades": [],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": true,
+    "visible": true,
+    "sort_order": 241
+  },
+  {
+    "name": "도장 이미지 만들기",
+    "one_liner": "도장 그림 파일을 만들어요",
+    "url": "",
+    "category": "업무",
+    "subjects": [
+      "업무"
+    ],
+    "grades": [],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": true,
+    "visible": true,
+    "sort_order": 242
+  },
+  {
+    "name": "엔트리",
+    "one_liner": "블록으로 SW·AI를 시작하는 국산 코딩 도구",
+    "url": "https://playentry.org",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": true,
+    "is_featured": true,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 243
+  },
+  {
+    "name": "스크래치",
+    "one_liner": "블록으로 게임·애니 만들기",
+    "url": "https://scratch.mit.edu",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 244
+  },
+  {
+    "name": "code.org",
+    "one_liner": "단계별 코딩 코스와 아워 오브 코드",
+    "url": "https://code.org",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": true,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 245
+  },
+  {
+    "name": "마이크로비트",
+    "one_liner": "손에 쥐는 피지컬 컴퓨팅",
+    "url": "https://microbit.org",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": true,
+    "is_featured": true,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 246
+  },
+  {
+    "name": "틴커캐드",
+    "one_liner": "3D 모델링과 회로 실험",
+    "url": "https://tinkercad.com",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 247
+  },
+  {
+    "name": "코스페이시스",
+    "one_liner": "코딩으로 만드는 VR 세상",
+    "url": "https://cospaces.io",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 248
+  },
+  {
+    "name": "머신러닝 포 키즈",
+    "one_liner": "직접 학습시키는 AI 첫걸음",
+    "url": "https://machinelearningforkids.co.uk",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 249
+  },
+  {
+    "name": "티처블 머신",
+    "one_liner": "코딩 없이 만드는 AI 모델",
+    "url": "https://teachablemachine.withgoogle.com",
+    "category": "AI",
+    "subjects": [
+      "AI"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": true,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 250
+  },
+  {
+    "name": "앱인벤터",
+    "one_liner": "블록으로 만드는 안드로이드 앱",
+    "url": "https://appinventor.mit.edu",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 251
+  },
+  {
+    "name": "블록클리 게임",
+    "one_liner": "블록 코딩 입문 게임",
+    "url": "https://blockly.games",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 252
+  },
+  {
+    "name": "코드컴뱃",
+    "one_liner": "RPG로 배우는 텍스트 코딩",
+    "url": "https://codecombat.com",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 253
+  },
+  {
+    "name": "mBlock",
+    "one_liner": "스크래치 기반 로봇·AI 코딩",
+    "url": "https://mblock.cc",
+    "category": "코딩",
+    "subjects": [
+      "코딩"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 254
+  },
+  {
+    "name": "칸아카데미",
+    "one_liner": "무료 영상과 맞춤 연습으로 개념 다지기",
+    "url": "https://ko.khanacademy.org",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": true,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 255
+  },
+  {
+    "name": "PhET 시뮬레이션",
+    "one_liner": "변수를 바꿔보며 과학·수학 원리를 눈으로",
+    "url": "https://phet.colorado.edu",
+    "category": "과학",
+    "subjects": [
+      "과학"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 256
+  },
+  {
+    "name": "지오지브라",
+    "one_liner": "도형·그래프를 움직이며 이해",
+    "url": "https://geogebra.org",
+    "category": "수학",
+    "subjects": [
+      "수학"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 257
+  },
+  {
+    "name": "퀴즐렛",
+    "one_liner": "단어·개념을 카드와 게임으로 암기",
+    "url": "https://quizlet.com",
+    "category": "평가",
+    "subjects": [
+      "평가"
+    ],
+    "grades": [
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 258
+  },
+  {
+    "name": "듀오링고",
+    "one_liner": "게임처럼 매일 익히는 영어",
+    "url": "https://duolingo.com",
+    "category": "영어",
+    "subjects": [
+      "영어"
+    ],
+    "grades": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "is_certified": false,
+    "is_featured": false,
+    "teacher": false,
+    "visible": true,
+    "sort_order": 259
+  }
+]
