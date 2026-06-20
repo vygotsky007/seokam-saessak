@@ -213,8 +213,6 @@
 
   // ===== Tabs =====
   $$('.tab').forEach(btn => {
-    // 외부 링크 탭(예: 에듀테크 → /edutech.html)은 data-tab 이 없으므로 패널 전환 핸들러에서 제외.
-    if (!btn.dataset.tab) return;
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
   function switchTab(name) {
