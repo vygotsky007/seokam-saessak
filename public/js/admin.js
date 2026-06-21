@@ -1525,6 +1525,7 @@
           <div class="note-item-head">
             <span class="note-type-tag">${NOTE_TYPE_LABELS[n.note_type] || NOTE_TYPE_LABELS.etc}</span>
             <span class="muted">${esc(fmtNoteDate(n.created_at))} · ${esc(n.created_by || '?')}</span>
+            ${n.id ? `<button type="button" class="note-del-btn" data-note-del="${esc(n.id)}" title="이 기록 삭제">삭제</button>` : ''}
           </div>
           ${n.content ? `<div class="note-item-body">${esc(n.content)}</div>` : ''}
         </div>`).join('')
@@ -1535,6 +1536,24 @@
        · <span class="pol-pos" style="font-weight:700;">긍정 ${s.pos_count}</span> / <span class="pol-neg" style="font-weight:700;">부정 ${s.neg_count}</span>`;
     $('#sb-programs').innerHTML = progHtml;
     $('#sb-timeline').innerHTML = timeline;
+    // 기록 개별 삭제(관리자 전용 — 서버에서 권한 검증).
+    $$('[data-note-del]').forEach(btn => btn.addEventListener('click', () => deleteStudentNote(btn.dataset.noteDel, btn)));
+  }
+  async function deleteStudentNote(id, btn) {
+    if (!id || !sbCurrent) return;
+    if (!confirm('이 기록을 삭제할까요? 되돌릴 수 없습니다.')) return;
+    if (btn) btn.disabled = true;
+    try {
+      await api('/student-notes/' + encodeURIComponent(id), { method: 'DELETE' });
+      toast('기록을 삭제했습니다');
+      const key = sbCurrent.key;
+      await loadStudentBoardTab();          // 집계 갱신
+      const s = studentBoard.find(x => x.key === key);
+      if (s) { sbCurrent = s; renderStudentDetail(s); }
+    } catch (err) {
+      toast(err.message);
+      if (btn) btn.disabled = false;
+    }
   }
   function openStudentDetail(key) {
     const s = studentBoard.find(x => x.key === key);
@@ -1546,11 +1565,16 @@
     $('#sb-note-content').value = '';
     $('#sb-detail').classList.add('open');
   }
-  $('#sb-note-save')?.addEventListener('click', async () => {
+  $('#sb-note-save')?.addEventListener('click', async (e) => {
     if (!sbCurrent) return;
+    const btn = e.currentTarget;
+    if (btn.disabled) return;             // 더블클릭 방지: 이미 저장 중이면 무시.
     const note_type = $('#sb-note-type').value;
     const polarity = NOTE_TYPE_POLARITY[note_type] || '중립';
     const content = $('#sb-note-content').value.trim();
+    btn.disabled = true;                  // 클릭 즉시 비활성화(중복 저장 방지).
+    const prevLabel = btn.textContent;
+    btn.textContent = '저장 중…';
     try {
       await api('/student-notes', {
         method: 'POST',
@@ -1566,6 +1590,7 @@
       if (s) { sbCurrent = s; renderStudentDetail(s); }
       $('#sb-note-content').value = '';
     } catch (err) { toast(err.message); }
+    finally { btn.disabled = false; btn.textContent = prevLabel; }
   });
 
   // ===== 석암새싹증(누적 이수증) — completion_stamps 기반, 매번 재생성(인쇄용) =====

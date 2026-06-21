@@ -831,11 +831,56 @@ router.post('/student-notes', async (req, res) => {
       content,
       created_by: '관리자',
     };
+
+    // 이중 안전장치: 같은 학생·같은 유형·같은 메모가 최근 몇 초 내 들어오면 더블클릭으로 보고 무시.
+    // (프론트 버튼 비활성화가 1차, 서버 중복 차단이 2차.)
+    const DUP_WINDOW_MS = 8000;
+    try {
+      const since = new Date(Date.now() - DUP_WINDOW_MS).toISOString();
+      let dq = supabase.from('student_notes').select('*')
+        .eq('student_name', student_name)
+        .eq('note_type', note_type)
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (row.grade === null) dq = dq.is('grade', null); else dq = dq.eq('grade', row.grade);
+      if (row.class_no === null) dq = dq.is('class_no', null); else dq = dq.eq('class_no', row.class_no);
+      const { data: recent } = await dq;
+      const last = recent && recent[0];
+      if (last && String(last.content || '').trim() === content) {
+        // 최근 동일 기록이 이미 있음 → 두 번째는 무시하고 기존 기록을 그대로 반환.
+        return res.json({ ok: true, data: last, deduped: true });
+      }
+    } catch (dupErr) {
+      // 중복 검사 실패는 저장을 막지 않는다(베스트 에포트).
+      console.error('[POST admin/student-notes dup-check]', dupErr.message);
+    }
+
     const { data, error } = await insertStudentNote(row);
     if (error) throw error;
     res.json({ ok: true, data: (data && data[0]) || null });
   } catch (err) {
     console.error('[POST admin/student-notes]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// DELETE /api/student-notes/:id — 참고기록 개별 삭제(관리자 전용).
+// 라우터가 requireAdmin 뒤에 마운트되므로 비관리자 요청은 여기 닿기 전에 401/403 처리된다.
+router.delete('/student-notes/:id', async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: '기록 id가 필요합니다.' });
+    const { data, error } = await supabase
+      .from('student_notes')
+      .delete()
+      .eq('id', id)
+      .select();
+    if (error) throw error;
+    if (!data || !data.length) return res.status(404).json({ ok: false, error: '해당 기록을 찾을 수 없습니다.' });
+    res.json({ ok: true, data: data[0] });
+  } catch (err) {
+    console.error('[DELETE admin/student-notes]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -928,7 +973,7 @@ router.get('/student-board', async (req, res) => {
         .slice()
         .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')))
         .map(n => ({
-          note_type: n.note_type, polarity: notePolarity(n), content: n.content,
+          id: n.id, note_type: n.note_type, polarity: notePolarity(n), content: n.content,
           created_at: n.created_at, created_by: n.created_by, program_id: n.program_id,
         }));
     });
