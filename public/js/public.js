@@ -381,6 +381,40 @@
       bodyEl.innerHTML = `<div class="rvv-state">후기를 불러올 수 없어요.</div>`;
     }
   }
+  // === 전체 후기 모음 모달 (메인 상단 버튼) ===
+  async function openAllReviewsModal() {
+    const mask = document.getElementById('reviews-modal');
+    const titleEl = document.getElementById('reviews-modal-title');
+    const bodyEl = document.getElementById('reviews-modal-body');
+    titleEl.textContent = '📝 프로그램 후기 모음';
+    bodyEl.innerHTML = '<div class="rvv-state">불러오는 중…</div>';
+    mask.classList.add('open');
+    try {
+      const res = await fetch('/api/reviews');
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error || '불러오기 실패');
+      const list = j.data || [];
+      if (!list.length) {
+        bodyEl.innerHTML = '<div class="rvv-state">아직 등록된 후기가 없어요</div>';
+        return;
+      }
+      const itemsHtml = list.map(r => `
+        <div class="rvv-item">
+          <div class="rvv-prog">${esc(r.program_title || '프로그램')}</div>
+          <div class="rvv-head">
+            <span class="rvv-who">${esc(reviewerLabel(r))}</span>
+            ${r.rating ? starsHtml(r.rating) : ''}
+            <span class="rvv-date">${esc((r.created_at || '').slice(0, 10))}</span>
+          </div>
+          <div class="rvv-content">${esc(r.content)}</div>
+          ${photoHtml(r)}
+        </div>`).join('');
+      bodyEl.innerHTML = `<div class="rvv-count" style="margin-bottom:10px;">전체 후기 <strong>${list.length}</strong>개</div><div class="rvv-list">${itemsHtml}</div>`;
+    } catch (err) {
+      bodyEl.innerHTML = '<div class="rvv-state">후기를 불러올 수 없어요.</div>';
+    }
+  }
+  window.__openAllReviews = openAllReviewsModal;
   window.__closeReviewsModal = () => document.getElementById('reviews-modal').classList.remove('open');
 
   // === 1단계: 학생 블록 ===

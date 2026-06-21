@@ -1166,6 +1166,21 @@ body.public-page {
 .rvv-list { display: flex; flex-direction: column; gap: 12px; }
 .rvv-item { border: 1px solid #e8eaed; border-radius: 12px; padding: 12px 13px; }
 .rvv-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.reviews-collection-btn {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  margin: 4px 0 14px; padding: 15px 18px;
+  border: none; border-radius: 14px; cursor: pointer;
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  color: #fff; font-family: inherit; font-size: 16px; font-weight: 800;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, .28);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.reviews-collection-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(22, 163, 74, .36); }
+.reviews-collection-btn:active { transform: translateY(0); }
+.reviews-collection-btn .rcb-ic { font-size: 20px; }
+.reviews-collection-btn .rcb-text { flex: 1; text-align: left; }
+.reviews-collection-btn .rcb-arrow { font-size: 22px; font-weight: 800; opacity: .85; }
+.rvv-prog { font-size: 12.5px; font-weight: 800; color: #15803d; margin-bottom: 5px; }
 .rvv-grade { font-size: 11px; font-weight: 700; color: #15803d; background: #dcfce7; border-radius: 999px; padding: 1px 8px; }
 .rvv-who { font-size: 12px; font-weight: 700; color: #15803d; background: #dcfce7; border-radius: 999px; padding: 2px 9px; }
 .rvv-date { font-size: 11.5px; color: #94a3b8; }

@@ -80,6 +80,33 @@ app.get('/create/:token', (req, res) => res.sendFile(path.join(__dirname, 'publi
 // 이수 학생용 후기 작성 페이지 — 토큰으로 게이트(서버 검증).
 app.get('/review/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'review.html')));
 
+// 전체 후기 모음(공개·읽기 전용) — 숨김 아닌 후기 전부, 최신순. 메인 "프로그램 후기 모음" 모달용.
+app.get('/api/reviews', async (req, res) => {
+  try {
+    const { data: reviews, error } = await supabase
+      .from('program_reviews')
+      .select('id, program_id, rating, content, grade_label, reviewer_masked, photo_url, photo_type, created_at')
+      .neq('status', '숨김')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const list = reviews || [];
+    const ids = [...new Set(list.map(r => String(r.program_id)))];
+    const titleMap = {};
+    if (ids.length) {
+      const { data: progs } = await supabase
+        .from('saessak_programs')
+        .select('id, title')
+        .in('id', ids);
+      (progs || []).forEach(p => { titleMap[String(p.id)] = p.title; });
+    }
+    const data = list.map(r => ({ ...r, program_title: titleMap[String(r.program_id)] || '프로그램' }));
+    res.json({ ok: true, data });
+  } catch (err) {
+    console.error('[GET /api/reviews]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.use('/api/public', require('./routes/public'));
 app.use('/api/public', require('./routes/me'));
 app.use('/api/edit', require('./routes/edit'));
