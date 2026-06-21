@@ -624,4 +624,7 @@ tbody tr:hover { background: #F8FAFC; }
 .rv-mod-date { font-size: 11px; color: #94a3b8; }
 .rv-mod-badge { font-size: 11px; font-weight: 700; color: #64748b; background: #e2e8f0; border-radius: 999px; padding: 1px 8px; }
 .rv-mod-content { font-size: 13px; color: #334155; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+.rv-mod-photo { position: relative; display: inline-block; margin-top: 8px; border-radius: 8px; overflow: hidden; max-width: 220px; }
+.rv-mod-photo img { width: 100%; max-height: 180px; object-fit: cover; display: block; }
+.rv-mod-phototag { position: absolute; left: 6px; bottom: 6px; font-size: 10.5px; font-weight: 700; color: #fff; background: rgba(15,23,42,.66); border-radius: 999px; padding: 1px 7px; }
 .rv-mod-actions { display: flex; gap: 6px; margin-top: 8px; }

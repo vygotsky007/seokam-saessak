@@ -208,8 +208,16 @@ npm start
 | `2026-05-27_init.sql` | `saessak_programs`, `saessak_applications` 두 테이블 생성 |
 | `2026-05-27_program_type_and_sibling.sql` | `saessak_programs`에 `program_type`, `multicultural_min` 컬럼 추가 / `saessak_applications`에 `is_multicultural`, `sibling_group_id` 컬럼 추가 |
 | `2026-05-27_pin_hash.sql` | `saessak_applications`에 `pin_hash` 컬럼 추가 (내 신청 조회·취소·수정용 PIN bcrypt 해시) + `guardian_phone` 인덱스 |
+| `2026-06-21_review_name_photo.sql` | `program_reviews`에 `reviewer_masked`(가운데 글자 마스킹 이름), `photo_url`, `photo_type`(work/with_person) 컬럼 추가 |
 
 > ⚠️ **마이그레이션은 자동 실행되지 않는다.** Supabase 대시보드 → SQL Editor 에서 위 SQL 파일을 새로 실행해야 새 컬럼이 적용된다. 컬럼이 없으면 신규 코드가 insert에서 에러를 낸다.
+
+### 후기 사진 업로드 — Storage 1회 설정
+
+후기 사진 기능은 컬럼 외에 다음 1회 설정이 필요하다.
+
+1. **버킷 생성**: Supabase 대시보드 → Storage → New bucket → 이름 `review-photos`, **Public 버킷으로 생성**(읽기 공개). 익명 쓰기 정책은 추가하지 않는다 — 업로드는 서버(서비스 키)만 수행한다.
+2. **서비스 키 등록**: 대시보드 → Project Settings → API → `service_role` (또는 `sb_secret_…`) 키를 복사해 환경변수 `SUPABASE_SERVICE_KEY` 로 등록(로컬 `.env` + Railway). 미설정 시 사진 업로드는 실패하지만(사진 없는 후기는 정상 저장), 운영에서는 반드시 설정한다.
 
 ---
 

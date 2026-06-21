@@ -328,6 +328,22 @@
     const v = Math.round(n || 0);
     return '<span class="rvv-stars">' + '★'.repeat(v) + '☆'.repeat(5 - v) + '</span>';
   }
+  // "{학년} {마스킹이름}" — 학년만/이름만이면 있는 것만, 둘 다 없으면 익명
+  function reviewerLabel(r) {
+    const g = (r.grade_label || '').trim();
+    const n = (r.reviewer_masked || '').trim();
+    if (g && n) return g + ' ' + n;
+    return g || n || '익명';
+  }
+  function photoTypeLabel(t) {
+    return t === 'with_person' ? '작품+본인' : t === 'work' ? '작품' : '';
+  }
+  function photoHtml(r) {
+    if (!r.photo_url) return '';
+    const tag = r.photo_type ? `<span class="rvv-photo-tag">${esc(photoTypeLabel(r.photo_type))}</span>` : '';
+    return `<a class="rvv-photo" href="${esc(r.photo_url)}" target="_blank" rel="noopener">
+      <img src="${esc(r.photo_url)}" alt="후기 사진" loading="lazy">${tag}</a>`;
+  }
   async function openReviewsModal(programId, title) {
     const mask = document.getElementById('reviews-modal');
     const titleEl = document.getElementById('reviews-modal-title');
@@ -353,11 +369,12 @@
       const itemsHtml = list.map(r => `
         <div class="rvv-item">
           <div class="rvv-head">
+            <span class="rvv-who">${esc(reviewerLabel(r))}</span>
             ${r.rating ? starsHtml(r.rating) : ''}
-            ${r.grade_label ? `<span class="rvv-grade">${esc(r.grade_label)}</span>` : ''}
             <span class="rvv-date">${esc((r.created_at || '').slice(0, 10))}</span>
           </div>
           <div class="rvv-content">${esc(r.content)}</div>
+          ${photoHtml(r)}
         </div>`).join('');
       bodyEl.innerHTML = summaryHtml + '<div class="rvv-list">' + itemsHtml + '</div>';
     } catch (err) {

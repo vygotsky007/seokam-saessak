@@ -5,6 +5,27 @@ const supabase = require('../utils/supabase');
 const { normalizeMobile, isValidMobile } = require('../utils/phone');
 const { programsConflict } = require('../public/js/schedule-conflict');
 const { parseReviewToken } = require('../utils/review-token');
+const { maskName } = require('../utils/mask-name');
+
+const REVIEW_PHOTO_BUCKET = 'review-photos';
+
+// 후기 사진(선택) 업로드: 클라이언트가 보낸 dataURL(리사이즈·압축 완료)을 서비스 키로 버킷에 올린다.
+// 성공 시 { url } 반환, 사진이 없으면 null, 실패 시 throw.
+async function uploadReviewPhoto(dataUrl) {
+  const m = /^data:(image\/(png|jpe?g|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || '').trim());
+  if (!m) throw new Error('사진 형식이 올바르지 않습니다.');
+  const contentType = m[1];
+  const ext = contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg';
+  const buffer = Buffer.from(m[3], 'base64');
+  if (buffer.length > 5 * 1024 * 1024) throw new Error('사진 용량이 너무 큽니다.');
+  const filename = `${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.admin.storage
+    .from(REVIEW_PHOTO_BUCKET)
+    .upload(filename, buffer, { contentType, upsert: false });
+  if (error) throw error;
+  const { data } = supabase.admin.storage.from(REVIEW_PHOTO_BUCKET).getPublicUrl(filename);
+  return data.publicUrl;
+}
 
 function formatGradesLabel(grades) {
   if (!Array.isArray(grades) || grades.length === 0) return '';
@@ -431,6 +452,24 @@ router.post('/review/:token', async (req, res) => {
       }
     }
     const gradeLabel = body.grade_label ? String(body.grade_label).trim().slice(0, 20) : null;
+
+    // 이름: 서버에서 가운데 글자 마스킹. 원본 실명은 저장하지 않는다.
+    const reviewerMasked = maskName(body.name).slice(0, 40) || null;
+
+    // 사진(선택): 있으면 서버가 버킷에 업로드, 없으면 통과. 종류는 사진이 있을 때만 의미.
+    let photoUrl = null;
+    let photoType = null;
+    if (body.photo) {
+      try {
+        photoUrl = await uploadReviewPhoto(body.photo);
+        photoType = (body.photo_type === 'work' || body.photo_type === 'with_person')
+          ? body.photo_type : null;
+      } catch (e) {
+        console.error('[review photo upload]', e.message);
+        return res.status(500).json({ ok: false, error: '사진 업로드에 실패했습니다. 잠시 후 다시 시도해 주세요.' });
+      }
+    }
+
     const { error } = await supabase
       .from('program_reviews')
       .insert([{
@@ -438,6 +477,9 @@ router.post('/review/:token', async (req, res) => {
         rating,
         content,
         grade_label: gradeLabel || null,
+        reviewer_masked: reviewerMasked,
+        photo_url: photoUrl,
+        photo_type: photoType,
         status: '게시',
       }]);
     if (error) throw error;
@@ -454,7 +496,7 @@ router.get('/programs/:id/reviews', async (req, res) => {
     const programId = String(req.params.id);
     const { data, error } = await supabase
       .from('program_reviews')
-      .select('id, rating, content, grade_label, created_at')
+      .select('id, rating, content, grade_label, reviewer_masked, photo_url, photo_type, created_at')
       .eq('program_id', programId)
       .eq('status', '게시')
       .order('created_at', { ascending: false });

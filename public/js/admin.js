@@ -537,6 +537,15 @@
     if (!n) return '<span class="muted" style="font-size:12px;">별점 없음</span>';
     return '<span class="rv-mod-stars">' + '★'.repeat(n) + '☆'.repeat(5 - n) + '</span>';
   }
+  function reviewerLabel(r) {
+    const g = (r.grade_label || '').trim();
+    const n = (r.reviewer_masked || '').trim();
+    if (g && n) return g + ' ' + n;
+    return g || n || '익명';
+  }
+  function reviewPhotoLabel(t) {
+    return t === 'with_person' ? '작품+본인' : t === 'work' ? '작품' : '';
+  }
   async function openReviewDialog(pid) {
     reviewDialogPid = pid;
     const p = programs.find(x => String(x.id) === String(pid));
@@ -565,14 +574,19 @@
       el.innerHTML = list.map(r => {
         const hidden = r.status === '숨김';
         const date = (r.created_at || '').slice(0, 10);
+        const photoTag = r.photo_type ? `<span class="rv-mod-phototag">${esc(reviewPhotoLabel(r.photo_type))}</span>` : '';
+        const photoHtml = r.photo_url
+          ? `<a class="rv-mod-photo" href="${esc(r.photo_url)}" target="_blank" rel="noopener"><img src="${esc(r.photo_url)}" alt="후기 사진" loading="lazy">${photoTag}</a>`
+          : '';
         return `<div class="rv-mod-item${hidden ? ' is-hidden' : ''}">
           <div class="rv-mod-head">
+            <span class="rv-mod-grade">${esc(reviewerLabel(r))}</span>
             ${reviewStars(r.rating)}
-            ${r.grade_label ? `<span class="rv-mod-grade">${esc(r.grade_label)}</span>` : ''}
             <span class="rv-mod-date">${esc(date)}</span>
             ${hidden ? '<span class="rv-mod-badge">숨김</span>' : ''}
           </div>
           <div class="rv-mod-content">${esc(r.content)}</div>
+          ${photoHtml}
           <div class="rv-mod-actions">
             <button class="btn xsmall" data-rv-toggle="${r.id}" data-rv-status="${hidden ? '게시' : '숨김'}">${hidden ? '다시 게시' : '숨김'}</button>
             <button class="btn xsmall danger" data-rv-del="${r.id}">삭제</button>

@@ -32,13 +32,20 @@
   .rv-grade-row{display:flex;flex-wrap:wrap;gap:7px;}
   .rv-grade-chip{border:1.5px solid #e2e8f0;background:#fff;border-radius:999px;padding:7px 13px;font-size:13px;font-weight:600;color:#475569;cursor:pointer;font-family:inherit;}
   .rv-grade-chip.on{border-color:#16a34a;background:#dcfce7;color:#15803d;}
+  .rv-photo-pick{display:inline-flex;align-items:center;gap:7px;border:1.5px dashed #cbd5e1;background:#f8fafc;border-radius:10px;padding:11px 14px;font-size:13.5px;font-weight:700;color:#475569;cursor:pointer;font-family:inherit;}
+  .rv-photo-pick input{display:none;}
+  .rv-photo-preview{margin-top:10px;position:relative;display:none;}
+  .rv-photo-preview img{width:100%;max-height:240px;object-fit:cover;border-radius:12px;border:1px solid #e2e8f0;display:block;}
+  .rv-photo-remove{position:absolute;top:8px;right:8px;width:30px;height:30px;border:none;border-radius:50%;background:rgba(15,23,42,.62);color:#fff;font-size:16px;cursor:pointer;line-height:1;}
+  .rv-select{width:100%;border:1.5px solid #e2e8f0;border-radius:10px;padding:11px 12px;font-family:inherit;font-size:14px;color:#0f172a;background:#fff;margin-top:9px;}
+  .rv-photo-notice{font-size:11.5px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-top:9px;line-height:1.5;}
 </style>
 </head>
 <body>
 <div class="rv-wrap">
   <div class="header" style="text-align:center;margin-bottom:14px;">
     <h1>📝 프로그램 후기</h1>
-    <p class="sub">참여한 프로그램이 어땠는지 들려주세요. (실명은 적지 마세요)</p>
+    <p class="sub">참여한 프로그램이 어땠는지 들려주세요.</p>
   </div>
   <div id="rv-root"><div class="rv-state">불러오는 중…</div></div>
 </div>

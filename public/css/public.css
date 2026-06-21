@@ -1167,5 +1167,9 @@ body.public-page {
 .rvv-item { border: 1px solid #e8eaed; border-radius: 12px; padding: 12px 13px; }
 .rvv-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
 .rvv-grade { font-size: 11px; font-weight: 700; color: #15803d; background: #dcfce7; border-radius: 999px; padding: 1px 8px; }
+.rvv-who { font-size: 12px; font-weight: 700; color: #15803d; background: #dcfce7; border-radius: 999px; padding: 2px 9px; }
 .rvv-date { font-size: 11.5px; color: #94a3b8; }
 .rvv-content { font-size: 13.5px; color: #334155; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.rvv-photo { position: relative; display: block; margin-top: 9px; border-radius: 10px; overflow: hidden; }
+.rvv-photo img { width: 100%; max-height: 260px; object-fit: cover; display: block; }
+.rvv-photo-tag { position: absolute; left: 8px; bottom: 8px; font-size: 11px; font-weight: 700; color: #fff; background: rgba(15,23,42,.66); border-radius: 999px; padding: 2px 9px; }
