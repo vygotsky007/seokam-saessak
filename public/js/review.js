@@ -146,7 +146,7 @@
 
         <div class="rv-label">사진 <span style="color:#94a3b8;font-weight:500;">(선택)</span></div>
         <label class="rv-photo-pick">📷 사진 선택 · 촬영
-          <input type="file" id="rv-photo" accept="image/*" capture>
+          <input type="file" id="rv-photo" accept="image/*">
         </label>
         <div class="rv-photo-preview" id="rv-photo-preview">
           <img id="rv-photo-img" alt="미리보기">
