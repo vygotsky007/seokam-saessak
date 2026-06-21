@@ -478,6 +478,16 @@
   <div class="dialog" style="max-width:560px;">
     <h2 id="review-dialog-title">📝 후기</h2>
     <p class="muted" style="font-size:11.5px; margin-bottom:10px;">아래 <b>작성 링크/QR</b>을 이수 학생에게 배포하면 후기를 남길 수 있어요. 부적절한 후기는 숨김/삭제하세요. (숨김은 학부모 화면에서 즉시 제외)</p>
+    <div class="rv-openbox">
+      <div class="rv-openbox-text">
+        <div class="rv-openbox-title">후기 받기</div>
+        <div class="rv-openbox-desc" id="review-open-desc">상태 확인 중…</div>
+      </div>
+      <button type="button" class="rv-toggle" id="review-open-toggle" aria-pressed="false" disabled>
+        <span class="rv-toggle-knob"></span>
+        <span class="rv-toggle-label">…</span>
+      </button>
+    </div>
     <div class="rv-link-box">
       <div class="rv-link-row">
         <input type="text" id="review-link-url" readonly>

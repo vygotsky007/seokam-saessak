@@ -483,9 +483,45 @@ router.get('/programs/:id/review-link', async (req, res) => {
     const base = `${req.protocol}://${req.get('host')}`;
     const url = `${base}/review/${token}`;
     const qr = await QRCode.toDataURL(url, { width: 320, margin: 1, errorCorrectionLevel: 'M' });
-    res.json({ ok: true, url, qr });
+    // 후기 받기 상태(review_open). 컬럼이 아직 없으면(마이그레이션 전) 기본 true 로 간주.
+    let reviewOpen = true;
+    try {
+      const { data: prog } = await supabase
+        .from('saessak_programs').select('review_open').eq('id', id).maybeSingle();
+      if (prog && prog.review_open === false) reviewOpen = false;
+    } catch (e) { /* 컬럼 없음 등 → 기본 true */ }
+    res.json({ ok: true, url, qr, review_open: reviewOpen });
   } catch (err) {
     console.error('[GET admin/programs/:id/review-link]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 후기 받기 활성화/비활성화 토글(관리자 전용 — 라우터가 requireAdmin 뒤에 마운트됨).
+// body.review_open(불리언)이 오면 그 값으로, 없으면 현재값을 뒤집는다.
+router.patch('/programs/:id/review-open', async (req, res) => {
+  try {
+    const { id } = req.params;
+    let next;
+    if (typeof (req.body || {}).review_open === 'boolean') {
+      next = req.body.review_open;
+    } else {
+      const { data: cur, error: curErr } = await supabase
+        .from('saessak_programs').select('review_open').eq('id', id).maybeSingle();
+      if (curErr) throw curErr;
+      if (!cur) return res.status(404).json({ ok: false, error: '프로그램을 찾을 수 없습니다.' });
+      next = !(cur.review_open === true); // NULL/undefined(기본 열림)에서 누르면 닫기로.
+    }
+    const { data, error } = await supabase
+      .from('saessak_programs')
+      .update({ review_open: next })
+      .eq('id', id)
+      .select('id, review_open');
+    if (error) throw error;
+    if (!data || !data.length) return res.status(404).json({ ok: false, error: '프로그램을 찾을 수 없습니다.' });
+    res.json({ ok: true, review_open: data[0].review_open });
+  } catch (err) {
+    console.error('[PATCH admin/programs/:id/review-open]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

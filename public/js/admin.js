@@ -546,21 +546,56 @@
   function reviewPhotoLabel(t) {
     return t === 'with_person' ? '작품+본인' : t === 'work' ? '작품' : '';
   }
+  let reviewOpenState = true;
+  function renderReviewOpenToggle() {
+    const btn = $('#review-open-toggle');
+    const desc = $('#review-open-desc');
+    if (!btn) return;
+    const on = reviewOpenState !== false;
+    btn.disabled = false;
+    btn.classList.toggle('is-on', on);
+    btn.classList.toggle('is-off', !on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.querySelector('.rv-toggle-label').textContent = on ? '활성화 ON' : '비활성화 OFF';
+    if (desc) desc.textContent = on
+      ? '지금 학생/학부모가 이 링크로 후기를 남길 수 있어요.'
+      : '지금은 후기를 받지 않아요. 링크로 들어와도 작성할 수 없어요.';
+  }
   async function openReviewDialog(pid) {
     reviewDialogPid = pid;
     const p = programs.find(x => String(x.id) === String(pid));
     $('#review-dialog-title').textContent = `📝 후기 — ${p ? p.title : ''}`;
     $('#review-link-url').value = '';
     $('#review-qr-img').removeAttribute('src');
+    reviewOpenState = true;
+    const tbtn = $('#review-open-toggle');
+    if (tbtn) { tbtn.disabled = true; tbtn.classList.remove('is-on', 'is-off'); }
+    $('#review-open-desc').textContent = '상태 확인 중…';
     $('#review-list').innerHTML = '<div class="muted" style="font-size:13px;">불러오는 중…</div>';
     $('#review-dialog').classList.add('open');
     try {
       const j = await api(`/programs/${pid}/review-link`);
       $('#review-link-url').value = j.url;
       $('#review-qr-img').src = j.qr;
+      reviewOpenState = j.review_open !== false;
+      renderReviewOpenToggle();
     } catch (err) { toast(err.message); }
     loadReviewList();
   }
+  $('#review-open-toggle')?.addEventListener('click', async () => {
+    if (!reviewDialogPid) return;
+    const btn = $('#review-open-toggle');
+    btn.disabled = true;
+    try {
+      const j = await api(`/programs/${reviewDialogPid}/review-open`, {
+        method: 'PATCH',
+        body: JSON.stringify({ review_open: !reviewOpenState }),
+      });
+      reviewOpenState = j.review_open !== false;
+      renderReviewOpenToggle();
+      toast(reviewOpenState ? '후기 받기를 활성화했어요' : '후기 받기를 비활성화했어요');
+    } catch (err) { toast(err.message); btn.disabled = false; }
+  });
   async function loadReviewList() {
     if (!reviewDialogPid) return;
     try {

@@ -423,12 +423,14 @@ router.get('/review/:token', async (req, res) => {
     if (!programId) return res.status(404).json({ ok: false, error: '유효하지 않은 후기 링크입니다.' });
     const { data, error } = await supabase
       .from('saessak_programs')
-      .select('id, title')
+      .select('*')
       .eq('id', programId)
       .maybeSingle();
     if (error) throw error;
     if (!data) return res.status(404).json({ ok: false, error: '프로그램을 찾을 수 없습니다.' });
-    res.json({ ok: true, program: { id: data.id, title: data.title } });
+    // review_open 컬럼이 아직 없으면(마이그레이션 전) 기본 열림(true)으로 간주.
+    const reviewOpen = data.review_open !== false;
+    res.json({ ok: true, program: { id: data.id, title: data.title, review_open: reviewOpen } });
   } catch (err) {
     console.error('[GET public/review/:token]', err.message);
     res.status(500).json({ ok: false, error: err.message });
@@ -440,6 +442,19 @@ router.post('/review/:token', async (req, res) => {
   try {
     const programId = parseReviewToken(req.params.token);
     if (!programId) return res.status(404).json({ ok: false, error: '유효하지 않은 후기 링크입니다.' });
+
+    // 후기 받기 닫힘이면 저장 거부(서버 검증 — 프론트 우회 방지).
+    // select('*') 로 읽어 review_open 컬럼이 아직 없어도(마이그레이션 전) 에러 없이 기본 열림으로 동작.
+    {
+      const { data: prog, error: pErr } = await supabase
+        .from('saessak_programs').select('*').eq('id', programId).maybeSingle();
+      if (pErr) throw pErr;
+      if (!prog) return res.status(404).json({ ok: false, error: '프로그램을 찾을 수 없습니다.' });
+      if (prog.review_open === false) {
+        return res.status(403).json({ ok: false, error: '지금은 후기를 받는 기간이 아니에요. 담당 선생님이 열어줄 때 다시 시도해 주세요.' });
+      }
+    }
+
     const body = req.body || {};
     const content = body.content ? String(body.content).trim() : '';
     if (!content) return res.status(400).json({ ok: false, error: '후기 내용을 입력해 주세요.' });

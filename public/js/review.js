@@ -113,6 +113,10 @@
       const res = await fetch('/api/public/review/' + encodeURIComponent(token));
       const j = await res.json();
       if (!j.ok) { root.innerHTML = `<div class="rv-state">⚠️ ${esc(j.error || '유효하지 않은 링크입니다.')}</div>`; return; }
+      if (j.program && j.program.review_open === false) {
+        root.innerHTML = '<div class="rv-state">🌱 지금은 후기를 받는 기간이 아니에요.<br>담당 선생님이 열어줄 때 다시 시도해 주세요.</div>';
+        return;
+      }
       renderForm(j.program);
     } catch (e) {
       root.innerHTML = '<div class="rv-state">⚠️ 페이지를 불러올 수 없습니다.</div>';

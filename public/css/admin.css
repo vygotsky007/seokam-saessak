@@ -614,6 +614,15 @@ tbody tr:hover { background: #F8FAFC; }
 }
 
 /* ===== 프로그램 후기(리뷰) 관리 모달 ===== */
+/* 후기 받기 ON/OFF 토글 */
+.rv-openbox { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+.rv-openbox-title { font-weight: 800; font-size: 14px; color: #1e293b; }
+.rv-openbox-desc { font-size: 12px; color: #64748b; margin-top: 2px; }
+.rv-toggle { display: inline-flex; align-items: center; gap: 8px; border: none; border-radius: 999px; padding: 7px 14px 7px 10px; font-size: 13px; font-weight: 800; color: #fff; cursor: pointer; background: #94a3b8; transition: background .15s; }
+.rv-toggle .rv-toggle-knob { width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.rv-toggle.is-on { background: #22c55e; }
+.rv-toggle.is-off { background: #94a3b8; }
+.rv-toggle:disabled { opacity: .6; cursor: default; }
 .rv-link-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
 .rv-link-row { display: flex; gap: 6px; }
 .rv-link-row input { flex: 1; min-width: 0; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #334155; background: #fff; }
