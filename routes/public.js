@@ -465,8 +465,11 @@ router.post('/review/:token', async (req, res) => {
         photoType = (body.photo_type === 'work' || body.photo_type === 'with_person')
           ? body.photo_type : null;
       } catch (e) {
-        console.error('[review photo upload]', e.message);
-        return res.status(500).json({ ok: false, error: '사진 업로드에 실패했습니다. 잠시 후 다시 시도해 주세요.' });
+        // 실제 Storage 에러 전문을 Railway 로그에 남기고, 응답에도 사유를 담는다(임시 디버그).
+        const reason = (e && (e.message || e.error || e.statusText)) || String(e) || '알 수 없는 오류';
+        console.error('[review photo upload] 실패:', reason, '| hasServiceKey=', supabase.hasServiceKey, '| 원본:', e);
+        const hint = supabase.hasServiceKey ? '' : ' (서버에 서비스 롤 키가 설정되지 않았습니다)';
+        return res.status(500).json({ ok: false, error: `사진 업로드 실패: ${reason}${hint}` });
       }
     }
 

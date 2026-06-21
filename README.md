@@ -216,8 +216,10 @@ npm start
 
 후기 사진 기능은 컬럼 외에 다음 1회 설정이 필요하다.
 
-1. **버킷 생성**: Supabase 대시보드 → Storage → New bucket → 이름 `review-photos`, **Public 버킷으로 생성**(읽기 공개). 익명 쓰기 정책은 추가하지 않는다 — 업로드는 서버(서비스 키)만 수행한다.
-2. **서비스 키 등록**: 대시보드 → Project Settings → API → `service_role` (또는 `sb_secret_…`) 키를 복사해 환경변수 `SUPABASE_SERVICE_KEY` 로 등록(로컬 `.env` + Railway). 미설정 시 사진 업로드는 실패하지만(사진 없는 후기는 정상 저장), 운영에서는 반드시 설정한다.
+1. **서비스 키 등록**: 대시보드 → Project Settings → API → `service_role` (또는 `sb_secret_…`) 키를 복사해 환경변수 **`SUPABASE_SERVICE_ROLE_KEY`** 로 등록(Railway Variables + 로컬 `.env`). 변수명이 다르면(anon 키로 폴백) 업로드가 RLS(403)로 막힌다. 서버는 시작 시 이 키 유무를 로그로 알린다.
+2. **버킷 생성**: 위 키가 설정돼 있으면 **서버 시작 시 `review-photos` 버킷이 없으면 자동 생성**(public read)한다. 수동으로 만들려면 Storage → New bucket → `review-photos` → Public. 익명 쓰기 정책은 추가하지 않는다 — 업로드는 서버(서비스 키)만 수행한다.
+
+> 미설정 시: 사진 없는 후기는 정상 저장되고, 사진 첨부 시에만 실패한다. 실패하면 응답·로그에 Supabase 실제 사유가 그대로 노출된다(임시 디버그).
 
 ---
 

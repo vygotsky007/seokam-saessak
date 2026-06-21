@@ -34,6 +34,9 @@ app.set('trust proxy', 1);
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 app.locals.supabase = supabase;
 
+// 후기 사진 업로드용 서비스 키 클라이언트 + 버킷 보장 함수(utils/supabase.js)
+const db = require('./utils/supabase');
+
 process.on('uncaughtException',  err    => console.error('[uncaughtException]',  err));
 process.on('unhandledRejection', reason => console.error('[unhandledRejection]', reason));
 
@@ -168,4 +171,7 @@ app.listen(PORT, () => {
   console.log('  관리자 경로:', ADMIN_PATH);
   console.log('  SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ 설정됨' : '❌ 없음');
   console.log('  SUPABASE_KEY:', process.env.SUPABASE_KEY ? '✅ 설정됨' : '❌ 없음');
+  console.log('  서비스 롤 키:', db.hasServiceKey ? `✅ ${db.serviceKeyVar}` : '❌ 없음 (후기 사진 업로드 불가)');
+  // 'review-photos' 버킷 보장(없으면 생성). 결과는 위 함수가 직접 로그로 남긴다.
+  db.ensureReviewBucket();
 });
