@@ -41,8 +41,9 @@ process.on('uncaughtException',  err    => console.error('[uncaughtException]', 
 process.on('unhandledRejection', reason => console.error('[unhandledRejection]', reason));
 
 // 확인증 공통 이미지(QR·로고 등)를 base64로 app_settings에 저장하므로 기본 100kb 한도를 넉넉히 올린다.
-app.use(express.json({ limit: '8mb' }));
-app.use(express.urlencoded({ extended: true, limit: '8mb' }));
+// 후기 사진은 base64(dataURL)로 들어오므로 기본 100kb 한도를 넉넉히 올린다(클라가 1.2MB 이하로 압축).
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
 app.use(session({
   name: 'saessak.sid',
