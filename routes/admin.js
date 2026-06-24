@@ -1567,8 +1567,11 @@ router.get('/export', async (req, res) => {
 
     // ===== 새싹(KOFAC) 등록양식: 공식 양식 zip의 XML만 최소 수정해 내보내기 =====
     // KOFAC 업로드 단위는 "프로그램 1개"라서 특정 프로그램 선택만 지원(전체는 프로그램별로 따로).
-    // 공식 양식은 컬럼/순서가 고정이라 새싹용은 양식을 100% 그대로 출력한다.
-    // → 연락처/신청동기/평가기록 포함, 정렬 옵션은 새싹용엔 적용하지 않는다(클라에서도 비활성화).
+    // 공식 양식의 "컬럼 구성·헤더·순서"는 그대로 보존한다(buildSaessakXlsxBuffer 가 A~H 매핑 고정).
+    // → 컬럼 관련 포함 옵션(연락처/신청동기/평가기록)은 새싹용에 적용하지 않는다(클라에서 비활성화).
+    //   단, 정렬은 "데이터 행 순서"에만 영향하고 컬럼 규격과 무관하므로 새싹용에서도 그대로 적용한다.
+    //   (KOFAC 업로드는 행 순서를 가리지 않으며, 코드/주석 어디에도 행 순서가 업로드에 영향을
+    //    준다는 근거가 없다 — 양식은 컬럼만 고정.)
     if (isSaessak) {
       if (!program_id) {
         return res.status(400).json({
@@ -1577,7 +1580,8 @@ router.get('/export', async (req, res) => {
         });
       }
       // 취소(cancelled) 제외(KOFAC). 다문화 판정은 기존 is_multicultural 플래그 재사용.
-      const rows = rowsAll.filter(r => r.status !== 'cancelled');
+      // 정렬 옵션(학년·반순/긍정평가순/이름순/신청순)은 행 순서에 반영.
+      const rows = sortRows(rowsAll.filter(r => r.status !== 'cancelled'));
       const buf = await buildSaessakXlsxBuffer(rows);
       const fname = `saessak_kofac_${targetSet.has('selected') ? 'selected_' : ''}${new Date().toISOString().slice(0,10)}.xlsx`;
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

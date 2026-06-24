@@ -1855,15 +1855,14 @@ th { color:#2E7D32; font-weight:800; background:#F1F8E9; }
       else all.checked = true;
     }));
   }
-  // 새싹 업로드용 선택 시 정렬·포함 옵션 비활성화(KOFAC 고정 양식). 해제 시 복구.
+  // 새싹 업로드용 선택 시: 컬럼 관련 포함 옵션(연락처/신청동기/평가기록)만 비활성화(KOFAC 컬럼 규격 보존).
+  // 정렬은 데이터 행 순서에만 영향하고 컬럼과 무관하므로 새싹용에서도 그대로 선택 가능.
   function syncExportUi() {
     const saessak = $('#exp-saessak')?.checked;
     $('#exp-saessak-note').hidden = !saessak;
-    $$('#exp-sort-block input[name="exp-sort"]').forEach(r => { r.disabled = saessak; });
     ['#exp-inc-contact', '#exp-inc-motivation', '#exp-inc-eval'].forEach(s => {
       const el = $(s); if (el) el.disabled = saessak;
     });
-    $('#exp-sort-block')?.classList.toggle('disabled', !!saessak);
   }
   bindExportTargetToggles();
   $('#exp-saessak')?.addEventListener('change', syncExportUi);
@@ -1926,9 +1925,10 @@ th { color:#2E7D32; font-weight:800; background:#F1F8E9; }
     if ($('#exp-t-multi').checked) targets.push('multi');
     if (targets.length) params.set('targets', targets.join(','));
 
+    // 정렬은 새싹용에서도 행 순서에 반영(컬럼 규격은 보존). 포함 컬럼만 새싹용에서 제외.
+    const sort = document.querySelector('input[name="exp-sort"]:checked');
+    if (sort) params.set('sort', sort.value);
     if (!saessak) {
-      const sort = document.querySelector('input[name="exp-sort"]:checked');
-      if (sort) params.set('sort', sort.value);
       const include = [];
       if ($('#exp-inc-contact').checked) include.push('contact');
       if ($('#exp-inc-motivation').checked) include.push('motivation');
