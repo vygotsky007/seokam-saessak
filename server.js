@@ -72,6 +72,7 @@ const loginLimiter = rateLimit({
 });
 
 const { requireAdmin } = require('./utils/auth');
+const { normalizeMobile } = require('./utils/phone');
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/me', (req, res) => res.sendFile(path.join(__dirname, 'public', 'me.html')));
@@ -107,6 +108,101 @@ app.get('/api/reviews', async (req, res) => {
     res.json({ ok: true, data });
   } catch (err) {
     console.error('[GET /api/reviews]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 교직원(관리자) 전용: 과거 신청 기록 전체(프로그램 불문)에서 학생을 느슨하게 검색.
+// "신청자 추가" 모달의 자동완성 보조 기능. 라우터(requireAdmin)는 401을 주지만,
+// 요구사항에 따라 본 엔드포인트는 비관리자에게 403을 직접 반환한다.
+app.get('/api/applicants/search', async (req, res) => {
+  if (!(req.session && req.session.isAdmin === true)) {
+    return res.status(403).json({ ok: false, error: '관리자 전용 기능입니다.' });
+  }
+  try {
+    const q = String(req.query.q || '').trim();
+    const tokens = q.split(/\s+/).filter(Boolean).slice(0, 6);
+    if (!tokens.length) return res.json({ ok: true, data: [] });
+
+    const onlyDigits = s => String(s == null ? '' : s).replace(/\D/g, '');
+    const norm = s => String(s == null ? '' : s).toLowerCase().replace(/\s+/g, '');
+    function maskPhone(raw) {
+      const n = normalizeMobile(raw);
+      const m = n && n.match(/^(\d{3})-(\d{4})-(\d{4})$/);
+      if (m) return `${m[1]}-${m[2]}-${m[3].slice(0, 2)}··`; // 예: 010-7559-16··
+      const d = onlyDigits(raw);
+      if (!d) return '';
+      if (d.length <= 2) return '·'.repeat(d.length);
+      return d.slice(0, -2) + '··';
+    }
+
+    // 과거 신청자 전체, 최신 우선(대표 레코드 선정용).
+    const { data: rows, error } = await supabase
+      .from('saessak_applications')
+      .select('student_name, grade, class_no, guardian_name, guardian_phone, student_phone, submitted_at')
+      .order('submitted_at', { ascending: false })
+      .limit(8000);
+    if (error) throw error;
+
+    // 같은 학생(이름+보호자전화, 없으면 이름+보호자명/학생전화)으로 묶어 최신 기록을 대표로.
+    const reps = new Map();
+    for (const r of (rows || [])) {
+      const nm = norm(r.student_name);
+      if (!nm) continue;
+      const gp = onlyDigits(r.guardian_phone);
+      const key = nm + '|' + (gp || norm(r.guardian_name) || onlyDigits(r.student_phone) || '');
+      if (!reps.has(key)) reps.set(key, r); // 정렬상 처음 = 최신 = 대표
+    }
+
+    // 토큰별로 어떤 필드가 맞았는지(이름/보호자/학년/반/전화). 하나라도 맞으면 후보.
+    function evalRow(r) {
+      const f = {
+        name: norm(r.student_name),
+        guardian: norm(r.guardian_name),
+        grade: r.grade == null ? '' : String(r.grade),
+        cls: r.class_no == null ? '' : String(r.class_no),
+        phoneG: onlyDigits(r.guardian_phone),
+        phoneS: onlyDigits(r.student_phone),
+      };
+      const matched = new Set();
+      for (const tk of tokens) {
+        const t = norm(tk);
+        const td = onlyDigits(tk);
+        if (t && f.name && f.name.includes(t)) matched.add('name');
+        if (t && f.guardian && f.guardian.includes(t)) matched.add('guardian');
+        const tg = t.replace('학년', '');
+        if (tg && f.grade && tg === f.grade) matched.add('grade');
+        const tc = t.replace('반', '');
+        if (tc && f.cls && tc === f.cls) matched.add('class');
+        if (td.length >= 2 && ((f.phoneG && f.phoneG.includes(td)) || (f.phoneS && f.phoneS.includes(td)))) {
+          matched.add('phone'); // 전화는 숫자만, 뒷자리 부분일치 포함
+        }
+      }
+      return matched;
+    }
+
+    const out = [];
+    for (const r of reps.values()) {
+      const matched = evalRow(r);
+      if (matched.size < 1) continue;
+      out.push({
+        student_name: r.student_name || '',
+        grade: r.grade == null ? null : r.grade,
+        class_no: r.class_no == null ? null : r.class_no,
+        guardian_name: r.guardian_name || '',
+        phone_masked: maskPhone(r.guardian_phone),       // 목록 노출용
+        phone_raw: normalizeMobile(r.guardian_phone) || (r.guardian_phone || ''), // 선택 시 자동입력용
+        matched: [...matched],
+        score: matched.size,                             // 최대 5 (이름/전화/학년/반/보호자)
+        last_applied_at: r.submitted_at || null,
+      });
+    }
+    // score 높은 순, 동점이면 최근 신청 순.
+    out.sort((a, b) => b.score - a.score ||
+      String(b.last_applied_at || '').localeCompare(String(a.last_applied_at || '')));
+    res.json({ ok: true, data: out.slice(0, 15) });
+  } catch (err) {
+    console.error('[GET /api/applicants/search]', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

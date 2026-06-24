@@ -381,6 +381,11 @@
 <div class="dialog-mask" id="applicant-dialog">
   <div class="dialog">
     <h2 id="applicant-dialog-title">신청자 추가</h2>
+    <div id="applicant-search" class="app-search">
+      <label class="app-search-label">학생 찾기 <span class="muted">(이름 / 전화 뒷자리 등 — 과거 신청 기록)</span></label>
+      <input type="text" id="applicant-search-input" autocomplete="off" placeholder="예: 김민준 · 7559 · 김민준 5반">
+      <div id="applicant-search-results" class="app-search-results" hidden></div>
+    </div>
     <form id="applicant-form">
       <div class="form-grid">
         <label>프로그램</label>

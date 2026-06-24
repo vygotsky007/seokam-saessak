@@ -641,3 +641,56 @@ tbody tr:hover { background: #F8FAFC; }
 .rv-mod-photo img { width: 100%; max-height: 180px; object-fit: cover; display: block; }
 .rv-mod-phototag { position: absolute; left: 6px; bottom: 6px; font-size: 10.5px; font-weight: 700; color: #fff; background: rgba(15,23,42,.66); border-radius: 999px; padding: 1px 7px; }
 .rv-mod-actions { display: flex; gap: 6px; margin-top: 8px; }
+
+/* === 신청자 추가: 과거기록 자동완성 검색 === */
+.app-search {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  background: #F8FAFC;
+}
+.app-search-label { display: block; font-size: 12.5px; font-weight: 700; margin-bottom: 6px; color: var(--ink, #111827); }
+.app-search-label .muted { font-weight: 400; color: var(--muted, #6b7280); }
+.app-search input {
+  width: 100%;
+  height: 38px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 14px;
+}
+.app-search input:focus { outline: none; border-color: var(--primary, #0EA5E9); }
+.app-search-results {
+  margin-top: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.app-search-empty { font-size: 12.5px; color: var(--muted, #6b7280); padding: 6px 2px; }
+.cand {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border, #e5e7eb);
+  background: #fff;
+  border-radius: 9px;
+  padding: 8px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.cand:hover { border-color: var(--primary, #0EA5E9); background: #F0F9FF; }
+.cand-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.cand-name { font-size: 14px; font-weight: 700; color: var(--ink, #111827); }
+.cand-sub { font-size: 12px; color: var(--muted, #6b7280); }
+.cand-tags { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.mtag { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; line-height: 1.7; }
+.mtag.on  { color: #075985; background: #E0F2FE; }
+.mtag.off { color: #9ca3af; background: #f1f5f9; }
+.cand-score { margin-left: auto; font-size: 11px; font-weight: 800; color: #0369a1; background: #e0f2fe; border-radius: 999px; padding: 1px 9px; }
+/* 자동완성으로 채운 입력칸 강조(옅은 파랑). 사용자가 수정하면 제거됨. */
+.dialog .form-grid input.autofilled,
+.dialog .form-grid select.autofilled { background: #EFF6FF; border-color: #BFDBFE; }

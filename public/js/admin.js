@@ -1314,6 +1314,9 @@
       form.is_multicultural.checked = false;
     }
     updateAppMcVisibility();
+    // 자동완성: 강조 초기화 + 추가 모드에서만 검색칸 노출.
+    form.querySelectorAll('.autofilled').forEach(el => el.classList.remove('autofilled'));
+    resetApplicantSearch(!id);
     dlg.classList.add('open');
   }
 
@@ -1350,6 +1353,123 @@
       if (currentProgramId) await loadApplications(currentProgramId);
     } catch (err) { toast(err.message); }
   });
+
+  // ===== 신청자 추가: 과거 신청 기록 기반 자동완성 =====
+  const appSearchInput = $('#applicant-search-input');
+  const appSearchResults = $('#applicant-search-results');
+  let appSearchCands = [];
+  let appSearchTimer = null;
+  let appSearchSeq = 0;
+
+  const MATCH_LABEL = { name: '이름', phone: '전화', grade: '학년', class: '반', guardian: '보호자' };
+  const MATCH_ORDER = ['name', 'phone', 'grade', 'class', 'guardian'];
+
+  function setAutofilled(el, on) {
+    if (!el) return;
+    el.classList.toggle('autofilled', !!on);
+  }
+
+  // 검색칸 노출/초기화. show=true(추가 모드)일 때만 보인다.
+  function resetApplicantSearch(show) {
+    appSearchCands = [];
+    if (appSearchInput) appSearchInput.value = '';
+    if (appSearchResults) { appSearchResults.innerHTML = ''; appSearchResults.hidden = true; }
+    const box = $('#applicant-search');
+    if (box) box.hidden = !show;
+  }
+
+  function renderAppCandidates(list) {
+    appSearchCands = list || [];
+    if (!appSearchCands.length) {
+      appSearchResults.innerHTML = '<div class="app-search-empty">일치하는 과거 신청 기록이 없어요. 아래에 직접 입력하세요.</div>';
+      appSearchResults.hidden = false;
+      return;
+    }
+    appSearchResults.innerHTML = appSearchCands.map((c, i) => {
+      const set = new Set(c.matched || []);
+      // 맞은 항목은 파란 "X 일치", 안 맞은 항목은 회색 "X?".
+      const tags = MATCH_ORDER.map(k => set.has(k)
+        ? `<span class="mtag on">${MATCH_LABEL[k]} 일치</span>`
+        : `<span class="mtag off">${MATCH_LABEL[k]}?</span>`).join('');
+      const gradeCls = (c.grade != null ? c.grade + '학년' : '학년?') + ' ' + (c.class_no != null ? c.class_no + '반' : '반?');
+      const guardian = c.guardian_name ? esc(c.guardian_name) : '보호자 미상';
+      const phone = c.phone_masked ? esc(c.phone_masked) : '연락처 없음';
+      return `<button type="button" class="cand" data-cand="${i}">`
+        + `<div class="cand-top"><span class="cand-name">${esc(c.student_name || '')}</span>`
+        + `<span class="cand-sub">${esc(gradeCls)} · 보호자 ${guardian} · ${phone}</span></div>`
+        + `<div class="cand-tags">${tags}<span class="cand-score">${Number(c.score) || 0}/5 일치</span></div>`
+        + `</button>`;
+    }).join('');
+    appSearchResults.hidden = false;
+    appSearchResults.querySelectorAll('[data-cand]').forEach(el => {
+      el.addEventListener('click', () => applyCandidate(appSearchCands[Number(el.dataset.cand)]));
+    });
+  }
+
+  // 후보 선택 → 폼 자동 채움(자동 채운 칸은 옅은 파랑). 값은 사용자가 자유롭게 수정 가능.
+  function applyCandidate(c) {
+    if (!c) return;
+    const form = $('#applicant-form');
+    form.student_name.value = c.student_name || '';
+    setAutofilled(form.student_name, !!c.student_name);
+    // 학년/반 select 채우기(반은 학년에 따라 옵션이 달라지므로 순서대로).
+    fillAppGradeOptions(c.grade != null ? c.grade : '');
+    fillAppClassOptions(c.grade != null ? c.grade : '', c.class_no != null ? c.class_no : '');
+    setAutofilled($('#app-grade-select'), c.grade != null);
+    setAutofilled($('#app-class-select'), c.class_no != null);
+    form.guardian_name.value = c.guardian_name || '';
+    setAutofilled(form.guardian_name, !!c.guardian_name);
+    form.guardian_phone.value = c.phone_raw || '';   // 전체 번호 자동입력
+    setAutofilled(form.guardian_phone, !!c.phone_raw);
+    // 신청동기·다문화는 비움, 프로그램/상태는 현재 선택값 유지.
+    form.motivation.value = '';
+    form.is_multicultural.checked = false;
+    appSearchResults.hidden = true;
+    appSearchResults.innerHTML = '';
+    appSearchInput.value = c.student_name || '';
+    toast('자동 채움 완료 — 필요하면 수정하세요');
+  }
+
+  if (appSearchInput) {
+    appSearchInput.addEventListener('input', () => {
+      const q = appSearchInput.value.trim();
+      clearTimeout(appSearchTimer);
+      if (q.length < 1) { appSearchResults.hidden = true; appSearchResults.innerHTML = ''; return; }
+      appSearchTimer = setTimeout(async () => {
+        const seq = ++appSearchSeq;
+        try {
+          const res = await fetch('/api/applicants/search?q=' + encodeURIComponent(q),
+            { headers: { 'Content-Type': 'application/json' } });
+          if (seq !== appSearchSeq) return; // 늦게 도착한 응답 무시
+          if (res.status === 401 || res.status === 403) {
+            appSearchResults.innerHTML = '<div class="app-search-empty">권한이 없어 검색할 수 없습니다.</div>';
+            appSearchResults.hidden = false; return;
+          }
+          const j = await res.json().catch(() => ({ ok: false }));
+          if (!j.ok) {
+            appSearchResults.innerHTML = '<div class="app-search-empty">검색 오류</div>';
+            appSearchResults.hidden = false; return;
+          }
+          renderAppCandidates(j.data || []);
+        } catch (e) {
+          if (seq !== appSearchSeq) return;
+          appSearchResults.innerHTML = '<div class="app-search-empty">검색 중 오류가 발생했습니다.</div>';
+          appSearchResults.hidden = false;
+        }
+      }, 280);
+    });
+  }
+
+  // 자동완성으로 채운 칸을 사용자가 수정하면 강조 해제(반 오기입 교정 등).
+  ['student_name', 'guardian_name', 'guardian_phone'].forEach(nm => {
+    const el = $('#applicant-form')[nm];
+    if (el) el.addEventListener('input', () => setAutofilled(el, false));
+  });
+  $('#app-grade-select').addEventListener('change', () => {
+    setAutofilled($('#app-grade-select'), false);
+    setAutofilled($('#app-class-select'), false);
+  });
+  $('#app-class-select').addEventListener('change', () => setAutofilled($('#app-class-select'), false));
 
   // Copy
   function openCopyDialog(id) {
