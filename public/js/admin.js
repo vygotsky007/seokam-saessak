@@ -1868,6 +1868,44 @@ th { color:#2E7D32; font-weight:800; background:#F1F8E9; }
   bindExportTargetToggles();
   $('#exp-saessak')?.addEventListener('change', syncExportUi);
 
+  // 엑셀 다운로드는 fetch→blob→anchor 로 처리한다.
+  // location.href 로 받으면 상단 프레임이 내비게이션돼 SPA 상태(드롭다운 선택·체크)가 풀리고,
+  // 에러 응답(400/403/500 JSON)일 땐 그 JSON 페이지로 이동해버린다. blob 방식은 내비게이션이 없어
+  // 선택·체크 상태가 그대로 유지되고, 한 번에 다운로드되며, 에러는 toast 로 표시된다.
+  async function downloadExportFile(url) {
+    const btn = $('#export-btn');
+    const prevText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '다운로드 중…';
+    try {
+      const res = await fetch(url, { credentials: 'same-origin' });
+      if (!res.ok) {
+        let msg = `다운로드 실패 (${res.status})`;
+        try { const j = await res.json(); if (j && j.error) msg = j.error; } catch (_) {}
+        toast(msg);
+        return;
+      }
+      const blob = await res.blob();
+      // 서버가 준 Content-Disposition 의 파일명을 그대로 사용(없으면 기본명).
+      const cd = res.headers.get('Content-Disposition') || '';
+      const m = cd.match(/filename\*?=(?:UTF-8'')?"?([^"';]+)"?/i);
+      const fname = m ? decodeURIComponent(m[1]) : `saessak_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objUrl;
+      a.download = fname;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(objUrl), 1500);
+    } catch (err) {
+      toast('다운로드 중 오류: ' + (err && err.message ? err.message : err));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = prevText;
+    }
+  }
+
   $('#export-btn').addEventListener('click', () => {
     const pid = $('#export-program').value;
     const saessak = $('#exp-saessak').checked;
@@ -1898,7 +1936,7 @@ th { color:#2E7D32; font-weight:800; background:#F1F8E9; }
       if (include.length) params.set('include', include.join(','));
     }
     const url = API + '/export' + (params.toString() ? '?' + params.toString() : '');
-    location.href = url;
+    downloadExportFile(url);
   });
 
   // ===== 일정 달력 탭 (보기 전용) =====
