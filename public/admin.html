@@ -271,20 +271,41 @@
   <section class="tab-pane" id="pane-export" hidden>
     <div class="panel">
       <h3 style="font-size:15px; margin-bottom:10px;">엑셀 명단 내보내기</h3>
-      <p class="muted" style="margin-bottom:14px;">프로그램별 시트로 저장됩니다. 선정자만 받기 옵션을 켜면 status='selected' 필터가 적용됩니다.<br><b>새싹용</b>은 KOFAC 공식 등록양식으로 출력하며, 업로드 단위가 프로그램 1개라 <b>대상에서 프로그램을 1개 선택</b>해야 합니다(전체는 프로그램별로 따로 받으세요).</p>
-      <div class="row" style="margin-bottom:12px;">
-        <label class="row">
-          대상:
+      <p class="muted" style="margin-bottom:14px;">프로그램별 시트로 저장됩니다. 대상 필터 → 정렬 → 포함 컬럼 순으로 적용됩니다.<br><b>새싹 업로드용</b>은 KOFAC 공식 등록양식 그대로 출력하며, 업로드 단위가 프로그램 1개라 <b>프로그램을 1개 선택</b>해야 합니다(전체는 프로그램별로 따로 받으세요).</p>
+
+      <div class="export-options">
+        <div class="export-block">
+          <div class="export-block-title">대상 프로그램</div>
           <select id="export-program" class="select"></select>
-        </label>
-        <label class="row">
-          <input type="checkbox" id="export-only-selected"> 선정자만
-        </label>
-        <label class="row">
-          <input type="checkbox" id="export-saessak"> 새싹용
-        </label>
+        </div>
+
+        <div class="export-block">
+          <div class="export-block-title">대상 <span class="muted">(다중 선택)</span></div>
+          <label class="export-chk"><input type="checkbox" id="exp-t-all" checked> 전체</label>
+          <label class="export-chk"><input type="checkbox" id="exp-t-selected"> 선정자만</label>
+          <label class="export-chk"><input type="checkbox" id="exp-t-exclude-cancel"> 취소 제외</label>
+          <label class="export-chk"><input type="checkbox" id="exp-t-multi"> 다문화만</label>
+        </div>
+
+        <div class="export-block" id="exp-sort-block">
+          <div class="export-block-title">정렬 기준 <span class="muted">(택1)</span></div>
+          <label class="export-chk"><input type="radio" name="exp-sort" value="grade_class" checked> 학년·반순</label>
+          <label class="export-chk"><input type="radio" name="exp-sort" value="positive"> 긍정평가 많은 순</label>
+          <label class="export-chk"><input type="radio" name="exp-sort" value="name"> 이름 가나다순</label>
+          <label class="export-chk"><input type="radio" name="exp-sort" value="submitted"> 신청 순서</label>
+        </div>
+
+        <div class="export-block">
+          <div class="export-block-title">형식 / 포함 <span class="muted">(다중 선택)</span></div>
+          <label class="export-chk"><input type="checkbox" id="exp-saessak"> 새싹 업로드용</label>
+          <label class="export-chk inc"><input type="checkbox" id="exp-inc-contact"> 연락처 포함</label>
+          <label class="export-chk inc"><input type="checkbox" id="exp-inc-motivation"> 신청동기 포함</label>
+          <label class="export-chk inc"><input type="checkbox" id="exp-inc-eval"> 평가기록 포함</label>
+        </div>
       </div>
-      <button class="btn primary" id="export-btn">엑셀 다운로드</button>
+
+      <p class="muted" id="exp-saessak-note" hidden style="margin:10px 0 0;">※ 새싹 업로드용은 KOFAC 공식 양식을 그대로 출력합니다. 정렬·포함 옵션은 적용되지 않습니다.</p>
+      <button class="btn primary" id="export-btn" style="margin-top:14px;">엑셀 다운로드</button>
     </div>
   </section>
 </div>

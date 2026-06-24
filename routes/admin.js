@@ -1471,11 +1471,43 @@ async function buildSaessakXlsxBuffer(rows) {
   return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
 }
 
+// 내보내기 정렬 비교자 — 학년 오름차순 → 반 오름차순 → 이름 가나다(동점 안정화).
+// (학년/반 null 은 맨 뒤로 보낸다.)
+function cmpGradeClass(a, b) {
+  return (a.grade ?? 99) - (b.grade ?? 99)
+      || (a.class_no ?? 999) - (b.class_no ?? 999)
+      || String(a.student_name || '').localeCompare(String(b.student_name || ''), 'ko');
+}
+
+// 학생 기록(student_notes) 매칭 키: 이름+학년+반(동명이인 안전). student-board 의 기준과 동일.
+function exportNoteKey(name, grade, classNo) {
+  return `${String(name || '').trim()}|${grade ?? ''}|${classNo ?? ''}`;
+}
+
 router.get('/export', async (req, res) => {
+  // 내보내기/연락처·평가 등 민감정보 포함은 관리자 전용. requireAdmin 으로 이미 게이트되지만,
+  // 요구사항(서버 403)에 맞춰 본 엔드포인트에서도 명시적으로 403 을 반환한다.
+  if (!(req.session && req.session.isAdmin === true)) {
+    return res.status(403).json({ ok: false, error: '관리자 전용 기능입니다.' });
+  }
   try {
     const { program_id, only_selected, saessak } = req.query;
     const isSaessak = saessak === '1' || saessak === 'true';
 
+    // 대상(다중): 전체 / 선정자만(selected) / 취소 제외(exclude_cancel) / 다문화만(multi). AND 결합.
+    const targetSet = new Set(String(req.query.targets || '').split(',').map(s => s.trim()).filter(Boolean));
+    if (only_selected === '1' || only_selected === 'true') targetSet.add('selected'); // 구버전 파라미터 호환
+
+    // 정렬 기준(택1): grade_class(학년·반순) | positive(긍정평가순) | name(가나다) | submitted(신청순).
+    const sort = String(req.query.sort || '').trim();
+
+    // 형식/포함(다중): contact(연락처) | motivation(신청동기) | eval(평가기록). 모두 관리자 전용(위 403).
+    const includeSet = new Set(String(req.query.include || '').split(',').map(s => s.trim()).filter(Boolean));
+    const incContact = includeSet.has('contact');
+    const incMotivation = includeSet.has('motivation');
+    const incEval = includeSet.has('eval');
+
+    // 기본 정렬은 program_id → display_order → 접수시각(기존 동작). 그룹 내 재정렬은 아래 sortRows 가 처리.
     let appQ = supabase
       .from('saessak_applications')
       .select('*, program:saessak_programs(*)')
@@ -1483,14 +1515,60 @@ router.get('/export', async (req, res) => {
       .order('display_order', { ascending: true, nullsFirst: false })
       .order('submitted_at', { ascending: true });
     if (program_id) appQ = appQ.eq('program_id', program_id);
-    if (only_selected === '1' || only_selected === 'true') {
-      appQ = appQ.eq('status', 'selected');
-    }
     const { data, error } = await appQ;
     if (error) throw error;
 
+    // 대상 필터 적용(AND). '전체'는 무필터(아무 것도 안 좁힘).
+    let rowsAll = data || [];
+    if (targetSet.has('selected')) rowsAll = rowsAll.filter(r => r.status === 'selected');
+    if (targetSet.has('exclude_cancel')) rowsAll = rowsAll.filter(r => r.status !== 'cancelled');
+    if (targetSet.has('multi')) rowsAll = rowsAll.filter(r => r.is_multicultural);
+
+    // 긍정평가순 정렬 또는 평가기록 포함 시에만 student_notes 를 읽어 점수표 구성.
+    // 점수 = 긍정 개수 − 부정 개수(내림차순). 동점이면 긍정 개수 많은 순, 그래도 동점이면 학년·반순.
+    // 긍정/부정 매핑은 코드 기존 정의(NOTE_TYPE_POLARITY)를 따른다:
+    //   우수·적극참여·칭찬 = 긍정, 노쇼·태도 = 부정, 기타 = 중립.
+    const scoreByKey = new Map();
+    const needNotes = sort === 'positive' || incEval;
+    if (needNotes) {
+      const { data: notes, error: nErr } = await supabase
+        .from('student_notes')
+        .select('student_name, grade, class_no, note_type, polarity, content, created_at');
+      if (nErr) throw nErr;
+      (notes || []).forEach(n => {
+        const key = exportNoteKey(n.student_name, n.grade, n.class_no);
+        let e = scoreByKey.get(key);
+        if (!e) { e = { pos: 0, neg: 0, neu: 0, notes: [] }; scoreByKey.set(key, e); }
+        const pol = notePolarity(n);
+        if (pol === '긍정') e.pos++; else if (pol === '부정') e.neg++; else e.neu++;
+        e.notes.push(n);
+      });
+    }
+    const scoreOf = (r) => scoreByKey.get(exportNoteKey(r.student_name, r.grade, r.class_no))
+      || { pos: 0, neg: 0, neu: 0, notes: [] };
+
+    function sortRows(rows) {
+      if (sort === 'grade_class') return rows.slice().sort(cmpGradeClass);
+      if (sort === 'name') {
+        return rows.slice().sort((a, b) =>
+          String(a.student_name || '').localeCompare(String(b.student_name || ''), 'ko') || cmpGradeClass(a, b));
+      }
+      if (sort === 'submitted') {
+        return rows.slice().sort((a, b) => String(a.submitted_at || '').localeCompare(String(b.submitted_at || '')));
+      }
+      if (sort === 'positive') {
+        return rows.slice().sort((a, b) => {
+          const sa = scoreOf(a), sb = scoreOf(b);
+          return (sb.pos - sb.neg) - (sa.pos - sa.neg) || (sb.pos - sa.pos) || cmpGradeClass(a, b);
+        });
+      }
+      return rows; // 기본: 쿼리 순서 유지
+    }
+
     // ===== 새싹(KOFAC) 등록양식: 공식 양식 zip의 XML만 최소 수정해 내보내기 =====
     // KOFAC 업로드 단위는 "프로그램 1개"라서 특정 프로그램 선택만 지원(전체는 프로그램별로 따로).
+    // 공식 양식은 컬럼/순서가 고정이라 새싹용은 양식을 100% 그대로 출력한다.
+    // → 연락처/신청동기/평가기록 포함, 정렬 옵션은 새싹용엔 적용하지 않는다(클라에서도 비활성화).
     if (isSaessak) {
       if (!program_id) {
         return res.status(400).json({
@@ -1498,10 +1576,10 @@ router.get('/export', async (req, res) => {
           error: '새싹용은 프로그램을 1개 선택해 받아주세요. 전체는 프로그램별로 따로 받으세요.',
         });
       }
-      // 취소(cancelled) 제외. 다문화 판정은 기존 is_multicultural 플래그 재사용.
-      const rows = (data || []).filter(r => r.status !== 'cancelled');
+      // 취소(cancelled) 제외(KOFAC). 다문화 판정은 기존 is_multicultural 플래그 재사용.
+      const rows = rowsAll.filter(r => r.status !== 'cancelled');
       const buf = await buildSaessakXlsxBuffer(rows);
-      const fname = `saessak_kofac_${only_selected ? 'selected_' : ''}${new Date().toISOString().slice(0,10)}.xlsx`;
+      const fname = `saessak_kofac_${targetSet.has('selected') ? 'selected_' : ''}${new Date().toISOString().slice(0,10)}.xlsx`;
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
       return res.send(Buffer.from(buf));
@@ -1512,11 +1590,44 @@ router.get('/export', async (req, res) => {
     wb.created = new Date();
 
     const grouped = {};
-    (data || []).forEach(row => {
+    rowsAll.forEach(row => {
       const pid = row.program_id;
       if (!grouped[pid]) grouped[pid] = { title: row.program ? row.program.title : '미상', rows: [] };
       grouped[pid].rows.push(row);
     });
+
+    // 포함 옵션에 따라 컬럼 구성(대상 필터 → 정렬 → 포함 컬럼 순으로 적용).
+    const baseCols = [
+      { header: '번호', key: 'no', width: 6 },
+      { header: '학생이름', key: 'student_name', width: 12 },
+      { header: '학년', key: 'grade', width: 6 },
+      { header: '반', key: 'class_no', width: 6 },
+      { header: '보호자', key: 'guardian_name', width: 12 },
+      { header: '상태', key: 'status', width: 10 },
+      { header: '경로', key: 'source', width: 8 },
+      { header: '프로그램유형', key: 'program_type', width: 12 },
+      { header: '다문화여부', key: 'is_multicultural', width: 10 },
+      { header: '형제묶음ID', key: 'sibling_group_id', width: 36 },
+    ];
+    const contactCols = [
+      { header: '보호자연락처', key: 'guardian_phone', width: 16 },
+      { header: '학생연락처', key: 'student_phone', width: 16 },
+    ];
+    const motivationCols = [{ header: '신청동기', key: 'motivation', width: 36 }];
+    const evalCols = [
+      { header: '긍정평가수', key: 'eval_pos', width: 10 },
+      { header: '부정평가수', key: 'eval_neg', width: 10 },
+      { header: '평가점수', key: 'eval_score', width: 10 },
+      { header: '평가내용', key: 'eval_notes', width: 44 },
+    ];
+    const submittedCol = [{ header: '접수시각', key: 'submitted_at', width: 22 }];
+    const columns = [
+      ...baseCols,
+      ...(incContact ? contactCols : []),
+      ...(incMotivation ? motivationCols : []),
+      ...(incEval ? evalCols : []),
+      ...submittedCol,
+    ];
 
     if (Object.keys(grouped).length === 0) {
       const ws = wb.addWorksheet('명단');
@@ -1526,46 +1637,45 @@ router.get('/export', async (req, res) => {
         const g = grouped[pid];
         const safe = g.title.replace(/[\\/?*\[\]:]/g, '_').slice(0, 28) || `프로그램${idx + 1}`;
         const ws = wb.addWorksheet(safe);
-        ws.columns = [
-          { header: '번호', key: 'no', width: 6 },
-          { header: '학생이름', key: 'student_name', width: 12 },
-          { header: '학년', key: 'grade', width: 6 },
-          { header: '반', key: 'class_no', width: 6 },
-          { header: '보호자', key: 'guardian_name', width: 12 },
-          { header: '보호자연락처', key: 'guardian_phone', width: 16 },
-          { header: '학생연락처', key: 'student_phone', width: 16 },
-          { header: '상태', key: 'status', width: 10 },
-          { header: '경로', key: 'source', width: 8 },
-          { header: '프로그램유형', key: 'program_type', width: 12 },
-          { header: '다문화여부', key: 'is_multicultural', width: 10 },
-          { header: '형제묶음ID', key: 'sibling_group_id', width: 36 },
-          { header: '문의사항', key: 'motivation', width: 36 },
-          { header: '접수시각', key: 'submitted_at', width: 22 },
-        ];
+        ws.columns = columns;
         ws.getRow(1).font = { bold: true };
-        g.rows.forEach((r, i) => {
-          ws.addRow({
+        sortRows(g.rows).forEach((r, i) => {
+          const row = {
             no: i + 1,
             student_name: r.student_name,
             grade: r.grade,
             class_no: r.class_no,
             guardian_name: r.guardian_name,
-            guardian_phone: r.guardian_phone,
-            student_phone: r.student_phone,
             status: statusLabel(r.status),
             source: r.source === 'manual' ? '수동' : '온라인',
             program_type: programTypeLabel(r.program ? r.program.program_type : null),
             is_multicultural: r.is_multicultural ? 'O' : '',
             sibling_group_id: r.sibling_group_id || '',
-            motivation: r.motivation,
             submitted_at: r.submitted_at ? new Date(r.submitted_at).toLocaleString('ko-KR') : '',
-          });
+          };
+          if (incContact) {
+            row.guardian_phone = r.guardian_phone;
+            row.student_phone = r.student_phone;
+          }
+          if (incMotivation) row.motivation = r.motivation;
+          if (incEval) {
+            const s = scoreOf(r);
+            row.eval_pos = s.pos;
+            row.eval_neg = s.neg;
+            row.eval_score = s.pos - s.neg;
+            row.eval_notes = s.notes
+              .slice()
+              .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')))
+              .map(n => `${notePolarity(n)}:${n.note_type}${n.content ? '(' + n.content + ')' : ''}`)
+              .join(' / ');
+          }
+          ws.addRow(row);
         });
       });
     }
 
     const buf = await wb.xlsx.writeBuffer();
-    const fname = `saessak_${only_selected ? 'selected_' : ''}${new Date().toISOString().slice(0,10)}.xlsx`;
+    const fname = `saessak_${targetSet.has('selected') ? 'selected_' : ''}${new Date().toISOString().slice(0,10)}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
     res.send(Buffer.from(buf));

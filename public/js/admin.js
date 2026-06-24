@@ -33,6 +33,14 @@
     return `<span class="badge ${s.cls}">${s.label}</span>`;
   }
 
+  // 프로그램 드롭다운 정렬 순위: 모집중 → 모집완료(마감→종료) → 모집예정 → 숨김.
+  // ('모집완료'는 마감(full)·종료(closed) 둘 다 포함. 같은 그룹은 원래 순서 유지 = 안정 정렬.)
+  const RECRUIT_SORT_RANK = { recruiting: 0, full: 1, closed: 2, upcoming: 3, hidden: 4 };
+  function sortByRecruit(list) {
+    return list.slice().sort((a, b) =>
+      (RECRUIT_SORT_RANK[recruitStatusOf(a)] ?? 9) - (RECRUIT_SORT_RANK[recruitStatusOf(b)] ?? 9));
+  }
+
   let programs = [];
   let applications = [];
   let currentTab = 'dashboard';
@@ -966,10 +974,11 @@
       if (programs.length === 0) {
         sel.innerHTML = '<option value="">— 등록된 프로그램이 없습니다 —</option>';
       } else {
-        const stateEmoji = { recruiting: '🟢', upcoming: '🔴', closed: '⚫', hidden: '⚪' };
+        const stateEmoji = { recruiting: '🟢', upcoming: '🔴', full: '🟠', closed: '⚫', hidden: '⚪' };
+        // 모집중 → 모집완료 → 모집예정 순으로 정렬(색 점은 그대로). '전체 보기'는 맨 위 고정.
         sel.innerHTML = '<option value="">— 프로그램 선택 —</option>' +
           `<option value="${ALL_PROGRAMS}" ${currentProgramId === ALL_PROGRAMS ? 'selected' : ''}>📋 전체 보기</option>` +
-          programs.map(p => {
+          sortByRecruit(programs).map(p => {
             const tag = stateEmoji[recruitStatusOf(p)] || '⚪';
             return `<option value="${p.id}" ${p.id === currentProgramId ? 'selected' : ''}>${tag} ${esc(p.title)} (${p.applied_count}/${p.capacity})</option>`;
           }).join('');
@@ -1825,16 +1834,43 @@ th { color:#2E7D32; font-weight:800; background:#F1F8E9; }
 
   // ===== Export =====
   async function loadExportTab() {
-    // 내보내기도 매번 fresh fetch (캐시 stale 방지).
+    // 내보내기도 매번 fresh fetch (캐시 stale 방지). 프로그램 옵션도 모집상태 순으로 정렬.
     try { const j = await api('/programs'); programs = j.data || []; } catch (err) { toast(err.message); }
     $('#export-program').innerHTML =
       '<option value="">전체 프로그램</option>' +
-      programs.map(p => `<option value="${p.id}">${esc(p.title)}</option>`).join('');
+      sortByRecruit(programs).map(p => `<option value="${p.id}">${esc(p.title)}</option>`).join('');
+    syncExportUi();
   }
+
+  // 대상 체크박스: '전체'와 나머지(선정자만/취소제외/다문화)는 상호배타. 전체 ↔ 세부필터 토글.
+  function bindExportTargetToggles() {
+    const all = $('#exp-t-all');
+    const subs = ['#exp-t-selected', '#exp-t-exclude-cancel', '#exp-t-multi'].map(s => $(s));
+    all.addEventListener('change', () => {
+      if (all.checked) subs.forEach(c => { c.checked = false; });
+      else if (!subs.some(c => c.checked)) all.checked = true; // 최소 하나는 유지
+    });
+    subs.forEach(c => c.addEventListener('change', () => {
+      if (subs.some(x => x.checked)) all.checked = false;
+      else all.checked = true;
+    }));
+  }
+  // 새싹 업로드용 선택 시 정렬·포함 옵션 비활성화(KOFAC 고정 양식). 해제 시 복구.
+  function syncExportUi() {
+    const saessak = $('#exp-saessak')?.checked;
+    $('#exp-saessak-note').hidden = !saessak;
+    $$('#exp-sort-block input[name="exp-sort"]').forEach(r => { r.disabled = saessak; });
+    ['#exp-inc-contact', '#exp-inc-motivation', '#exp-inc-eval'].forEach(s => {
+      const el = $(s); if (el) el.disabled = saessak;
+    });
+    $('#exp-sort-block')?.classList.toggle('disabled', !!saessak);
+  }
+  bindExportTargetToggles();
+  $('#exp-saessak')?.addEventListener('change', syncExportUi);
+
   $('#export-btn').addEventListener('click', () => {
     const pid = $('#export-program').value;
-    const onlySel = $('#export-only-selected').checked;
-    const saessak = $('#export-saessak').checked;
+    const saessak = $('#exp-saessak').checked;
     // 새싹용은 KOFAC 업로드 단위(프로그램 1개)로만 출력. 전체는 프로그램별로 따로.
     if (saessak && !pid) {
       toast('새싹용은 프로그램을 1개 선택해 받아주세요. 전체는 프로그램별로 따로 받으세요.');
@@ -1842,8 +1878,25 @@ th { color:#2E7D32; font-weight:800; background:#F1F8E9; }
     }
     const params = new URLSearchParams();
     if (pid) params.set('program_id', pid);
-    if (onlySel) params.set('only_selected', '1');
-    if (saessak) params.set('saessak', '1');
+    if (saessak) {
+      params.set('saessak', '1');
+      // 새싹용도 대상 필터(선정자만/취소제외/다문화)는 적용 — 정렬·포함만 무시.
+    }
+    const targets = [];
+    if ($('#exp-t-selected').checked) targets.push('selected');
+    if ($('#exp-t-exclude-cancel').checked) targets.push('exclude_cancel');
+    if ($('#exp-t-multi').checked) targets.push('multi');
+    if (targets.length) params.set('targets', targets.join(','));
+
+    if (!saessak) {
+      const sort = document.querySelector('input[name="exp-sort"]:checked');
+      if (sort) params.set('sort', sort.value);
+      const include = [];
+      if ($('#exp-inc-contact').checked) include.push('contact');
+      if ($('#exp-inc-motivation').checked) include.push('motivation');
+      if ($('#exp-inc-eval').checked) include.push('eval');
+      if (include.length) params.set('include', include.join(','));
+    }
     const url = API + '/export' + (params.toString() ? '?' + params.toString() : '');
     location.href = url;
   });

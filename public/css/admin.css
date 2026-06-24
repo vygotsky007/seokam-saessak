@@ -694,3 +694,26 @@ tbody tr:hover { background: #F8FAFC; }
 /* 자동완성으로 채운 입력칸 강조(옅은 파랑). 사용자가 수정하면 제거됨. */
 .dialog .form-grid input.autofilled,
 .dialog .form-grid select.autofilled { background: #EFF6FF; border-color: #BFDBFE; }
+
+/* ===== 내보내기 옵션 패널 ===== */
+.export-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+.export-block {
+  border: 1px solid #E0EAE0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fafdf8;
+}
+.export-block.disabled { opacity: .45; }
+.export-block-title { font-weight: 800; color: #2E7D32; font-size: 13px; margin-bottom: 8px; }
+.export-chk {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13.5px; padding: 3px 0; cursor: pointer;
+}
+.export-chk input[type="checkbox"]:disabled,
+.export-block.disabled input { cursor: not-allowed; }
+.export-block #export-program { width: 100%; }
