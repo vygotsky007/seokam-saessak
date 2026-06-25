@@ -37,11 +37,13 @@ const supabaseAdmin = createClient(
 );
 
 const REVIEW_PHOTO_BUCKET = 'review-photos';
+// 증서(확인증·이수증) 로고/마스코트 등 학교 단위 자산. public read.
+const CERT_ASSETS_BUCKET = 'cert-assets';
 
-// 'review-photos' 버킷이 없으면 서비스 키로 생성(public read). 있으면 통과.
-async function ensureReviewBucket() {
+// 지정 버킷이 없으면 서비스 키로 생성(public read). 있으면 통과. (review-photos / cert-assets 공용)
+async function ensureBucket(bucketName, label) {
   if (!HAS_SERVICE_KEY) {
-    console.warn('⚠️  [storage] 서비스 롤 키가 없어 후기 사진 업로드가 동작하지 않습니다.');
+    console.warn(`⚠️  [storage] 서비스 롤 키가 없어 ${label} 업로드가 동작하지 않습니다.`);
     console.warn('    → Railway Variables 에 SUPABASE_SERVICE_ROLE_KEY (Supabase service_role 키)를 설정하세요.');
     return;
   }
@@ -51,27 +53,55 @@ async function ensureReviewBucket() {
       console.error(`⚠️  [storage] 버킷 목록 조회 실패: ${listErr.message}`);
       return;
     }
-    if ((buckets || []).some(b => b.name === REVIEW_PHOTO_BUCKET)) {
-      console.log(`✅ [storage] '${REVIEW_PHOTO_BUCKET}' 버킷 확인됨`);
+    if ((buckets || []).some(b => b.name === bucketName)) {
+      console.log(`✅ [storage] '${bucketName}' 버킷 확인됨`);
       return;
     }
-    const { error: createErr } = await supabaseAdmin.storage.createBucket(REVIEW_PHOTO_BUCKET, {
+    const { error: createErr } = await supabaseAdmin.storage.createBucket(bucketName, {
       public: true,
     });
     if (createErr) {
-      console.error(`⚠️  [storage] '${REVIEW_PHOTO_BUCKET}' 버킷 생성 실패: ${createErr.message}`);
+      console.error(`⚠️  [storage] '${bucketName}' 버킷 생성 실패: ${createErr.message}`);
       return;
     }
-    console.log(`✅ [storage] '${REVIEW_PHOTO_BUCKET}' 버킷 생성됨 (public read)`);
+    console.log(`✅ [storage] '${bucketName}' 버킷 생성됨 (public read)`);
   } catch (e) {
     console.error(`⚠️  [storage] 버킷 준비 중 오류: ${e.message}`);
   }
+}
+
+async function ensureReviewBucket() { return ensureBucket(REVIEW_PHOTO_BUCKET, '후기 사진'); }
+async function ensureCertAssetsBucket() { return ensureBucket(CERT_ASSETS_BUCKET, '증서 로고/이미지'); }
+
+const crypto = require('crypto');
+// 증서 로고/마스코트 업로드: 클라이언트가 보낸 dataURL(리사이즈·압축 완료)을 서비스 키로 cert-assets 버킷에 올린다.
+// 성공 시 public URL 반환. 형식 오류/용량 초과/서비스키 없음은 throw.
+async function uploadCertAsset(dataUrl) {
+  if (!HAS_SERVICE_KEY) throw new Error('서버에 서비스 롤 키가 없어 업로드할 수 없습니다.');
+  const m = /^data:(image\/(png|jpe?g|webp|svg\+xml));base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || '').trim());
+  if (!m) throw new Error('이미지 형식이 올바르지 않습니다.');
+  const contentType = m[1];
+  const ext = contentType === 'image/png' ? 'png'
+    : contentType === 'image/webp' ? 'webp'
+    : contentType === 'image/svg+xml' ? 'svg' : 'jpg';
+  const buffer = Buffer.from(m[3], 'base64');
+  if (buffer.length > 3 * 1024 * 1024) throw new Error('이미지 용량이 너무 큽니다.');
+  const filename = `logo/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabaseAdmin.storage
+    .from(CERT_ASSETS_BUCKET)
+    .upload(filename, buffer, { contentType, upsert: false });
+  if (error) throw error;
+  const { data } = supabaseAdmin.storage.from(CERT_ASSETS_BUCKET).getPublicUrl(filename);
+  return data.publicUrl;
 }
 
 supabase.admin = supabaseAdmin;
 supabase.hasServiceKey = HAS_SERVICE_KEY;
 supabase.serviceKeyVar = SERVICE_KEY_VAR;
 supabase.ensureReviewBucket = ensureReviewBucket;
+supabase.ensureCertAssetsBucket = ensureCertAssetsBucket;
+supabase.uploadCertAsset = uploadCertAsset;
 supabase.REVIEW_PHOTO_BUCKET = REVIEW_PHOTO_BUCKET;
+supabase.CERT_ASSETS_BUCKET = CERT_ASSETS_BUCKET;
 
 module.exports = supabase;

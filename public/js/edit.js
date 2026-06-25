@@ -822,11 +822,22 @@
       const j = await res.json().catch(() => ({ ok: false }));
       if (j.ok) certImages = j.value || null;
     } catch {}
+    // 증서 디자인 설정(템플릿/색/로고) 로드. 실패해도 출력.
+    let certConfig = null;
+    try {
+      const res = await fetch(API + '/app-settings/get', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: instructorPass, key: 'cert_config' }),
+      });
+      const j = await res.json().catch(() => ({ ok: false }));
+      if (j.ok) certConfig = j.value || null;
+    } catch {}
     window.SaessakCertificate.openDialog({
       groups: [{ program: currentProgram || {}, candidates: rosterRows }],
       defaultContact: (currentProgram && currentProgram.instructors) || '',
       stamps,
       certImages,
+      certConfig,
       // 공통 이미지 설정 저장(app_settings.cert_images · 비번 동봉)
       onSaveImages: async (value) => {
         const r = await fetch(API + '/app-settings/set', {
@@ -835,6 +846,25 @@
         });
         const rj = await r.json().catch(() => ({ ok: false, error: '응답 오류' }));
         if (!rj.ok) throw new Error(rj.error || '저장 실패');
+      },
+      // 증서 디자인 설정 저장(app_settings.cert_config · 비번 동봉)
+      onSaveConfig: async (value) => {
+        const r = await fetch(API + '/app-settings/set', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: instructorPass, key: 'cert_config', value }),
+        });
+        const rj = await r.json().catch(() => ({ ok: false, error: '응답 오류' }));
+        if (!rj.ok) throw new Error(rj.error || '저장 실패');
+      },
+      // 로고/마스코트 업로드(cert-assets 버킷 · 비번 동봉) → public URL
+      onUploadLogo: async (dataUrl) => {
+        const r = await fetch(API + '/cert-assets/upload', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: instructorPass, dataUrl }),
+        });
+        const rj = await r.json().catch(() => ({ ok: false, error: '응답 오류' }));
+        if (!rj.ok || !rj.url) throw new Error(rj.error || '업로드 실패');
+        return rj.url;
       },
       // 도장 찍기/취소 → 강사 API(비번 동봉) 호출 후 최신 목록 반환
       onToggleStamp: async (entry) => {

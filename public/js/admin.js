@@ -1236,14 +1236,28 @@
     // 확인증 공통 이미지(QR·로고) 설정 로드. 실패해도 확인증은 출력.
     let certImages = null;
     try { const j = await api('/app-settings/cert_images'); certImages = j.value || null; } catch {}
+    // 증서 디자인 설정(템플릿/색/로고) 로드. 실패해도 출력.
+    let certConfig = null;
+    try { const j = await api('/app-settings/cert_config'); certConfig = j.value || null; } catch {}
     window.SaessakCertificate.openDialog({
       groups,
       defaultContact: (firstProg && (firstProg.organization || firstProg.instructors)) || '',
       stamps,
       certImages,
+      certConfig,
       // 공통 이미지 설정 저장(app_settings.cert_images)
       onSaveImages: async (value) => {
         await api('/app-settings/cert_images', { method: 'PUT', body: JSON.stringify({ value }) });
+      },
+      // 증서 디자인 설정 저장(app_settings.cert_config)
+      onSaveConfig: async (value) => {
+        await api('/app-settings/cert_config', { method: 'PUT', body: JSON.stringify({ value }) });
+      },
+      // 로고/마스코트 업로드(cert-assets 버킷) → public URL
+      onUploadLogo: async (dataUrl) => {
+        const j = await api('/cert-assets/upload', { method: 'POST', body: JSON.stringify({ dataUrl }) });
+        if (!j || !j.url) throw new Error('업로드 실패');
+        return j.url;
       },
       // 도장 찍기/취소 → 관리자 API 호출 후 최신 도장 목록 반환(미리보기 재렌더용)
       onToggleStamp: async (entry) => {

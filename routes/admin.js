@@ -1203,6 +1203,19 @@ router.put('/app-settings/:key', async (req, res) => {
   }
 });
 
+// ===== 증서 로고/마스코트 업로드 — cert-assets 버킷(public). dataURL 받아 public URL 반환. =====
+router.post('/cert-assets/upload', async (req, res) => {
+  try {
+    const dataUrl = req.body && req.body.dataUrl;
+    if (!dataUrl) return res.status(400).json({ ok: false, error: '이미지 데이터가 필요합니다.' });
+    const url = await supabase.uploadCertAsset(dataUrl);
+    res.json({ ok: true, url });
+  } catch (err) {
+    console.error('[POST admin/cert-assets/upload]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 router.get('/dashboard', async (req, res) => {
   try {
     const { data: programs, error: pErr } = await supabase

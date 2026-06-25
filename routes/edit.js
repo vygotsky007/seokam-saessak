@@ -805,6 +805,21 @@ router.post('/:token/app-settings/set', rosterLimiter, async (req, res) => {
   }
 });
 
+// POST /api/edit/:token/cert-assets/upload — 증서 로고/마스코트 업로드(비번 게이트). dataURL → public URL.
+router.post('/:token/cert-assets/upload', rosterLimiter, async (req, res) => {
+  try {
+    const p = await gateRoster(req, res);
+    if (!p) return;
+    const dataUrl = req.body && req.body.dataUrl;
+    if (!dataUrl) return res.status(400).json({ ok: false, error: '이미지 데이터가 필요합니다.' });
+    const url = await supabase.uploadCertAsset(dataUrl);
+    res.json({ ok: true, url });
+  } catch (err) {
+    console.error('[POST /api/edit/:token/cert-assets/upload]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // ===== 문의사항 보기 — 강사용(자기 토큰 프로그램만). 원본은 applications.motivation(읽기전용). =====
 // 답변 상태는 관리자 게시판과 동일한 inquiry_status 를 공유한다.
 

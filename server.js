@@ -269,6 +269,7 @@ app.listen(PORT, () => {
   console.log('  SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ 설정됨' : '❌ 없음');
   console.log('  SUPABASE_KEY:', process.env.SUPABASE_KEY ? '✅ 설정됨' : '❌ 없음');
   console.log('  서비스 롤 키:', db.hasServiceKey ? `✅ ${db.serviceKeyVar}` : '❌ 없음 (후기 사진 업로드 불가)');
-  // 'review-photos' 버킷 보장(없으면 생성). 결과는 위 함수가 직접 로그로 남긴다.
+  // 'review-photos' / 'cert-assets' 버킷 보장(없으면 생성). 결과는 위 함수가 직접 로그로 남긴다.
   db.ensureReviewBucket();
+  db.ensureCertAssetsBucket();
 });
