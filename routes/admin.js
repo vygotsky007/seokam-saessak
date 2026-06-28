@@ -614,6 +614,57 @@ router.get('/applications', async (req, res) => {
   }
 });
 
+// GET /applicants-records — 선정 보조용 학생 기록 집계(교사 전용·비공개).
+// 현재 프로그램 신청자에 한해, 학생 기록(student_notes)에서 학생별 긍정/부정 개수를 집계해
+// 신청 건별 점수(= 긍정 − 부정)를 돌려준다. 매칭은 이름+학년+반(동명이인 안전).
+//   긍정/부정 매핑은 코드 기존 정의(NOTE_TYPE_POLARITY)를 따른다:
+//   우수·적극참여·칭찬 = 긍정, 노쇼·태도 = 부정, 기타 = 중립(점수 무영향).
+// ⚠ 이 집계·점수는 교사 전용이다. 공개(/api/public)·내신청(/api/me) 응답에는 절대 포함하지 않는다.
+router.get('/applicants-records', async (req, res) => {
+  // requireAdmin 뒤에 마운트되지만, 평가(민감) 데이터이므로 본 엔드포인트에서도 명시적으로 403.
+  if (!(req.session && req.session.isAdmin === true)) {
+    return res.status(403).json({ ok: false, error: '관리자 전용 기능입니다.' });
+  }
+  try {
+    const { program_id } = req.query;
+    if (!program_id) return res.status(400).json({ ok: false, error: 'program_id가 필요합니다.' });
+
+    const [appsRes, notesRes] = await Promise.all([
+      supabase.from('saessak_applications')
+        .select('id, student_name, grade, class_no, status')
+        .eq('program_id', program_id),
+      supabase.from('student_notes')
+        .select('student_name, grade, class_no, note_type, polarity'),
+    ]);
+    if (appsRes.error) throw appsRes.error;
+    if (notesRes.error) throw notesRes.error;
+
+    // 기록을 이름+학년+반 키로 집계(동명이인은 학년·반으로 구분).
+    const recKey = (name, g, c) => `${String(name || '').trim()}|${g ?? ''}|${c ?? ''}`;
+    const agg = new Map(); // key → {pos,neg,neu}
+    (notesRes.data || []).forEach(n => {
+      const k = recKey(n.student_name, n.grade, n.class_no);
+      let e = agg.get(k);
+      if (!e) { e = { pos: 0, neg: 0, neu: 0 }; agg.set(k, e); }
+      const pol = notePolarity(n);
+      if (pol === '긍정') e.pos++; else if (pol === '부정') e.neg++; else e.neu++;
+    });
+
+    // 현재 프로그램 신청자에 한정해 신청 건별 점수표 구성.
+    const data = (appsRes.data || []).map(a => {
+      const e = agg.get(recKey(a.student_name, a.grade, a.class_no)) || { pos: 0, neg: 0, neu: 0 };
+      return {
+        application_id: a.id, status: a.status,
+        pos: e.pos, neg: e.neg, neu: e.neu, score: e.pos - e.neg,
+      };
+    });
+    res.json({ ok: true, data });
+  } catch (err) {
+    console.error('[GET admin/applicants-records]', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 router.post('/applications', async (req, res) => {
   try {
     const {

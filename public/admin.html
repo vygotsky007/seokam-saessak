@@ -158,6 +158,24 @@
       <button class="btn small" id="cert-print-btn">🪪 증서 출력(확인증·이수증)</button>
       <span class="muted" id="app-count"></span>
     </div>
+    <!-- 기록 참고(선정 보조) — 교사 전용·비공개. 학생/학부모 화면엔 절대 노출하지 않는다. -->
+    <div class="record-tool" id="record-tool-bar" hidden>
+      <div class="rt-head">
+        <span class="rt-title">🧭 기록 참고</span>
+        <span class="rt-lock">🔒 교사만 보임 · 비공개</span>
+        <span class="muted rt-hint">정렬·자동선정은 보조 도구예요. 저장 전까진 실제로 반영되지 않아요.</span>
+      </div>
+      <div class="rt-toggles">
+        <label class="rt-toggle"><input type="checkbox" id="rt-sort-pos"> 긍정 우선 정렬</label>
+        <label class="rt-toggle"><input type="checkbox" id="rt-demote-neg"> 부정 후순위</label>
+        <label class="rt-toggle"><input type="checkbox" id="rt-auto-select"> 긍정 학생 자동 선정</label>
+      </div>
+      <div class="rt-status" id="rt-status" hidden>
+        <span id="rt-status-text" class="muted"></span>
+        <button class="btn small" id="rt-save-btn" hidden>💾 자동선정 저장</button>
+        <button class="btn small" id="rt-undo-btn" hidden>↩ 자동선정 해제</button>
+      </div>
+    </div>
     <div class="table-wrap">
       <table>
         <thead>

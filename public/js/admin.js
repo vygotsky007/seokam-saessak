@@ -48,6 +48,22 @@
   let currentSort = 'order';
   const ALL_PROGRAMS = '__all__'; // 신청자 탭 "전체 보기" sentinel
 
+  // ===== 기록 참고(선정 보조) — 교사 전용·비공개 상태 =====
+  // 점수표는 교사 전용 API(/applicants-records)에서만 받는다. 공개/내신청 화면엔 절대 노출하지 않는다.
+  let recordScores = {};        // application_id → { pos, neg, neu, score }
+  let recordToolActive = false; // 단일 프로그램 선택 시에만 활성(전체 보기에선 비활성)
+  let rtSortPos = false;        // (A) 긍정 우선 정렬
+  let rtDemoteNeg = false;      // (B) 부정 후순위
+  let autoPendingIds = new Set(); // (C) 자동 선정 중 "미저장" 신청 id (DB 미반영 staging)
+  let autoSavedIds = new Set();   // (C) 자동 선정 중 "저장됨" 신청 id (해제용 추적·세션 한정)
+  function scoreOf(a) { return recordScores[a.id] || { pos: 0, neg: 0, neu: 0, score: 0 }; }
+  // 동점 정렬용: 학년 오름차순 → 반 오름차순 → 이름 가나다.
+  function cmpGradeClassLite(a, b) {
+    return (a.grade ?? 99) - (b.grade ?? 99)
+      || (a.class_no ?? 999) - (b.class_no ?? 999)
+      || String(a.student_name || '').localeCompare(String(b.student_name || ''), 'ko');
+  }
+
   // 학생 참고기록(노쇼/태도) — 내부 관리용
   // 기록 유형 설정 — 여기만 바꾸면 모달·학생기록 게시판에 모두 반영.
   const NOTE_TYPE_GROUPS = [
@@ -996,8 +1012,60 @@
 
   $('#app-program-select').addEventListener('change', async (e) => {
     currentProgramId = e.target.value || null;
+    resetRecordTool(); // 프로그램이 바뀌면 기록 참고 토글/자동선정 staging 초기화
     if (currentProgramId) await loadApplications(currentProgramId);
-    else $('#applicants-tbody').innerHTML = `<tr><td colspan="10" class="empty-state">프로그램을 선택하세요.</td></tr>`;
+    else {
+      recordToolActive = false;
+      $('#record-tool-bar').hidden = true;
+      $('#applicants-tbody').innerHTML = `<tr><td colspan="10" class="empty-state">프로그램을 선택하세요.</td></tr>`;
+    }
+  });
+
+  // ===== 기록 참고 토글/버튼 바인딩 =====
+  $('#rt-sort-pos').addEventListener('change', (e) => { rtSortPos = e.target.checked; renderApplications(); });
+  $('#rt-demote-neg').addEventListener('change', (e) => { rtDemoteNeg = e.target.checked; renderApplications(); });
+  $('#rt-auto-select').addEventListener('change', (e) => {
+    if (e.target.checked) applyAutoSelect();
+    else { // OFF: 미저장 staging 만 해제(저장된 선정은 그대로 둠 — 해제는 전용 버튼으로)
+      autoPendingIds = new Set();
+      renderApplications();
+      updateRtStatus();
+    }
+  });
+  // 자동선정 저장: staging 된 신청만 '선정'으로 일괄 저장(기존 선택은 손대지 않음).
+  $('#rt-save-btn').addEventListener('click', async () => {
+    const ids = Array.from(autoPendingIds);
+    if (ids.length === 0) return;
+    if (!confirm(`자동 선정 ${ids.length}명을 '선정'으로 저장할까요?`)) return;
+    try {
+      for (const id of ids) {
+        await api(`/applications/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'selected' }) });
+      }
+      ids.forEach(id => autoSavedIds.add(id));
+      autoPendingIds = new Set();
+      toast(`자동 선정 ${ids.length}명 저장됨`);
+      await loadApplications(currentProgramId);
+      updateRtStatus();
+    } catch (err) { toast(err.message); }
+  });
+  // 자동선정 해제: 자동으로 체크한 것만 일괄 해제. 교사가 손으로 한 선정은 유지.
+  $('#rt-undo-btn').addEventListener('click', async () => {
+    const savedIds = Array.from(autoSavedIds);
+    autoPendingIds = new Set();        // 미저장분은 즉시 해제(DB 무영향)
+    $('#rt-auto-select').checked = false;
+    try {
+      for (const id of savedIds) {
+        // 저장된 자동선정만 '신청(미정)'으로 되돌림. 현재 상태가 selected 일 때만(교사가 따로 바꿨으면 존중).
+        const a = applications.find(x => x.id === id);
+        if (a && a.status === 'selected') {
+          await api(`/applications/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'applied' }) });
+        }
+      }
+      autoSavedIds = new Set();
+      if (savedIds.length) toast('자동 선정 해제됨');
+      await loadApplications(currentProgramId);
+      updateRtStatus();
+    } catch (err) { toast(err.message); }
   });
   $('#app-sort').addEventListener('change', (e) => {
     currentSort = e.target.value;
@@ -1027,8 +1095,81 @@
       const j = await api(url);
       applications = j.data || [];
       await loadStudentNotes(); // 명단 그리기 전에 참고기록 일괄 조회(학생마다 N번 호출 방지)
+      await loadRecordScores(pid); // 기록 참고용 점수표(교사 전용). 전체 보기에선 비활성.
       renderApplications();
+      updateRtStatus();
     } catch (err) { toast(err.message); }
+  }
+
+  // 선정 보조용 점수표를 교사 전용 API에서 받아 application_id 로 색인.
+  // 전체 보기(ALL_PROGRAMS)에서는 정원 기준 자동선정이 무의미하므로 바를 숨기고 비활성화한다.
+  async function loadRecordScores(pid) {
+    recordScores = {};
+    recordToolActive = !!(pid && pid !== ALL_PROGRAMS);
+    const bar = $('#record-tool-bar');
+    if (!recordToolActive) { if (bar) bar.hidden = true; return; }
+    try {
+      const j = await api(`/applicants-records?program_id=${encodeURIComponent(pid)}`);
+      (j.data || []).forEach(r => { recordScores[r.application_id] = r; });
+    } catch { recordScores = {}; }
+    if (bar) bar.hidden = false;
+  }
+
+  // 프로그램을 바꿀 때 기록 참고 토글/자동선정 staging 을 초기화(프로그램별 독립).
+  function resetRecordTool() {
+    rtSortPos = false; rtDemoteNeg = false;
+    autoPendingIds = new Set(); autoSavedIds = new Set();
+    const a = $('#rt-sort-pos'), b = $('#rt-demote-neg'), c = $('#rt-auto-select');
+    if (a) a.checked = false; if (b) b.checked = false; if (c) c.checked = false;
+    const box = $('#rt-status'); if (box) box.hidden = true;
+  }
+
+  // 자동 선정 적용 상태 라인 갱신(정원/선정 수 표시 + 저장/해제 버튼 노출).
+  function updateRtStatus() {
+    const box = $('#rt-status');
+    if (!box) return;
+    if (!recordToolActive) { box.hidden = true; return; }
+    const prog = programs.find(p => p.id === currentProgramId) || {};
+    const cap = Number(prog.capacity) || 0;
+    const selectedNow = applications.filter(a => a.status === 'selected').length;
+    const pendingN = autoPendingIds.size;
+    const savedN = autoSavedIds.size;
+    if (pendingN === 0 && savedN === 0) { box.hidden = true; return; }
+    box.hidden = false;
+    const totalSel = selectedNow + pendingN; // 미저장 staging 도 선정 수에 합산해 보여줌
+    $('#rt-status-text').textContent = pendingN > 0
+      ? `자동 선정 ${pendingN}명 적용됨(미저장) · 정원 ${totalSel}/${cap}`
+      : `자동 선정 ${savedN}명 저장됨 · 정원 ${selectedNow}/${cap}`;
+    $('#rt-save-btn').hidden = pendingN === 0;
+    $('#rt-undo-btn').hidden = (pendingN === 0 && savedN === 0);
+  }
+
+  // (C) 긍정 학생 자동 선정 적용 — 미정(applied)+부정0+긍정1+ 후보를 정원 내에서 점수순으로 staging.
+  // 실제 저장은 하지 않는다(저장 버튼을 눌러야 DB 반영). 기존 선택은 절대 덮어쓰지 않는다.
+  function applyAutoSelect() {
+    const prog = programs.find(p => p.id === currentProgramId);
+    if (!prog) { $('#rt-auto-select').checked = false; return; }
+    const cap = Number(prog.capacity) || 0;
+    const selectedNow = applications.filter(a => a.status === 'selected').length; // 이미 선정된 인원
+    const remaining = cap - selectedNow; // 남은 정원
+    // 후보: 상태 '미정(applied)' + 부정 0 + 긍정 1 이상(부정이 하나라도 있으면 자동선정 제외).
+    const cands = applications
+      .filter(a => a.status === 'applied' && scoreOf(a).neg === 0 && scoreOf(a).pos >= 1)
+      .sort((a, b) => scoreOf(b).score - scoreOf(a).score || cmpGradeClassLite(a, b));
+    const pick = remaining > 0 ? cands.slice(0, remaining) : []; // 정원 초과분은 자동선정 안 함
+    if (pick.length === 0) {
+      toast(remaining <= 0 ? '남은 정원이 없어요. 자동 선정할 자리가 없습니다.'
+        : '자동 선정할 긍정 학생(부정 0·긍정 1+·미정)이 없어요.');
+      $('#rt-auto-select').checked = false;
+      return;
+    }
+    if (!confirm(`긍정 학생 ${pick.length}명을 자동 선정할게요(정원 내). 기존 선택은 유지돼요.\n\n※ "자동선정 저장"을 눌러야 실제로 반영됩니다.`)) {
+      $('#rt-auto-select').checked = false;
+      return;
+    }
+    autoPendingIds = new Set(pick.map(a => a.id));
+    renderApplications();
+    updateRtStatus();
   }
 
   // 참고기록 전체를 한 번에 받아 이름|학년|반 키로 색인.
@@ -1081,20 +1222,31 @@
     const noteFlag = noteCount
       ? ` <button type="button" class="note-flag" data-note="${a.id}" title="참고기록 ${noteCount}건 보기">⚠️ ${noteCount}</button>`
       : '';
+    // 기록 참고: 긍정/부정 개수·점수를 교사에게만 표시(단일 프로그램 보기에서만). 공개 화면엔 절대 없음.
+    const sc = recordToolActive ? scoreOf(a) : null;
+    const scoreLine = sc
+      ? `<div class="rec-score${sc.neg > 0 ? ' neg' : (sc.pos > 0 ? ' pos' : '')}">긍 ${sc.pos} · 부 ${sc.neg} · 점수 ${sc.score >= 0 ? '+' : ''}${sc.score}</div>`
+      : '';
+    // (C) 자동 선정 staging: 미저장이면 상태를 '선정'으로 보여주되 DB 는 아직 미반영.
+    const pending = autoPendingIds.has(a.id);
+    const effStatus = pending ? 'selected' : a.status;
+    const pendingBadge = pending
+      ? ' <span class="badge" style="background:#DBEAFE; color:#1E40AF;" title="자동 선정됨(아직 저장 전)">자동선정·미저장</span>'
+      : '';
     return `
-      <tr data-id="${a.id}"${cancelled ? ' style="opacity:.55;"' : ''}>
+      <tr data-id="${a.id}"${cancelled ? ' style="opacity:.55;"' : (pending ? ' style="background:#EFF6FF;"' : '')}>
         <td>${displayIndex}</td>
-        <td><b>${esc(a.student_name)}</b>${noteFlag}</td>
+        <td><b>${esc(a.student_name)}</b>${noteFlag}${scoreLine}</td>
         <td>${a.grade ?? '?'}-${a.class_no ?? '?'}</td>
         <td>${esc(a.guardian_name || '')}<br><span class="muted">${esc(a.guardian_phone || '')}</span></td>
         <td>${esc(a.student_phone || '')}</td>
-        <td>${badges.join(' ') || '<span class="muted">—</span>'}</td>
+        <td>${badges.join(' ') || '<span class="muted">—</span>'}${pendingBadge}</td>
         <td>
           <select class="select" data-status="${a.id}">
-            <option value="applied" ${a.status==='applied'?'selected':''}>신청</option>
-            <option value="selected" ${a.status==='selected'?'selected':''}>선정</option>
-            <option value="waiting" ${a.status==='waiting'?'selected':''}>대기</option>
-            <option value="cancelled" ${a.status==='cancelled'?'selected':''}>취소</option>
+            <option value="applied" ${effStatus==='applied'?'selected':''}>신청</option>
+            <option value="selected" ${effStatus==='selected'?'selected':''}>선정</option>
+            <option value="waiting" ${effStatus==='waiting'?'selected':''}>대기</option>
+            <option value="cancelled" ${effStatus==='cancelled'?'selected':''}>취소</option>
           </select>
         </td>
         <td>${a.source === 'manual' ? '<span class="badge">수동</span>' : '<span class="badge">온라인</span>'}</td>
@@ -1111,13 +1263,18 @@
 
   function bindApplicationRowEvents() {
     $$('[data-status]').forEach(el => el.addEventListener('change', async (e) => {
+      const id = el.dataset.status;
+      // 교사가 직접 상태를 바꾸면 자동선정 추적에서 제외(손으로 한 건은 일괄 해제 대상이 아님).
+      autoPendingIds.delete(id);
+      autoSavedIds.delete(id);
       try {
-        await api(`/applications/${el.dataset.status}/status`, {
+        await api(`/applications/${id}/status`, {
           method: 'PATCH',
           body: JSON.stringify({ status: e.target.value }),
         });
         toast('상태 변경됨');
         await loadApplications(currentProgramId);
+        updateRtStatus();
       } catch (err) { toast(err.message); }
     }));
     $$('[data-note]').forEach(el => el.addEventListener('click', () => openNoteDialog(el.dataset.note)));
@@ -1179,9 +1336,26 @@
       });
       tbody.innerHTML = html;
     } else {
-      const list = filtered.slice().sort(applicationComparator);
+      let list = filtered.slice().sort(applicationComparator);
+      // (A) 긍정 우선 정렬: 점수 내림차순(동점 학년·반순). 기존 정렬 위에 덮어쓴다.
+      if (recordToolActive && rtSortPos) {
+        list = list.slice().sort((a, b) => scoreOf(b).score - scoreOf(a).score || cmpGradeClassLite(a, b));
+      }
       let n = 0;
-      tbody.innerHTML = list.map(a => applicantRowHtml(a, a.status === 'cancelled' ? '—' : (++n), false)).join('');
+      const rowOf = (a) => applicantRowHtml(a, a.status === 'cancelled' ? '—' : (++n), false);
+      if (recordToolActive && rtDemoteNeg) {
+        // (B) 부정 후순위: 부정 1개 이상 학생을 구분선 아래로 모은다.
+        const clean = list.filter(a => scoreOf(a).neg === 0);
+        const flagged = list.filter(a => scoreOf(a).neg > 0);
+        let html = clean.map(rowOf).join('');
+        if (flagged.length) {
+          html += `<tr class="rt-divider"><td colspan="10">⚠ 부정 기록 있는 신청자 · 후순위 (${flagged.length}명)</td></tr>`;
+          html += flagged.map(rowOf).join('');
+        }
+        tbody.innerHTML = html;
+      } else {
+        tbody.innerHTML = list.map(rowOf).join('');
+      }
     }
 
     bindApplicationRowEvents();
