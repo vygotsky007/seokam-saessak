@@ -214,7 +214,8 @@
   // 표시되는 모집상태를 칩 버킷으로 분류. 기존 recruitStatusOf + is_fully_closed 로직 재사용(새 기준 안 만듦).
   //  'open'     = 모집중 (대기접수·마감임박 포함, 아직 신청 받는 중)
   //  'upcoming' = 모집예정
-  //  'ended'    = 모집종료 (모집마감 full + 자동소진 is_fully_closed + 모집완료 closed)
+  //  'ended'    = 정원참 마감 (full / is_fully_closed). '전체'에만 노출되며 '모집종료'(closed)는 isEndedForParents 로 이미 숨겨짐.
+  // 학부모 화면 필터 칩에서 '모집종료' 버튼은 제거됨(전체/모집중/모집예정만). '전체'=숨김 규칙 적용된 전체.
   // hidden 은 서버에서 이미 제외되므로 공개 목록엔 들어오지 않음(공개 미노출 유지).
   function recruitBucketOf(p) {
     const status = recruitStatusOf(p);
@@ -228,9 +229,20 @@
     return recruitBucketOf(p) === activeStatusFilter;
   }
 
+  // === 학부모 화면 숨김 규칙: 모집종료 프로그램은 목록에서 제외 ===
+  // '모집종료' 판정 기준 = 기존 상태 로직의 recruit_status === 'closed'.
+  //   (closed = 관리자가 모집을 종료 처리한 "지난 프로그램". 코드상 이미 하단 '지난 프로그램'
+  //    구분선으로 분리되던 상태로, 사실상 "모집 기간이 지나 마감된 프로그램"에 해당한다.)
+  // 정원참 마감(full / is_fully_closed)은 정원이 빠질 수 있으므로 숨기지 않고 '모집 마감' 배지로 계속 노출한다.
+  // 이 규칙은 학부모 신청 화면(public.js)에만 적용되며, 관리자 목록(admin.js)은 전부 그대로 표시한다.
+  function isEndedForParents(p) {
+    return recruitStatusOf(p) === 'closed';
+  }
+
   // === 학년 + 유형 + 모집상태 필터 (AND 조건) ===
   function filteredPrograms() {
     return programs.filter(p =>
+      !isEndedForParents(p) &&
       (activeGradeFilter == null || gradeIncluded(p, activeGradeFilter)) &&
       typeMatchesFilter(p) &&
       statusMatchesFilter(p));
