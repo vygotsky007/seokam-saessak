@@ -306,6 +306,27 @@
         ? `<details class="pc-details"><summary><span class="pc-toggle-text"></span></summary><div class="pc-body">${esc(desc)}</div></details>`
         : '';
       const reviewBtn = `<button type="button" class="pc-review-btn" data-review-view="${p.id}">💬 후기보기</button>`;
+
+      // 신청 현황 게이지 + 마감임박(정원의 80% 이상)
+      const cap = Number(p.capacity) || 0;
+      const filledRatio = cap > 0 ? Math.min(1, (p.applied_count || 0) / cap) : 0;
+      const nearlyFull = isRecruiting && !isFull && filledRatio >= 0.8;
+      const gauge = (isRecruiting || isFull) && cap > 0
+        ? `<div class="pc-gauge">
+             <div class="pc-gauge-bar"><span style="width:${Math.round(filledRatio * 100)}%"></span></div>
+             <span class="pc-gauge-num">${p.applied_count || 0}/${cap}</span>
+             ${nearlyFull ? '<span class="badge nearly-full">마감임박</span>' : ''}
+           </div>`
+        : '';
+      // 후기 평균 별점(있을 때만)
+      const rating = (p.review_count > 0 && p.review_avg != null)
+        ? `<div class="pc-rating" title="후기 평균 ${p.review_avg}점 · ${p.review_count}개">
+             <span class="pc-stars">${starsHtml(Math.round(p.review_avg))}</span>
+             <span class="pc-rating-num">${Number(p.review_avg).toFixed(1)} (${p.review_count})</span>
+           </div>`
+        : '';
+      const cartBlock = cartBlockHtml(p, isRecruiting, isFull);
+
       return `
         ${pastDivider}
         <article class="program-card ${cardDisabled ? 'disabled' : ''} ${isFull ? 'is-full' : ''} ${isWaitOnly ? 'is-waitlist' : ''} status-${status}">
@@ -318,9 +339,12 @@
               <span class="grade-badge">👶 ${formatGradesLabel(p.grades)}</span>
             </div>
             <h3 class="pc-title">${esc(p.title)}</h3>
+            ${rating}
             <div class="pc-meta-row">${meta.join('')}</div>
             <div class="pc-seats-line">${seatsLine}</div>
+            ${gauge}
             ${descBlock}
+            ${cartBlock}
             <div class="pc-review-row">${reviewBtn}</div>
           </div>
         </article>
@@ -333,6 +357,65 @@
         openReviewsModal(btn.dataset.reviewView, p ? p.title : '');
       });
     });
+    // 자녀별 담기 토글
+    detailListEl.querySelectorAll('[data-cart-pid]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pid = btn.dataset.cartPid;
+        const sid = Number(btn.dataset.cartSid);
+        const s = students.find(x => x.id === sid);
+        if (!s) return;
+        if (s.selected.has(pid)) s.selected.delete(pid);
+        else s.selected.add(pid);
+        refreshSelectionUI();
+      });
+    });
+    detailListEl.querySelectorAll('[data-cart-register]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const area = document.getElementById('students-area');
+        if (area) area.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const firstName = studentsArea.querySelector('.f-name');
+        if (firstName) setTimeout(() => firstName.focus(), 300);
+      });
+    });
+  }
+
+  // 카드 안 "자녀별 담기" 블록. 모델은 students[i].selected 를 그대로 사용(제출 흐름 동일).
+  function cartBlockHtml(p, isRecruiting, isFull) {
+    if (!isRecruiting || isFull) {
+      return `<div class="pc-cart disabled"><span class="pc-cart-note">${isFull ? '마감된 프로그램이에요' : '지금은 담을 수 없어요'}</span></div>`;
+    }
+    if (students.length === 0 || allStudentsEmpty()) {
+      return `<div class="pc-cart"><button type="button" class="pc-cart-register" data-cart-register>＋ 신청할 학생 먼저 등록</button></div>`;
+    }
+    // 자녀 1명 → 담기 토글 하나
+    if (students.length === 1) {
+      const s = students[0];
+      const eff = effGradeForStudent(0);
+      const inCart = s.selected.has(p.id);
+      if (eff == null) return `<div class="pc-cart"><span class="pc-cart-note">학년을 입력하면 담을 수 있어요</span></div>`;
+      if (!gradeIncluded(p, eff)) return `<div class="pc-cart"><span class="pc-cart-note bad">학년 미대상</span></div>`;
+      const conflict = !inCart ? conflictForStudent(p, s) : null;
+      if (conflict) return `<div class="pc-cart"><span class="pc-cart-note bad">"${esc(conflict.title)}"과 시간이 겹쳐요</span></div>`;
+      return `<div class="pc-cart"><button type="button" class="pc-cart-toggle ${inCart ? 'on' : ''}" data-cart-pid="${esc(p.id)}" data-cart-sid="${s.id}">${inCart ? '✓ 담김' : '＋ 담기'}</button></div>`;
+    }
+    // 자녀 여러 명 → 자녀별 칩
+    const chips = students.map((s, i) => {
+      const eff = effGradeForStudent(i);
+      const inCart = s.selected.has(p.id);
+      const gradeOk = eff != null && gradeIncluded(p, eff);
+      const conflict = (gradeOk && !inCart) ? conflictForStudent(p, s) : null;
+      const disabled = eff == null || !gradeOk || !!conflict;
+      const cls = ['pc-chip'];
+      if (inCart) cls.push('on');
+      if (disabled) cls.push('disabled');
+      let note = '';
+      if (eff == null) note = '학년 미입력';
+      else if (!gradeOk) note = '학년 미대상';
+      else if (conflict) note = '시간겹침';
+      const label = esc((s.cache.name || '').trim() || `학생 ${i + 1}`);
+      return `<button type="button" class="${cls.join(' ')}" data-cart-pid="${esc(p.id)}" data-cart-sid="${s.id}" ${disabled ? 'disabled' : ''} title="${esc(note)}">${inCart ? '✓ ' : ''}${label}${note ? ` · ${note}` : ''}</button>`;
+    }).join('');
+    return `<div class="pc-cart"><div class="pc-cart-label">자녀별 담기</div><div class="pc-chips">${chips}</div></div>`;
   }
 
   // === 후기보기 모달 (학부모/공개) ===
@@ -438,16 +521,21 @@
       cache: {},
     });
     renderStudents();
-    renderStep2();
-    renderSummary();
+    refreshSelectionUI();
   }
   function removeStudent(id) {
     const idx = students.findIndex(s => s.id === id);
     if (idx < 0) return;
     students.splice(idx, 1);
     renderStudents();
-    renderStep2();
-    renderSummary();
+    refreshSelectionUI();
+  }
+
+  // 선택/학생 변화 시 카드(장바구니)·숨김 요약·하단 바를 함께 갱신.
+  function refreshSelectionUI() {
+    renderDetailList();  // 카드에 자녀별 담기 상태 반영(주 선택 UI)
+    renderStep2();       // 숨김 영역이지만 모델 동기화 유지(무해)
+    renderSummary();     // 하단 바 카운트/힌트 + 숨김 요약 갱신
   }
 
   function renderStudents() {
@@ -479,8 +567,7 @@
 
       nameInput.addEventListener('input', (e) => {
         s.cache.name = e.target.value.trim();
-        renderStep2();
-        renderSummary();
+        refreshSelectionUI();
       });
       gradeSel.addEventListener('change', () => {
         s.cache.grade = gradeSel.value;
@@ -488,13 +575,11 @@
         s.cache.class_no = '';
         populateClassOptions(classSel, s.cache.grade, '');
         reconcileSelections();
-        renderStep2();
-        renderSummary();
+        refreshSelectionUI();
       });
       classSel.addEventListener('change', () => {
         s.cache.class_no = classSel.value;
-        renderStep2();
-        renderSummary();
+        refreshSelectionUI();
       });
 
       // 형제·자매 추가 버튼 (마지막 블록에만, 4명 미만일 때)
@@ -674,7 +759,18 @@
   function updateSubmitState(totalCount) {
     const hint = document.getElementById('submit-hint');
     const countEl = document.getElementById('submit-bar-count');
-    if (countEl) countEl.innerHTML = `총 <strong>${totalCount}</strong>건 신청 예정`;
+    if (countEl) countEl.innerHTML = `신청 예정 <strong>${totalCount}</strong>건`;
+    // 자녀별 건수 브레이크다운
+    const childBreak = document.getElementById('submit-bar-children');
+    if (childBreak) {
+      const parts = students
+        .filter(s => s.selected.size > 0)
+        .map((s, i) => {
+          const nm = (s.cache.name || '').trim() || `학생${i + 1}`;
+          return `${esc(nm)} ${s.selected.size}`;
+        });
+      childBreak.textContent = parts.join(' · ');
+    }
     if (!hint) {
       submitBtn.disabled = totalCount === 0;
       return;
@@ -813,7 +909,7 @@
       if (!name) { validationErr = `학생 ${i + 1}의 이름을 입력해 주세요.`; return; }
       if (!grade || grade < 1 || grade > 6) { validationErr = `${name}의 학년을 1~6 사이로 입력해 주세요.`; return; }
       if (!cls || cls < 1 || cls > 30) { validationErr = `${name}의 반을 1~30 사이로 입력해 주세요.`; return; }
-      if (program_ids.length === 0) { validationErr = `${name}이(가) 신청할 프로그램을 1개 이상 선택해 주세요. (② 영역에서 체크)`; return; }
+      if (program_ids.length === 0) { validationErr = `${name}이(가) 신청할 프로그램을 1개 이상 담아 주세요. (프로그램 카드의 '담기')`; return; }
 
       for (const pid of program_ids) {
         const p = programs.find(x => x.id === pid);
@@ -1065,6 +1161,57 @@
     updateSubmitState(getTotalSelected());
   }
 
+  // === 신청 확인창 (하단 바 → 최종 제출) ===
+  function buildConfirmHtml() {
+    const withSel = students.filter(s => s.selected.size > 0);
+    if (withSel.length === 0) return '<div class="empty">아직 담은 프로그램이 없어요.</div>';
+    const total = getTotalSelected();
+    const blocks = withSel.map(s => {
+      const dispName = studentDisplayName(s, students.indexOf(s));
+      const items = Array.from(s.selected).map(pid => {
+        const p = programs.find(x => x.id === pid);
+        return `<li>${p ? esc(p.title) : '?'}</li>`;
+      }).join('');
+      return `<div class="cf-child"><div class="cf-child-head">${esc(dispName)} <span class="muted">${s.selected.size}건</span></div><ul class="cf-list">${items}</ul></div>`;
+    }).join('');
+    const gname = (document.getElementById('guardian_name')?.value || '').trim();
+    const gphone = (document.getElementById('guardian_phone')?.value || '').trim();
+    const agreed = !!(document.getElementById('privacy_agreed') && document.getElementById('privacy_agreed').checked);
+    const guardianOk = gname && isValidPhone(gphone) && agreed;
+    const guardianLine = guardianOk
+      ? `<div class="cf-guardian ok">보호자 ${esc(gname)} · ${esc(gphone)} · 동의 완료</div>`
+      : `<div class="cf-guardian warn">⚠ 창을 닫고 아래에서 <b>보호자 이름·연락처·동의</b>를 먼저 채워 주세요.</div>`;
+    return `<div class="cf-total">신청 예정 <b>${total}</b>건 · 자녀 ${withSel.length}명</div>${blocks}${guardianLine}`;
+  }
+
+  function openConfirm() {
+    if (getTotalSelected() === 0) return;
+    const body = document.getElementById('confirm-body');
+    if (body) body.innerHTML = buildConfirmHtml();
+    const mask = document.getElementById('confirm-mask');
+    if (mask) mask.classList.add('open');
+  }
+  function closeConfirm() {
+    const mask = document.getElementById('confirm-mask');
+    if (mask) mask.classList.remove('open');
+  }
+  function wireConfirm() {
+    const openBtn = document.getElementById('submit-btn');
+    if (openBtn) openBtn.addEventListener('click', openConfirm);
+    const closeBtn = document.getElementById('confirm-close');
+    if (closeBtn) closeBtn.addEventListener('click', closeConfirm);
+    const backBtn = document.getElementById('confirm-back');
+    if (backBtn) backBtn.addEventListener('click', closeConfirm);
+    const mask = document.getElementById('confirm-mask');
+    if (mask) mask.addEventListener('click', (e) => { if (e.target === mask) closeConfirm(); });
+    const submit = document.getElementById('confirm-submit');
+    if (submit) submit.addEventListener('click', () => {
+      // 확인창을 닫아 보호자 영역/검증 알림이 가려지지 않게 한 뒤, 단일 신청 흐름으로 제출.
+      closeConfirm();
+      form.requestSubmit();
+    });
+  }
+
   // === 초기화 ===
   renderPrivacyText();
   attachPhoneFormatter(document.getElementById('guardian_phone'));
@@ -1072,6 +1219,7 @@
   wireTypeFilter();
   wireStatusFilter();
   wireGuardianInputs();
+  wireConfirm();
   prefillGuardianFromSession();
   loadPrograms();
 })();

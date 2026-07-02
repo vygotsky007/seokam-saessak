@@ -30,20 +30,46 @@
     const pad = n => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
-  function statusLabel(s) {
-    // 의도적으로 선정/대기/탈락은 노출하지 않음 — 활성 신청은 모두 "접수 완료"
-    if (s === 'cancelled') return '<span class="badge cancelled">취소됨</span>';
-    return '<span class="badge open">접수 완료</span>';
-  }
-  // 자동 접수/대기 구분 (관리자의 선정 결과는 별개 - 여기선 미노출)
-  function autoSlotLabel(r) {
-    if (r.status === 'cancelled') return '';
-    if (r.is_waitlist) {
-      const n = r.slot_number;
-      return `<span class="badge waiting">대기${n ? ` ${n}번` : ''}</span>`;
+  // 신청 상태 모델(통일): received/selected/waitlisted/confirmed/rejected/cancelled (+ 옛 값 매핑)
+  const APP_STATUS_LEGACY = { applied: 'received', waiting: 'waitlisted' };
+  function waitNo(r) { return r.waitlist_order || r.slot_number || null; }
+  function statusInfo(r) {
+    const s = APP_STATUS_LEGACY[r.status] || r.status || 'received';
+    const wn = waitNo(r);
+    switch (s) {
+      case 'cancelled':  return { s, badge: '취소됨',  cls: 'cancelled', msg: '신청이 취소되었어요.' };
+      case 'selected':   return { s, badge: '선정',    cls: 'selected',  msg: '축하해요! 선정되었어요. 자세한 내용은 보호자 연락처로 개별 안내드려요.' };
+      case 'confirmed':  return { s, badge: '확정',    cls: 'selected',  msg: '참여가 확정되었어요. 일정에 맞춰 만나요!' };
+      case 'waitlisted': return { s, badge: wn ? `대기 ${wn}번` : '대기', cls: 'waiting', msg: wn ? `대기 ${wn}번이에요. 빈자리가 나면 순서대로 안내드려요.` : '대기로 접수됐어요. 빈자리가 나면 순서대로 안내드려요.' };
+      case 'rejected':   return { s, badge: '미선정',  cls: 'cancelled', msg: '이번에는 함께하지 못하게 되었어요. 다음 기회에 다시 만나요.' };
+      case 'received':
+      default:           return { s, badge: '접수됨',  cls: 'open',      msg: '접수되었어요. 선정 결과는 프로그램 시작 1주일 전쯤 개별 안내드려요. (접수는 확정이 아니에요)' };
     }
-    const n = r.slot_number;
-    return `<span class="badge open">접수${n ? ` ${n}번째` : ''}</span>`;
+  }
+  function statusBadgeHtml(r) {
+    const info = statusInfo(r);
+    return `<span class="badge ${info.cls}">${esc(info.badge)}</span>`;
+  }
+  // 상세 타임라인(접수됨 → 선정 → 확정). 대기/미선정/취소는 별도 표현.
+  function timelineHtml(r) {
+    const info = statusInfo(r);
+    const step = (label, state) => `<span class="tl-step ${state}">${esc(label)}</span>`;
+    const sep = '<span class="tl-sep">→</span>';
+    let steps;
+    if (info.s === 'cancelled') {
+      steps = step('취소됨', 'end');
+    } else if (info.s === 'rejected') {
+      steps = [step('접수됨', 'done'), step('미선정', 'end')].join(sep);
+    } else if (info.s === 'waitlisted') {
+      const wn = waitNo(r);
+      steps = [step('접수됨', 'done'), step(wn ? `대기 ${wn}번` : '대기', 'cur')].join(sep);
+    } else {
+      const order = ['received', 'selected', 'confirmed'];
+      const labels = { received: '접수됨', selected: '선정', confirmed: '확정' };
+      const cur = order.indexOf(info.s);
+      steps = order.map((k, i) => step(labels[k], i < cur ? 'done' : (i === cur ? 'cur' : 'todo'))).join(sep);
+    }
+    return `<div class="app-detail-body"><div class="tl">${steps}</div><div class="tl-msg">${esc(info.msg)}</div></div>`;
   }
 
   function toast(msg) {
@@ -109,18 +135,17 @@
       const items = rows.map(r => {
         const isCancelled = r.status === 'cancelled';
         const program = r.program || {};
+        const sched = (window.SaessakSchedule && window.SaessakSchedule.format(program)) || program.schedule || '';
         return `
           <div class="app-item ${isCancelled ? 'cancelled' : ''}">
-            <div class="app-main">
-              <div class="app-title">${esc(program.title || '(프로그램)')} ${statusLabel(r.status)} ${isCancelled ? '' : autoSlotLabel(r)}</div>
+            <div class="app-main app-toggle" data-detail="${r.id}" role="button" tabindex="0" aria-expanded="false">
+              <div class="app-title">${esc(program.title || '(프로그램)')} ${statusBadgeHtml(r)} <span class="app-caret">▾</span></div>
               <div class="app-meta">
-                ${(() => {
-                  const sched = (window.SaessakSchedule && window.SaessakSchedule.format(program)) || program.schedule || '';
-                  return sched ? `📅 ${esc(sched)}` : '';
-                })()}
+                ${sched ? `📅 ${esc(sched)}` : ''}
                 ${program.location ? ` · 📍 ${esc(program.location)}` : ''}
                 <br>접수시각: ${fmtTime(r.submitted_at)}
               </div>
+              <div class="app-detail" id="detail-${r.id}" hidden>${timelineHtml(r)}</div>
             </div>
             <div class="app-actions">
               ${isCancelled
@@ -147,7 +172,8 @@
       <div class="notice" style="margin-top:14px;">
         <strong>안내</strong>
         <ul>
-          <li>여기에 보이는 상태는 <b>접수/대기/취소</b>만 표시돼요. <b>접수·대기는 확정이 아니며</b>, 최종 선정 결과는 담당 선생님이 별도로 안내드립니다.</li>
+          <li>각 신청을 <b>탭하면</b> 진행 단계(접수됨 → 선정 → 확정)와 안내를 볼 수 있어요.</li>
+          <li><b>접수됨·대기는 확정이 아니에요.</b> 최종 결과는 담당 선생님이 개별 안내드립니다.</li>
           <li>취소·수정은 <b>조회에 사용한 보호자 연락처와 이름</b>으로 본인 확인됩니다.</li>
         </ul>
       </div>
@@ -155,6 +181,21 @@
 
     el.querySelectorAll('[data-cancel]').forEach(b => b.addEventListener('click', () => onCancelClick(b.dataset.cancel)));
     el.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => onEditClick(b.dataset.edit)));
+    // 행 탭 → 상세 타임라인 펼치기/접기
+    el.querySelectorAll('[data-detail]').forEach(row => {
+      const toggle = () => {
+        const box = document.getElementById('detail-' + row.dataset.detail);
+        if (!box) return;
+        const open = box.hidden;
+        box.hidden = !open;
+        row.setAttribute('aria-expanded', open ? 'true' : 'false');
+        row.classList.toggle('open', open);
+      };
+      row.addEventListener('click', toggle);
+      row.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      });
+    });
   }
 
   // 본인 확인 키: 조회에 사용한 보호자 연락처 + 보호자 이름. 둘 다 신청 행과 일치해야 통과.

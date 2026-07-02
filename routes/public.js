@@ -63,6 +63,24 @@ router.get('/programs', async (req, res) => {
       });
     }
 
+    // 후기 평균 별점·개수(공개·숨김 제외) — 카드에 표시. 실패해도 목록은 그대로 반환.
+    const reviewAgg = {};
+    if (ids.length > 0) {
+      try {
+        const { data: reviews } = await supabase
+          .from('program_reviews')
+          .select('program_id, rating, status')
+          .in('program_id', ids)
+          .neq('status', '숨김');
+        (reviews || []).forEach(r => {
+          const rt = Number(r.rating);
+          if (!Number.isFinite(rt) || rt <= 0) return;
+          const e = reviewAgg[r.program_id] || (reviewAgg[r.program_id] = { sum: 0, n: 0 });
+          e.sum += rt; e.n += 1;
+        });
+      } catch (e) { /* 후기 테이블 이슈는 무시(목록 유지) */ }
+    }
+
     const result = (programs || []).map(p => {
       const applied = appliedCounts[p.id] || 0;
       const waiting = waitlistCounts[p.id] || 0;
@@ -70,6 +88,7 @@ router.get('/programs', async (req, res) => {
       const wRemaining = Math.max(0, (p.waitlist_capacity || 0) - waiting);
       const isCapacityFull = remaining <= 0;
       const isFullyClosed = isCapacityFull && wRemaining <= 0;
+      const agg = reviewAgg[p.id];
       // organization 은 관리자 전용 — 공개 응답에서 제거.
       const { organization, ...publicFields } = p;
       return {
@@ -80,6 +99,8 @@ router.get('/programs', async (req, res) => {
         waitlist_remaining: wRemaining,
         is_full: isCapacityFull,         // 정원 풀 (대기는 가능할 수 있음)
         is_fully_closed: isFullyClosed,  // 정원+대기 모두 마감
+        review_count: agg ? agg.n : 0,
+        review_avg: agg ? Math.round((agg.sum / agg.n) * 10) / 10 : null,
       };
     });
 

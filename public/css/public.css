@@ -1188,3 +1188,97 @@ body.public-page {
 .rvv-photo { position: relative; display: block; margin-top: 9px; border-radius: 10px; overflow: hidden; }
 .rvv-photo img { width: 100%; max-height: 260px; object-fit: cover; display: block; }
 .rvv-photo-tag { position: absolute; left: 8px; bottom: 8px; font-size: 11px; font-weight: 700; color: #fff; background: rgba(15,23,42,.66); border-radius: 999px; padding: 2px 9px; }
+
+/* ===== 다국어 토글 ===== */
+.lang-toggle {
+  display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+  margin: 0 0 12px;
+}
+.lang-btn {
+  min-height: 34px; padding: 6px 12px; border-radius: 999px;
+  border: 1.5px solid #DCEDC8; background: #fff; color: var(--muted);
+  font-size: 12.5px; font-weight: 600; font-family: inherit; cursor: pointer;
+}
+.lang-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* ===== 카드: 후기 별점 ===== */
+.pc-rating { display: flex; align-items: center; gap: 6px; margin: 2px 0 6px; }
+.pc-stars { color: #F59E0B; font-size: 13px; letter-spacing: 1px; }
+.pc-rating-num { font-size: 12px; color: var(--muted); font-weight: 600; }
+
+/* ===== 카드: 신청 현황 게이지 ===== */
+.pc-gauge { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; }
+.pc-gauge-bar { flex: 1; height: 8px; background: #EEF2E9; border-radius: 999px; overflow: hidden; }
+.pc-gauge-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 999px; }
+.pc-gauge-num { font-size: 12px; color: var(--muted); font-weight: 700; white-space: nowrap; }
+.badge.nearly-full { background: #FEF3C7; color: var(--warn); }
+
+/* ===== 카드: 자녀별 담기 ===== */
+.pc-cart { margin: 10px 0 4px; padding-top: 10px; border-top: 1px dashed #E3EBDD; }
+.pc-cart.disabled { opacity: .8; }
+.pc-cart-label { font-size: 12px; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
+.pc-cart-note { font-size: 12.5px; color: var(--muted); }
+.pc-cart-note.bad { color: var(--danger); }
+.pc-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pc-chip, .pc-cart-toggle, .pc-cart-register {
+  min-height: 44px; padding: 8px 14px; border-radius: 999px;
+  border: 1.5px solid var(--primary); background: #fff; color: var(--primary-ink);
+  font-size: 13.5px; font-weight: 700; font-family: inherit; cursor: pointer;
+  transition: background 120ms, transform 80ms;
+}
+.pc-cart-toggle { width: 100%; }
+.pc-chip:active, .pc-cart-toggle:active { transform: scale(0.97); }
+.pc-chip.on, .pc-cart-toggle.on {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  border-color: var(--primary); color: #fff;
+}
+.pc-chip.disabled {
+  border-color: #E1E1E1; color: var(--faint); background: #F7F7F5;
+  cursor: not-allowed; font-weight: 600;
+}
+.pc-cart-register { border-style: dashed; color: var(--muted); border-color: #CBD5C0; }
+
+/* ===== 하단 바: 자녀별 건수 ===== */
+.submit-bar-children { font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+
+/* ===== 신청 확인창(바텀시트) ===== */
+.confirm-mask {
+  position: fixed; inset: 0; background: rgba(15, 23, 42, .45);
+  display: none; align-items: flex-end; justify-content: center; z-index: 120;
+}
+.confirm-mask.open { display: flex; }
+.confirm-sheet {
+  background: #fff; width: 100%; max-width: 760px;
+  border-radius: 18px 18px 0 0; max-height: 82vh; display: flex; flex-direction: column;
+  box-shadow: 0 -8px 30px rgba(0,0,0,.18); animation: cf-up .18s ease;
+}
+@keyframes cf-up { from { transform: translateY(20px); opacity: .6; } to { transform: none; opacity: 1; } }
+@media (min-width: 720px) { .confirm-mask { align-items: center; } .confirm-sheet { border-radius: 18px; } }
+.confirm-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 8px; }
+.confirm-head h3 { font-size: 17px; }
+.confirm-close { border: none; background: none; font-size: 26px; line-height: 1; color: var(--muted); cursor: pointer; min-width: 44px; min-height: 44px; }
+.confirm-body { padding: 4px 18px 8px; overflow-y: auto; }
+.cf-total { font-size: 14px; font-weight: 700; color: var(--primary-ink); margin-bottom: 10px; }
+.cf-child { border: 1px solid var(--border, #E5E7EB); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+.cf-child-head { font-weight: 700; margin-bottom: 4px; }
+.cf-list { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--ink); }
+.cf-list li { margin: 2px 0; }
+.cf-guardian { margin-top: 8px; font-size: 13px; padding: 8px 10px; border-radius: 8px; }
+.cf-guardian.ok { background: var(--ok-soft, #E6F4EC); color: var(--primary-ink); }
+.cf-guardian.warn { background: #FEF3C7; color: var(--warn); font-weight: 600; }
+.confirm-foot { display: flex; gap: 8px; padding: 12px 18px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid #EEF2E9; }
+.confirm-foot .btn { flex: 1; min-height: 48px; }
+
+/* ===== 모바일 마감(375px) ===== */
+@media (max-width: 400px) {
+  /* 필터 칩: 가로 스크롤 */
+  .grade-filter {
+    flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .grade-filter::-webkit-scrollbar { display: none; }
+  /* 터치 타겟 최소 44px */
+  .grade-filter .chip { min-height: 44px; }
+  /* 자녀 칩은 3명 이상이면 자연스럽게 줄바꿈(가로 스크롤 아님) */
+  .pc-chips { flex-wrap: wrap; }
+}

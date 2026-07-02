@@ -1379,10 +1379,21 @@
       // 교사가 직접 상태를 바꾸면 자동선정 추적에서 제외(손으로 한 건은 일괄 해제 대상이 아님).
       autoPendingIds.delete(id);
       autoSavedIds.delete(id);
+      const nextStatus = e.target.value;
+      const body = { status: nextStatus };
+      // 대기(waitlisted) 선택 시 순번 입력받기(비우면 순번 없음).
+      if (nextStatus === 'waitlisted') {
+        const cur = applications.find(x => x.id === id);
+        const def = (cur && cur.waitlist_order) ? String(cur.waitlist_order) : '';
+        const input = prompt('대기 순번을 입력하세요 (숫자, 비우면 순번 없음)', def);
+        if (input === null) { loadApplications(currentProgramId); return; } // 취소 → 되돌림
+        const n = Number(String(input).trim());
+        body.waitlist_order = (Number.isInteger(n) && n > 0) ? n : null;
+      }
       try {
         await api(`/applications/${id}/status`, {
           method: 'PATCH',
-          body: JSON.stringify({ status: e.target.value }),
+          body: JSON.stringify(body),
         });
         toast('상태 변경됨');
         await loadApplications(currentProgramId);

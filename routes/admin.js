@@ -754,9 +754,20 @@ router.patch('/applications/:id/status', async (req, res) => {
     if (!isValidAppStatus(status)) {
       return res.status(400).json({ ok: false, error: '유효하지 않은 status' });
     }
+    const canonical = normalizeAppStatus(status);
+    const patch = { status: canonical };
+    // 대기(waitlisted) 일 때만 순번 저장, 그 외 상태로 바뀌면 순번 비움.
+    if (canonical === 'waitlisted') {
+      if ('waitlist_order' in (req.body || {})) {
+        const n = Number(req.body.waitlist_order);
+        patch.waitlist_order = Number.isInteger(n) && n > 0 ? n : null;
+      }
+    } else {
+      patch.waitlist_order = null;
+    }
     const { data, error } = await supabase
       .from('saessak_applications')
-      .update({ status: normalizeAppStatus(status) })
+      .update(patch)
       .eq('id', id)
       .select();
     if (error) throw error;

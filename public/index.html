@@ -10,29 +10,30 @@
 </head>
 <body class="public-page">
 <div class="page">
+  <div class="lang-toggle" id="lang-toggle" aria-label="언어 선택"></div>
   <div class="header">
-    <h1>🌱 석암초등학교 디지털새싹 신청</h1>
-    <p class="sub">2026학년도 디지털새싹 교실 프로그램 신청 페이지입니다.</p>
+    <h1 data-i18n="title">🌱 석암초등학교 디지털새싹 신청</h1>
+    <p class="sub" data-i18n="sub">2026학년도 디지털새싹 교실 프로그램 신청 페이지입니다.</p>
   </div>
 
   <div class="flow-guide" aria-label="신청 흐름">
-    <span class="flow-step"><b>①</b> 학생 정보</span>
+    <span class="flow-step"><b>①</b> <span data-i18n="flow1">학생 정보</span></span>
     <span class="flow-arrow">→</span>
-    <span class="flow-step"><b>②</b> 프로그램 선택</span>
+    <span class="flow-step"><b>②</b> <span data-i18n="flow2">프로그램 선택</span></span>
     <span class="flow-arrow">→</span>
-    <span class="flow-step"><b>③</b> 신청 완료</span>
+    <span class="flow-step"><b>③</b> <span data-i18n="flow3">신청 완료</span></span>
   </div>
 
   <div class="me-cta-row">
-    <a class="me-cta-link" href="/me">🔎 이미 신청한 분은 여기서 조회·수정·취소</a>
+    <a class="me-cta-link" href="/me" data-i18n="me_cta">🔎 이미 신청한 분은 여기서 조회·수정·취소</a>
   </div>
 
   <div class="notice">
-    <div class="notice-title">📌 안내</div>
+    <div class="notice-title" data-i18n="notice_title">📌 안내</div>
     <ul class="notice-core">
-      <li>여러 자녀를 한 번에 신청할 수 있어요.</li>
-      <li>프로그램마다 신청할 학생을 따로 선택해요.</li>
-      <li>선정 결과는 보호자 연락처로 개별 안내됩니다.</li>
+      <li data-i18n="notice1">여러 자녀를 한 번에 신청할 수 있어요.</li>
+      <li data-i18n="notice2">프로그램마다 신청할 학생을 따로 선택해요.</li>
+      <li data-i18n="notice3">선정 결과는 보호자 연락처로 개별 안내됩니다.</li>
     </ul>
     <details class="notice-more">
       <summary>자세히 보기</summary>
@@ -45,10 +46,10 @@
     </details>
   </div>
 
-  <div class="section-title">📚 모집 중인 프로그램 안내</div>
+  <div class="section-title" data-i18n="section_programs">📚 모집 중인 프로그램 안내</div>
   <button type="button" class="reviews-collection-btn" id="reviews-collection-btn" onclick="window.__openAllReviews && window.__openAllReviews()">
     <span class="rcb-ic">📝</span>
-    <span class="rcb-text">프로그램 후기 모음 보기</span>
+    <span class="rcb-text" data-i18n="reviews_btn">프로그램 후기 모음 보기</span>
     <span class="rcb-arrow">›</span>
   </button>
   <div class="grade-filter" id="grade-filter" role="tablist" aria-label="학년 필터">
@@ -77,40 +78,34 @@
 
   <form id="apply-form" autocomplete="off">
     <section class="step">
-      <div class="step-title"><span class="step-num">1</span> 신청 학생 등록</div>
-      <p class="step-desc">신청할 학생 정보를 먼저 입력하세요. 형제·자매가 함께 신청하면 한 번에 묶어 접수됩니다.</p>
+      <div class="step-title"><span class="step-num">1</span> <span data-i18n="step1_title">신청 학생 등록</span></div>
+      <p class="step-desc" data-i18n="step1_desc">신청할 학생 정보를 먼저 입력하세요. 형제·자매가 함께 신청하면 한 번에 묶어 접수됩니다.</p>
       <div id="students-area"></div>
+      <p class="step-desc muted" style="margin-top:8px;">아래 프로그램 카드에서 <b>자녀별로 담기</b>를 눌러 신청할 프로그램을 골라 주세요.</p>
     </section>
 
-    <section class="step">
-      <div class="step-title"><span class="step-num">2</span> 프로그램별 신청할 학생 선택</div>
-      <p class="step-desc">각 프로그램마다 신청할 학생을 골라 주세요. 한 학생이 여러 프로그램에 신청할 수 있어요.</p>
-      <div id="programs-area">
-        <div class="empty-state muted">불러오는 중…</div>
-      </div>
+    <!-- 선택은 프로그램 카드의 '담기'로, 확인은 하단 요약 바 → 확인창으로 통합됨. -->
+    <section class="step" hidden>
+      <div id="programs-area"></div>
     </section>
 
-    <section class="step">
-      <div class="step-title"><span class="step-num">3</span> 신청 내용 확인</div>
-      <p class="step-desc">학생별로 신청할 프로그램이 맞는지 확인해 주세요.</p>
-      <div id="summary-area">
-        <div class="empty">먼저 위에서 학생과 프로그램을 선택해 주세요.</div>
-      </div>
+    <section class="step" hidden>
+      <div id="summary-area"></div>
     </section>
 
     <section class="step guardian-step">
-      <div class="step-title"><span class="step-num">📝</span> 보호자 정보</div>
+      <div class="step-title"><span class="step-num">📝</span> <span data-i18n="guardian_title">보호자 정보</span></div>
       <div class="form">
         <div class="form-row">
-          <label for="guardian_name">보호자 이름</label>
+          <label for="guardian_name" data-i18n="guardian_name">보호자 이름</label>
           <input type="text" id="guardian_name" name="guardian_name" required maxlength="20" placeholder="예: 김부모">
         </div>
         <div class="form-row">
-          <label for="guardian_phone">보호자 연락처</label>
+          <label for="guardian_phone" data-i18n="guardian_phone">보호자 연락처</label>
           <input type="tel" id="guardian_phone" name="guardian_phone" required placeholder="010-1234-5678">
         </div>
         <div class="form-row">
-          <label for="guardian_motivation">문의사항<br><span class="muted" style="font-size:11px">(선택)</span></label>
+          <label for="guardian_motivation"><span data-i18n="guardian_inquiry">문의사항</span><br><span class="muted" style="font-size:11px">(선택)</span></label>
           <textarea id="guardian_motivation" name="guardian_motivation" maxlength="500" placeholder="궁금한 점이 있으면 적어주세요."></textarea>
         </div>
 
@@ -140,9 +135,25 @@
   <div class="submit-bar-inner">
     <div class="submit-bar-info">
       <div class="submit-bar-count" id="submit-bar-count">총 <strong>0</strong>건 신청 예정</div>
-      <div class="submit-bar-hint" id="submit-hint">신청할 프로그램을 1개 이상 선택해 주세요</div>
+      <div class="submit-bar-children" id="submit-bar-children"></div>
+      <div class="submit-bar-hint" id="submit-hint" data-i18n="submit_hint_default">신청할 프로그램을 1개 이상 선택해 주세요</div>
     </div>
-    <button form="apply-form" type="submit" class="btn primary submit-bar-btn" id="submit-btn" disabled>신청하기</button>
+    <button type="button" class="btn primary submit-bar-btn" id="submit-btn" data-i18n="submit_btn" disabled>신청하기</button>
+  </div>
+</div>
+
+<!-- 신청 확인창 (하단 바 → 최종 제출) -->
+<div class="confirm-mask" id="confirm-mask">
+  <div class="confirm-sheet">
+    <div class="confirm-head">
+      <h3>🧺 신청 내용 확인</h3>
+      <button type="button" class="confirm-close" id="confirm-close" aria-label="닫기">×</button>
+    </div>
+    <div class="confirm-body" id="confirm-body"></div>
+    <div class="confirm-foot">
+      <button type="button" class="btn" id="confirm-back">더 담기</button>
+      <button type="button" class="btn primary" id="confirm-submit">최종 제출</button>
+    </div>
   </div>
 </div>
 
@@ -210,6 +221,7 @@
   </div>
 </div>
 
+<script src="/js/i18n.js"></script>
 <script src="/js/schedule-format.js"></script>
 <script src="/js/schedule-conflict.js"></script>
 <script src="/js/public.js"></script>
