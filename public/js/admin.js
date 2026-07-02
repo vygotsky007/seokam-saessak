@@ -21,16 +21,24 @@
   }
   // 종합 탭 상태 배지: 프로그램 탭과 동일한 5단계 모집상태를 같은 라벨로 표시.
   // 정원/남은자리로 상태를 추정하지 않고 recruit_status 를 그대로 읽는다.
+  // 종합 상태 배지 용어 정리: 모집중 / 모집예정 / 모집마감 / 종료 / 숨김.
+  // 모호한 '완료'는 제거. 모집이 끝난 프로그램(full/closed)에 선정이 완료됐으면 '선정완료' 배지를 덧붙인다.
   const DASH_STATUS = {
     recruiting: { label: '모집중',   cls: 'open' },
     upcoming:   { label: '모집예정', cls: 'upcoming' },
-    full:       { label: '마감',     cls: 'full' },
-    closed:     { label: '완료',     cls: 'closed' },
+    full:       { label: '모집마감', cls: 'full' },
+    closed:     { label: '종료',     cls: 'closed' },
     hidden:     { label: '숨김',     cls: 'hidden' },
   };
   function dashStatusBadge(p) {
-    const s = DASH_STATUS[recruitStatusOf(p)] || DASH_STATUS.hidden;
-    return `<span class="badge ${s.cls}">${s.label}</span>`;
+    const rs = recruitStatusOf(p);
+    const s = DASH_STATUS[rs] || DASH_STATUS.hidden;
+    let out = `<span class="badge ${s.cls}">${s.label}</span>`;
+    // 모집 종료·마감 + 선정 인원 있음 → '선정완료'(모집 종료지만 선정 미처리인 경우와 구분).
+    if ((rs === 'full' || rs === 'closed') && (p.selected || 0) > 0) {
+      out += ' <span class="badge selected">선정완료</span>';
+    }
+    return out;
   }
 
   // 프로그램 드롭다운 정렬 순위: 모집중 → 모집완료(마감→종료) → 모집예정 → 숨김.
@@ -167,14 +175,28 @@
       return `${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     } catch { return iso; }
   }
+  // 신청 상태 모델(통일): received/selected/waitlisted/confirmed/rejected/cancelled
+  // 옛 값(applied/waiting)도 안전하게 매핑해 표시.
+  const APP_STATUS_OPTIONS = [
+    { value: 'received',   label: '신청' },
+    { value: 'selected',   label: '선정' },
+    { value: 'waitlisted', label: '대기' },
+    { value: 'confirmed',  label: '확정' },
+    { value: 'rejected',   label: '미선정' },
+    { value: 'cancelled',  label: '취소' },
+  ];
+  const APP_STATUS_LEGACY = { applied: 'received', waiting: 'waitlisted' };
+  function normAppStatus(s) { return APP_STATUS_LEGACY[s] || s; }
   function statusBadge(s) {
     const map = {
-      applied: ['badge', '신청'],
+      received: ['badge', '신청'],
       selected: ['badge selected', '선정'],
-      waiting: ['badge waiting', '대기'],
+      waitlisted: ['badge waiting', '대기'],
+      confirmed: ['badge selected', '확정'],
+      rejected: ['badge cancelled', '미선정'],
       cancelled: ['badge cancelled', '취소'],
     };
-    const [c, l] = map[s] || ['badge', s];
+    const [c, l] = map[normAppStatus(s)] || ['badge', s];
     return `<span class="${c}">${l}</span>`;
   }
   function typesOf(p) {
@@ -259,6 +281,9 @@
     try {
       const j = await api('/dashboard');
       const d = j.data;
+      // 처리할 일 액션 센터(최상단). 미답변 문의 수는 문의 목록과 동일 소스를 쓰도록 먼저 갱신.
+      try { await refreshInquiries(); } catch {}
+      renderActionCenter(d);
       $('#dash-totals').innerHTML = `
         <div class="stat-card"><div class="label">전체 프로그램</div><div class="value">${d.totals.programs}</div><div class="sub">모집중 ${d.totals.openPrograms}</div></div>
         <div class="stat-card"><div class="label">총 신청</div><div class="value">${d.totals.applications}</div></div>
@@ -334,6 +359,60 @@
     }
   }
 
+  // ===== 처리할 일 액션 센터 (종합 탭 최상단) =====
+  function renderActionCenter(d) {
+    const el = $('#action-center');
+    if (!el) return;
+    const ac = d.actionCenter || {};
+    const pendingInq = inquiries.filter(x => !x.answered).length;
+    const needsReview = (d.totals && d.totals.needsReview) || 0;
+    const ms = ac.multiShortage || [];
+    const sp = ac.selectionPending || [];
+    const items = [];
+
+    if (pendingInq > 0) {
+      items.push(`<button type="button" class="ac-row" data-ac="inq">
+        <span class="ac-ico">💬</span>
+        <span class="ac-txt">미답변 문의 <b>${pendingInq}</b>건</span>
+        <span class="ac-go">문의사항 →</span></button>`);
+    }
+    if (ms.length > 0) {
+      const chips = ms.map(p => `<button type="button" class="ac-chip" data-ac-pid="${p.id}">${esc(p.title)} <span class="muted">(${p.count}/${p.min})</span></button>`).join('');
+      items.push(`<div class="ac-row ac-row-multi">
+        <span class="ac-ico">🌏</span>
+        <span class="ac-txt">다문화 최소보장 미달 <b>${ms.length}</b>개<div class="ac-chips">${chips}</div></span></div>`);
+    }
+    if (needsReview > 0) {
+      items.push(`<button type="button" class="ac-row" data-ac="conflict">
+        <span class="ac-ico">⚠️</span>
+        <span class="ac-txt">확인 필요 신청 <b>${needsReview}</b>건 <span class="muted">(동명이인 의심)</span></span>
+        <span class="ac-go">신청자 →</span></button>`);
+    }
+    if (sp.length > 0) {
+      const chips = sp.map(p => `<button type="button" class="ac-chip" data-ac-pid="${p.id}">${esc(p.title)} <span class="muted">(신청 ${p.applied})</span></button>`).join('');
+      items.push(`<div class="ac-row ac-row-multi">
+        <span class="ac-ico">📝</span>
+        <span class="ac-txt">선정 미처리 <b>${sp.length}</b>개 <span class="muted">(모집 마감·선정 0)</span><div class="ac-chips">${chips}</div></span></div>`);
+    }
+
+    if (items.length === 0) {
+      el.innerHTML = `<div class="ac-head">✅ 처리할 일</div><div class="ac-empty">처리할 일이 없어요. 👍</div>`;
+    } else {
+      el.innerHTML = `<div class="ac-head">📌 처리할 일 <span class="ac-count">${items.length}</span></div><div class="ac-list">${items.join('')}</div>`;
+    }
+
+    $$('#action-center [data-ac]').forEach(b => b.addEventListener('click', () => {
+      const kind = b.dataset.ac;
+      if (kind === 'inq') { inquiryFilter = 'pending'; switchTab('inquiries'); }
+      else if (kind === 'conflict') { appConflictOnly = true; currentProgramId = ALL_PROGRAMS; switchTab('applicants'); }
+    }));
+    $$('#action-center [data-ac-pid]').forEach(b => b.addEventListener('click', () => {
+      appConflictOnly = false;
+      currentProgramId = b.dataset.acPid;
+      switchTab('applicants');
+    }));
+  }
+
   // HH:MM:SS (24시간) — 종합 탭 "마지막 갱신" 표시용
   function fmtClock() {
     const d = new Date();
@@ -407,9 +486,14 @@
             </td>
             <td class="cell-actions">
               <button class="btn small" data-edit="${p.id}">수정</button>
-              <button class="btn small" data-output="${p.id}">📦 산출물</button>
-              <button class="btn small" data-review="${p.id}">📝 후기</button>
-              <button class="btn small danger" data-del="${p.id}">삭제</button>
+              <div class="kebab">
+                <button type="button" class="btn small kebab-btn" data-kebab title="더보기">⋯</button>
+                <div class="kebab-menu" hidden>
+                  <button type="button" data-output="${p.id}">📦 산출물</button>
+                  <button type="button" data-review="${p.id}">📝 후기</button>
+                  <button type="button" class="danger" data-del="${p.id}" data-del-name="${esc(p.title || '')}" data-del-count="${p.applied_count || 0}">삭제</button>
+                </div>
+              </div>
             </td>
           </tr>
         `).join('');
@@ -432,7 +516,17 @@
       $$('[data-output]').forEach(el => el.addEventListener('click', () => openOutputDialog(el.dataset.output)));
       $$('[data-review]').forEach(el => el.addEventListener('click', () => openReviewDialog(el.dataset.review)));
       $$('[data-del]').forEach(el => el.addEventListener('click', async () => {
-        if (!confirm('이 프로그램과 모든 신청 내역을 삭제할까요?')) return;
+        const name = el.dataset.delName || '이 프로그램';
+        const cnt = Number(el.dataset.delCount) || 0;
+        const warn = cnt > 0
+          ? `<div class="cd-warn">⚠ 이 프로그램에는 신청 <b>${cnt}건</b>이 있어요. 삭제하면 신청 내역도 모두 함께 삭제됩니다.</div>`
+          : '';
+        const ok = await confirmDeleteByName({
+          target: name,
+          title: '프로그램 삭제',
+          message: `<b>${esc(name)}</b> 프로그램을 삭제합니다. 되돌릴 수 없어요.${warn}`,
+        });
+        if (!ok) return;
         try { await api(`/programs/${el.dataset.del}`, { method: 'DELETE' }); toast('삭제됨'); loadProgramsTab(); }
         catch (err) { toast(err.message); }
       }));
@@ -1012,6 +1106,7 @@
 
   $('#app-program-select').addEventListener('change', async (e) => {
     currentProgramId = e.target.value || null;
+    appConflictOnly = false; // 사용자가 직접 프로그램을 고르면 '확인 필요만' 모드 해제
     resetRecordTool(); // 프로그램이 바뀌면 기록 참고 토글/자동선정 staging 초기화
     if (currentProgramId) await loadApplications(currentProgramId);
     else {
@@ -1058,7 +1153,7 @@
         // 저장된 자동선정만 '신청(미정)'으로 되돌림. 현재 상태가 selected 일 때만(교사가 따로 바꿨으면 존중).
         const a = applications.find(x => x.id === id);
         if (a && a.status === 'selected') {
-          await api(`/applications/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'applied' }) });
+          await api(`/applications/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'received' }) });
         }
       }
       autoSavedIds = new Set();
@@ -1074,18 +1169,29 @@
   // 신청자 탭 필터(클라이언트 전용 — 서버/DB 무변경)
   let appPrefFilter = 'all';   // all | multicultural | sibling | general
   let appGradeFilter = 'all';  // all | 1..6
-  let appCancelFilter = 'show'; // show | hide
+  let appCancelFilter = 'hide'; // hide(기본): 취소는 그룹 하단 '취소 N건 보기'로 접힘 / show: 펼침
+  let appConflictOnly = false;  // 액션센터 '확인 필요' 진입 시 동명이인 의심 건만
   $('#app-pref-filter').addEventListener('change', (e) => { appPrefFilter = e.target.value; renderApplications(); });
   $('#app-grade-filter').addEventListener('change', (e) => { appGradeFilter = e.target.value; renderApplications(); });
   $('#app-cancel-filter').addEventListener('change', (e) => { appCancelFilter = e.target.value; renderApplications(); });
   // 우대 판정은 기존 명단 배지와 동일 기준(a.is_multicultural / a.sibling_group_id) 재사용.
+  // 취소 건은 여기서 거르지 않고 렌더 단계에서 그룹 하단 접기로 분리한다.
   function appPassesFilters(a) {
-    if (appCancelFilter === 'hide' && a.status === 'cancelled') return false;
+    if (appConflictOnly && !a.name_conflict) return false;
     if (appGradeFilter !== 'all' && Number(a.grade) !== Number(appGradeFilter)) return false;
     if (appPrefFilter === 'multicultural' && a.is_multicultural !== true) return false;
     if (appPrefFilter === 'sibling' && !a.sibling_group_id) return false;
     if (appPrefFilter === 'general' && (a.is_multicultural === true || a.sibling_group_id)) return false;
     return true;
+  }
+  // 취소 건 접기: 활성 행 뒤에 "취소 N건 보기" 토글 + 숨김 취소행들을 붙인다.
+  function cancelBlockHtml(cancelledRows, gid) {
+    if (!cancelledRows.length) return '';
+    const open = appCancelFilter === 'show';
+    let n = 0;
+    const rowsHtml = cancelledRows.map(a => applicantRowHtml(a, '—', true, `cancel-grp-${gid}`, open)).join('');
+    const label = `${open ? '▾' : '▸'} 취소 ${cancelledRows.length}건 ${open ? '숨기기' : '보기'}`;
+    return `<tr class="cancel-toggle-row"><td colspan="10"><button type="button" class="cancel-toggle" data-cancel-grp="${gid}" data-open="${open ? '1' : '0'}">${label}</button></td></tr>` + rowsHtml;
   }
 
   async function loadApplications(pid) {
@@ -1154,7 +1260,7 @@
     const remaining = cap - selectedNow; // 남은 정원
     // 후보: 상태 '미정(applied)' + 부정 0 + 긍정 1 이상(부정이 하나라도 있으면 자동선정 제외).
     const cands = applications
-      .filter(a => a.status === 'applied' && scoreOf(a).neg === 0 && scoreOf(a).pos >= 1)
+      .filter(a => normAppStatus(a.status) === 'received' && scoreOf(a).neg === 0 && scoreOf(a).pos >= 1)
       .sort((a, b) => scoreOf(b).score - scoreOf(a).score || cmpGradeClassLite(a, b));
     const pick = remaining > 0 ? cands.slice(0, remaining) : []; // 정원 초과분은 자동선정 안 함
     if (pick.length === 0) {
@@ -1201,16 +1307,16 @@
   // 신청자 1명 → 메인행 HTML.
   // (문의사항은 별도 "문의사항" 탭으로 일원화 — 신청자 탭에서는 표시하지 않음)
   // allView 면 순서이동(▲▼) 버튼을 숨긴다(전체 보기에서는 프로그램 교차 reorder 가 무의미·위험).
-  function applicantRowHtml(a, displayIndex, allView) {
+  function applicantRowHtml(a, displayIndex, allView, rowClass, visible) {
     const cancelled = a.status === 'cancelled';
     const badges = [];
     // 취소 건은 자동접수/자동대기 대신 "취소"로 표시(상태·카운트 정합성).
-    if (cancelled) badges.push('<span class="badge" style="background:#E5E7EB; color:#6B7280;">취소</span>');
-    else if (a.is_waitlist) badges.push('<span class="badge" style="background:#FEF3C7; color:#92400E;">자동대기</span>');
-    else badges.push('<span class="badge" style="background:#DCFCE7; color:#166534;">자동접수</span>');
-    if (a.is_multicultural) badges.push('<span class="badge tag-multicultural">다문화</span>');
+    if (cancelled) badges.push('<span class="badge" style="background:#E5E7EB; color:#6B7280;" title="신청이 취소된 건이에요.">취소</span>');
+    else if (a.is_waitlist) badges.push('<span class="badge" style="background:#FEF3C7; color:#92400E;" title="정원이 차서 자동 대기로 접수된 건이에요. 관리자의 최종 선정과는 별개예요.">자동대기</span>');
+    else badges.push('<span class="badge" style="background:#DCFCE7; color:#166534;" title="정원 안에 자동 접수된 건이에요. 관리자의 최종 선정과는 별개예요.">자동접수</span>');
+    if (a.is_multicultural) badges.push('<span class="badge tag-multicultural" title="다문화가정 우대 대상으로 표시된 신청이에요.">다문화</span>');
     if (a.sibling_group_id) {
-      badges.push(`<span class="badge" style="background:${siblingColor(a.sibling_group_id)}; color:#0F172A;">형제 ${esc(siblingShort(a.sibling_group_id))}</span>`);
+      badges.push(`<span class="badge" style="background:${siblingColor(a.sibling_group_id)}; color:#0F172A;" title="형제·자매 묶음 신청(같은 색=같은 묶음)이에요.">형제 ${esc(siblingShort(a.sibling_group_id))}</span>`);
     }
     if (a.name_conflict) {
       badges.push('<span class="badge name-conflict" title="같은 이름·다른 학년/반으로 신청된 다른 행이 있어요 (동명이인 의심)">⚠ 확인 필요</span>');
@@ -1229,12 +1335,16 @@
       : '';
     // (C) 자동 선정 staging: 미저장이면 상태를 '선정'으로 보여주되 DB 는 아직 미반영.
     const pending = autoPendingIds.has(a.id);
-    const effStatus = pending ? 'selected' : a.status;
+    const effStatus = normAppStatus(pending ? 'selected' : a.status);
     const pendingBadge = pending
       ? ' <span class="badge" style="background:#DBEAFE; color:#1E40AF;" title="자동 선정됨(아직 저장 전)">자동선정·미저장</span>'
       : '';
+    const clsAttr = rowClass ? ` class="${rowClass}"` : '';
+    const hideStyle = (rowClass && !visible) ? 'display:none;' : '';
+    const baseStyle = cancelled ? 'opacity:.55;' : (pending ? 'background:#EFF6FF;' : '');
+    const styleAttr = (hideStyle + baseStyle) ? ` style="${hideStyle}${baseStyle}"` : '';
     return `
-      <tr data-id="${a.id}"${cancelled ? ' style="opacity:.55;"' : (pending ? ' style="background:#EFF6FF;"' : '')}>
+      <tr data-id="${a.id}"${clsAttr}${styleAttr}>
         <td>${displayIndex}</td>
         <td><b>${esc(a.student_name)}</b>${noteFlag}${scoreLine}</td>
         <td>${a.grade ?? '?'}-${a.class_no ?? '?'}</td>
@@ -1243,10 +1353,7 @@
         <td>${badges.join(' ') || '<span class="muted">—</span>'}${pendingBadge}</td>
         <td>
           <select class="select" data-status="${a.id}">
-            <option value="applied" ${effStatus==='applied'?'selected':''}>신청</option>
-            <option value="selected" ${effStatus==='selected'?'selected':''}>선정</option>
-            <option value="waiting" ${effStatus==='waiting'?'selected':''}>대기</option>
-            <option value="cancelled" ${effStatus==='cancelled'?'selected':''}>취소</option>
+            ${APP_STATUS_OPTIONS.map(o => `<option value="${o.value}" ${effStatus === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}
           </select>
         </td>
         <td>${a.source === 'manual' ? '<span class="badge">수동</span>' : '<span class="badge">온라인</span>'}</td>
@@ -1254,9 +1361,14 @@
         <td class="cell-actions">
           ${reorderBtns}
           <button class="btn small" data-note="${a.id}" title="참고기록(노쇼/태도)">📝 기록</button>
-          <button class="btn small" data-copy="${a.id}">복사</button>
-          <button class="btn small" data-edit-app="${a.id}">수정</button>
-          <button class="btn small danger" data-del-app="${a.id}">삭제</button>
+          <div class="kebab">
+            <button type="button" class="btn small kebab-btn" data-kebab title="더보기">⋯</button>
+            <div class="kebab-menu" hidden>
+              <button type="button" data-copy="${a.id}">복사</button>
+              <button type="button" data-edit-app="${a.id}">수정</button>
+              <button type="button" class="danger" data-del-app="${a.id}" data-del-name="${esc(a.student_name || '')}">삭제</button>
+            </div>
+          </div>
         </td>
       </tr>`;
   }
@@ -1283,10 +1395,68 @@
     $$('[data-copy]').forEach(el => el.addEventListener('click', () => openCopyDialog(el.dataset.copy)));
     $$('[data-edit-app]').forEach(el => el.addEventListener('click', () => openApplicantDialog(el.dataset.editApp)));
     $$('[data-del-app]').forEach(el => el.addEventListener('click', async () => {
-      if (!confirm('이 신청을 삭제할까요?')) return;
+      const name = el.dataset.delName || '이 신청';
+      const ok = await confirmDeleteByName({
+        target: name,
+        title: '신청 삭제',
+        message: `<b>${esc(name)}</b> 학생의 신청을 삭제합니다. 되돌릴 수 없어요.`,
+      });
+      if (!ok) return;
       try { await api(`/applications/${el.dataset.delApp}`, { method: 'DELETE' }); toast('삭제됨'); await loadApplications(currentProgramId); }
       catch (err) { toast(err.message); }
     }));
+  }
+
+  // 취소 접기 토글: 그룹별 "취소 N건 보기/숨기기".
+  function bindCancelToggles() {
+    $$('.cancel-toggle').forEach(btn => btn.addEventListener('click', () => {
+      const gid = btn.dataset.cancelGrp;
+      const next = btn.dataset.open !== '1';
+      const rows = $$('.cancel-grp-' + gid);
+      rows.forEach(r => { r.style.display = next ? '' : 'none'; });
+      btn.dataset.open = next ? '1' : '0';
+      btn.textContent = `${next ? '▾' : '▸'} 취소 ${rows.length}건 ${next ? '숨기기' : '보기'}`;
+    }));
+  }
+
+  // ⋯ 케밥 메뉴 열고 닫기(전역 1회 바인딩). 바깥 클릭 시 닫힘.
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-kebab]');
+    const openMenu = btn ? btn.parentElement.querySelector('.kebab-menu') : null;
+    $$('.kebab-menu').forEach(m => { if (m !== openMenu) m.hidden = true; });
+    if (btn && openMenu) { openMenu.hidden = !openMenu.hidden; e.stopPropagation(); }
+  });
+
+  // 이름 입력 확인식 삭제 모달. resolve(true) = 확인, resolve(false) = 취소.
+  function confirmDeleteByName({ target, title, message }) {
+    return new Promise((resolve) => {
+      const dlg = $('#confirm-delete-dialog');
+      $('#cd-title').textContent = title || '삭제 확인';
+      $('#cd-message').innerHTML = message || '';
+      $('#cd-target').textContent = target || '';
+      const input = $('#cd-input');
+      const okBtn = $('#cd-confirm');
+      input.value = '';
+      okBtn.disabled = true;
+      dlg.classList.add('open');
+      setTimeout(() => input.focus(), 30);
+      const sync = () => { okBtn.disabled = input.value.trim() !== String(target || '').trim(); };
+      const close = (val) => {
+        dlg.classList.remove('open');
+        input.removeEventListener('input', sync);
+        okBtn.removeEventListener('click', onOk);
+        dlg.removeEventListener('click', onMask);
+        $('#cd-cancel').removeEventListener('click', onCancel);
+        resolve(val);
+      };
+      const onOk = () => { if (!okBtn.disabled) close(true); };
+      const onCancel = () => close(false);
+      const onMask = (ev) => { if (ev.target === dlg) close(false); };
+      input.addEventListener('input', sync);
+      okBtn.addEventListener('click', onOk);
+      $('#cd-cancel').addEventListener('click', onCancel);
+      dlg.addEventListener('click', onMask);
+    });
   }
 
   function renderApplications() {
@@ -1299,8 +1469,9 @@
     // 카운트: 필터 적용 후 유효(취소 제외) 인원 + 취소 건수 별도 표기.
     const validCount = filtered.filter(a => a.status !== 'cancelled').length;
     const cancelledCount = filtered.length - validCount;
+    const conflictNote = appConflictOnly ? ' · ⚠ 확인 필요만' : '';
     const totalNote = (filtered.length !== applications.length) ? ` · 필터 적용(전체 ${applications.length})` : '';
-    $('#app-count').textContent = `${validCount}명` + (cancelledCount ? ` (취소 ${cancelledCount})` : '') + totalNote;
+    $('#app-count').textContent = `${validCount}명` + (cancelledCount ? ` (취소 ${cancelledCount})` : '') + conflictNote + totalNote;
     if (applications.length === 0) {
       tbody.innerHTML = `<tr><td colspan="10" class="empty-state">신청자가 없습니다.</td></tr>`;
       return;
@@ -1326,39 +1497,44 @@
       let html = '';
       order.forEach(pid => {
         const g = groups.get(pid);
-        const rows = g.rows.slice().sort(applicationComparator);
-        const gValid = rows.filter(a => a.status !== 'cancelled').length;
-        const gCancelled = rows.length - gValid;
-        html += `<tr class="group-row"><td colspan="10" style="background:#EEF2FF; color:#3730A3; font-weight:800; padding:6px 10px;">📚 ${esc(g.title)} <span class="muted" style="font-weight:600;">· ${gValid}명${gCancelled ? ` (취소 ${gCancelled})` : ''}</span></td></tr>`;
-        // 순번은 취소 제외하고 매김. 취소 건은 '—'.
+        const sorted = g.rows.slice().sort(applicationComparator);
+        const active = sorted.filter(a => a.status !== 'cancelled');
+        const cancelledRows = sorted.filter(a => a.status === 'cancelled');
+        html += `<tr class="group-row"><td colspan="10" style="background:#EEF2FF; color:#3730A3; font-weight:800; padding:6px 10px;">📚 ${esc(g.title)} <span class="muted" style="font-weight:600;">· ${active.length}명${cancelledRows.length ? ` (취소 ${cancelledRows.length})` : ''}</span></td></tr>`;
         let n = 0;
-        html += rows.map(a => applicantRowHtml(a, a.status === 'cancelled' ? '—' : (++n), true)).join('');
+        html += active.map(a => applicantRowHtml(a, ++n, true)).join('');
+        html += cancelBlockHtml(cancelledRows, pid);
       });
       tbody.innerHTML = html;
     } else {
-      let list = filtered.slice().sort(applicationComparator);
+      const list = filtered.slice().sort(applicationComparator);
+      let activeList = list.filter(a => a.status !== 'cancelled');
+      const cancelledRows = list.filter(a => a.status === 'cancelled');
       // (A) 긍정 우선 정렬: 점수 내림차순(동점 학년·반순). 기존 정렬 위에 덮어쓴다.
       if (recordToolActive && rtSortPos) {
-        list = list.slice().sort((a, b) => scoreOf(b).score - scoreOf(a).score || cmpGradeClassLite(a, b));
+        activeList = activeList.slice().sort((a, b) => scoreOf(b).score - scoreOf(a).score || cmpGradeClassLite(a, b));
       }
       let n = 0;
-      const rowOf = (a) => applicantRowHtml(a, a.status === 'cancelled' ? '—' : (++n), false);
+      const rowOf = (a) => applicantRowHtml(a, ++n, false);
+      let html = '';
       if (recordToolActive && rtDemoteNeg) {
         // (B) 부정 후순위: 부정 1개 이상 학생을 구분선 아래로 모은다.
-        const clean = list.filter(a => scoreOf(a).neg === 0);
-        const flagged = list.filter(a => scoreOf(a).neg > 0);
-        let html = clean.map(rowOf).join('');
+        const clean = activeList.filter(a => scoreOf(a).neg === 0);
+        const flagged = activeList.filter(a => scoreOf(a).neg > 0);
+        html += clean.map(rowOf).join('');
         if (flagged.length) {
           html += `<tr class="rt-divider"><td colspan="10">⚠ 부정 기록 있는 신청자 · 후순위 (${flagged.length}명)</td></tr>`;
           html += flagged.map(rowOf).join('');
         }
-        tbody.innerHTML = html;
       } else {
-        tbody.innerHTML = list.map(rowOf).join('');
+        html += activeList.map(rowOf).join('');
       }
+      html += cancelBlockHtml(cancelledRows, 'single');
+      tbody.innerHTML = html;
     }
 
     bindApplicationRowEvents();
+    bindCancelToggles();
   }
 
   async function moveRow(id, dir) {
@@ -1499,7 +1675,7 @@
         form.guardian_name.value = a.guardian_name || '';
         form.guardian_phone.value = a.guardian_phone || '';
         form.motivation.value = a.motivation || '';
-        form.status.value = a.status || 'applied';
+        form.status.value = normAppStatus(a.status || 'received');
         form.is_multicultural.checked = !!a.is_multicultural;
       }
     } else {

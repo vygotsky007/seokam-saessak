@@ -30,6 +30,7 @@
 
   <section class="tab-pane" id="pane-dashboard">
     <div class="dash-updated-row"><span id="dash-updated" class="dash-updated"></span></div>
+    <div class="action-center" id="action-center"></div>
     <div class="dashboard-grid" id="dash-totals"></div>
     <div class="panel" style="margin-bottom:14px;">
       <h3 style="font-size:14px; margin-bottom:10px;">프로그램별 현황</h3>
@@ -150,9 +151,9 @@
         <option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option>
         <option value="4">4학년</option><option value="5">5학년</option><option value="6">6학년</option>
       </select>
-      <select id="app-cancel-filter" class="select" title="취소 건">
-        <option value="show">취소 포함</option>
-        <option value="hide">취소 숨김</option>
+      <select id="app-cancel-filter" class="select" title="취소 건 표시 방식">
+        <option value="hide">취소 접기(기본)</option>
+        <option value="show">취소 펼치기</option>
       </select>
       <button class="btn small" id="add-applicant-btn">+ 신청자 추가</button>
       <button class="btn small" id="cert-print-btn">🪪 증서 출력(확인증·이수증)</button>
@@ -176,6 +177,17 @@
         <button class="btn small" id="rt-undo-btn" hidden>↩ 자동선정 해제</button>
       </div>
     </div>
+    <details class="badge-legend">
+      <summary>🏷️ 배지 설명 보기</summary>
+      <div class="badge-legend-body">
+        <span class="bl-item"><span class="badge" style="background:#DCFCE7; color:#166534;">자동접수</span> 정원 안에 자동 접수(관리자 선정과 별개)</span>
+        <span class="bl-item"><span class="badge" style="background:#FEF3C7; color:#92400E;">자동대기</span> 정원 초과로 자동 대기</span>
+        <span class="bl-item"><span class="badge tag-multicultural">다문화</span> 다문화가정 우대 대상</span>
+        <span class="bl-item"><span class="badge" style="background:#E0E7FF; color:#3730A3;">형제</span> 형제·자매 묶음(같은 색=같은 묶음)</span>
+        <span class="bl-item"><span class="badge name-conflict">⚠ 확인 필요</span> 같은 이름·다른 학년/반(동명이인 의심)</span>
+        <span class="bl-item"><span class="note-flag">⚠️ N</span> 참고기록(노쇼·태도 등) N건</span>
+      </div>
+    </details>
     <div class="table-wrap">
       <table>
         <thead>
@@ -447,9 +459,11 @@
         <label class="row" id="app-mc-row" hidden><input type="checkbox" name="is_multicultural"> 다문화가정인 경우 체크</label>
         <label>상태</label>
         <select name="status">
-          <option value="applied">신청</option>
+          <option value="received">신청</option>
           <option value="selected">선정</option>
-          <option value="waiting">대기</option>
+          <option value="waitlisted">대기</option>
+          <option value="confirmed">확정</option>
+          <option value="rejected">미선정</option>
           <option value="cancelled">취소</option>
         </select>
       </div>
@@ -568,6 +582,20 @@
     <div class="actions">
       <button type="button" class="btn" data-close>닫기</button>
       <button type="button" class="btn primary" id="sb-note-save">기록 추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- 삭제 확인(이름 입력) Dialog -->
+<div class="dialog-mask" id="confirm-delete-dialog">
+  <div class="dialog" style="max-width:440px;">
+    <h2 id="cd-title">삭제 확인</h2>
+    <p id="cd-message" style="font-size:13px; margin-bottom:10px; line-height:1.6;"></p>
+    <p class="muted" style="font-size:12px; margin-bottom:6px;">삭제하려면 아래에 <b><span id="cd-target"></span></b> 를 그대로 입력하세요.</p>
+    <input type="text" id="cd-input" class="input" autocomplete="off" style="width:100%;" placeholder="이름을 정확히 입력">
+    <div class="actions">
+      <button type="button" class="btn" id="cd-cancel">취소</button>
+      <button type="button" class="btn danger" id="cd-confirm" disabled>삭제</button>
     </div>
   </div>
 </div>

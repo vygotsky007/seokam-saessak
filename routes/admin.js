@@ -9,6 +9,7 @@ const QRCode = require('qrcode');
 const supabase = require('../utils/supabase');
 const { normalizeMobile } = require('../utils/phone');
 const { makeReviewToken } = require('../utils/review-token');
+const { isValidAppStatus, normalizeAppStatus, appStatusLabel, validateStudentName } = require('../utils/app-status');
 
 // 강사용 수정 링크 토큰: 48자 hex(24바이트) — 추측 불가능한 길이.
 function genEditToken() {
@@ -673,11 +674,12 @@ router.post('/applications', async (req, res) => {
       status, source, is_multicultural, sibling_group_id,
     } = req.body || {};
     if (!program_id) return res.status(400).json({ ok: false, error: 'program_id가 필요합니다.' });
-    if (!student_name) return res.status(400).json({ ok: false, error: '학생 이름이 필요합니다.' });
+    const nameCheck = validateStudentName(student_name);
+    if (!nameCheck.ok) return res.status(400).json({ ok: false, error: nameCheck.error });
 
     const payload = {
       program_id,
-      student_name: String(student_name).trim(),
+      student_name: nameCheck.name,
       grade: Number(grade) || null,
       class_no: Number(class_no) || null,
       guardian_name: guardian_name ? String(guardian_name).trim() : null,
@@ -685,7 +687,7 @@ router.post('/applications', async (req, res) => {
       student_phone: student_phone ? normalizeMobile(student_phone) : null,
       motivation: motivation ? String(motivation).trim() : null,
       privacy_agreed: true,
-      status: status || 'applied',
+      status: normalizeAppStatus(status),
       source: source || 'manual',
       submitted_at: new Date().toISOString(),
       is_multicultural: is_multicultural === true || is_multicultural === 'true',
@@ -712,6 +714,15 @@ router.put('/applications/:id', async (req, res) => {
     const patch = {};
     for (const k of allowed) {
       if (k in req.body) patch[k] = req.body[k];
+    }
+    if ('student_name' in patch) {
+      const nameCheck = validateStudentName(patch.student_name);
+      if (!nameCheck.ok) return res.status(400).json({ ok: false, error: nameCheck.error });
+      patch.student_name = nameCheck.name;
+    }
+    if ('status' in patch) {
+      if (!isValidAppStatus(patch.status)) return res.status(400).json({ ok: false, error: '유효하지 않은 status' });
+      patch.status = normalizeAppStatus(patch.status);
     }
     if ('grade' in patch) patch.grade = Number(patch.grade) || null;
     if ('class_no' in patch) patch.class_no = Number(patch.class_no) || null;
@@ -740,12 +751,12 @@ router.patch('/applications/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body || {};
-    if (!['applied', 'selected', 'waiting', 'cancelled'].includes(status)) {
+    if (!isValidAppStatus(status)) {
       return res.status(400).json({ ok: false, error: '유효하지 않은 status' });
     }
     const { data, error } = await supabase
       .from('saessak_applications')
-      .update({ status })
+      .update({ status: normalizeAppStatus(status) })
       .eq('id', id)
       .select();
     if (error) throw error;
@@ -828,7 +839,7 @@ router.post('/applications/:id/copy', async (req, res) => {
       student_phone: src.student_phone,
       motivation: src.motivation,
       privacy_agreed: src.privacy_agreed,
-      status: 'applied',
+      status: 'received',
       source: 'manual',
       submitted_at: new Date().toISOString(),
       is_multicultural: !!src.is_multicultural,
@@ -1369,6 +1380,25 @@ router.get('/dashboard', async (req, res) => {
       p => p.program_type === 'multicultural' && p.multicultural_min != null && p.multicultural_count < p.multicultural_min
     );
 
+    // 확인 필요(동명이인 의심) 건수 — GET /applications 의 name_conflict 와 동일 기준.
+    const conflictBuckets = {};
+    active.forEach(a => {
+      if (!a.student_name || !a.guardian_phone) return;
+      const k = `${a.guardian_phone}::${a.student_name}`;
+      (conflictBuckets[k] = conflictBuckets[k] || new Set()).add(`${a.grade ?? '?'}-${a.class_no ?? '?'}`);
+    });
+    const conflictKeys = new Set(
+      Object.entries(conflictBuckets).filter(([, s]) => s.size >= 2).map(([k]) => k)
+    );
+    const needsReview = active.filter(
+      a => a.student_name && a.guardian_phone && conflictKeys.has(`${a.guardian_phone}::${a.student_name}`)
+    ).length;
+
+    // 선정 미처리 프로그램 — 모집이 끝났는데(full/closed) 선정 0명.
+    const selectionPending = programSummary.filter(
+      p => (p.recruit_status === 'full' || p.recruit_status === 'closed') && (p.selected || 0) === 0 && (p.applied || 0) > 0
+    );
+
     res.json({
       ok: true,
       data: {
@@ -1384,6 +1414,12 @@ router.get('/dashboard', async (req, res) => {
           siblingGroups: siblingList.length,
           multiculturalApplicants: active.filter(a => a.is_multicultural).length,
           multiculturalShortage: multiShortagePrograms.length,
+          needsReview,
+        },
+        actionCenter: {
+          multiShortage: multiShortagePrograms.map(p => ({ id: p.id, title: p.title, count: p.multicultural_count, min: p.multicultural_min })),
+          selectionPending: selectionPending.map(p => ({ id: p.id, title: p.title, applied: p.applied, recruit_status: p.recruit_status })),
+          needsReview,
         },
       },
     });
@@ -1754,12 +1790,7 @@ router.get('/export', async (req, res) => {
 });
 
 function statusLabel(s) {
-  return {
-    applied:   '신청',
-    selected:  '선정',
-    waiting:   '대기',
-    cancelled: '취소',
-  }[s] || s;
+  return appStatusLabel(s);
 }
 function programTypeLabel(t) {
   return {

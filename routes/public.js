@@ -144,6 +144,12 @@ router.post('/apply', async (req, res) => {
       if (!name) {
         return res.status(400).json({ ok: false, error: `${i + 1}번째 학생의 이름을 입력해 주세요.` });
       }
+      if (/^\d+$/.test(name)) {
+        return res.status(400).json({ ok: false, error: `${i + 1}번째 학생의 이름을 숫자만으로 입력할 수 없어요. 실제 이름을 입력해 주세요.` });
+      }
+      if (name.length < 2) {
+        return res.status(400).json({ ok: false, error: `${i + 1}번째 학생의 이름은 2글자 이상 입력해 주세요.` });
+      }
       const grade = Number(s.grade);
       const classNo = Number(s.class_no);
       if (!Number.isInteger(grade) || grade < 1 || grade > 6) {
@@ -328,7 +334,7 @@ router.post('/apply', async (req, res) => {
             student_phone: null,
             motivation: s.motivation,
             privacy_agreed: true,
-            status: 'applied',
+            status: 'received',
             source: 'online',
             submitted_at: now,
             is_multicultural: isMulticulturalRow,

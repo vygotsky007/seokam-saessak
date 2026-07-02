@@ -8,6 +8,7 @@ const ExcelJS = require('exceljs');
 const router = express.Router();
 const supabase = require('../utils/supabase');
 const { normalizeMobile } = require('../utils/phone');
+const { isValidAppStatus, normalizeAppStatus, validateStudentName } = require('../utils/app-status');
 
 // 토큰은 충분히 길어야 한다(백필 64자 / 신규 48자). 짧은 값은 즉시 거부해 null 매칭 등을 방지.
 const MIN_TOKEN_LEN = 16;
@@ -300,8 +301,9 @@ router.post('/:token/applications', rosterLimiter, async (req, res) => {
     if (!p) return;
 
     const b = req.body || {};
-    const studentName = b.student_name ? String(b.student_name).trim() : '';
-    if (!studentName) return res.status(400).json({ ok: false, error: '학생 이름을 입력하세요.' });
+    const nameCheck = validateStudentName(b.student_name);
+    if (!nameCheck.ok) return res.status(400).json({ ok: false, error: nameCheck.error });
+    const studentName = nameCheck.name;
 
     const grade = Number(b.grade);
     if (!Number.isInteger(grade) || grade < 1 || grade > 6) {
@@ -367,7 +369,7 @@ router.post('/:token/applications', rosterLimiter, async (req, res) => {
         student_phone: null,
         motivation: null,
         privacy_agreed: true,
-        status: 'applied',
+        status: 'received',
         source: 'manual',
         submitted_at: new Date().toISOString(),
         is_multicultural: false, // 강사 수동입력은 다문화 표기 미지정(관리자가 필요시 조정)
@@ -422,9 +424,9 @@ router.put('/:token/applications/:appId', rosterLimiter, async (req, res) => {
     const b = req.body || {};
     const patch = {};
     if ('student_name' in b) {
-      const name = b.student_name ? String(b.student_name).trim() : '';
-      if (!name) return res.status(400).json({ ok: false, error: '학생 이름을 입력하세요.' });
-      patch.student_name = name;
+      const nameCheck = validateStudentName(b.student_name);
+      if (!nameCheck.ok) return res.status(400).json({ ok: false, error: nameCheck.error });
+      patch.student_name = nameCheck.name;
     }
     const grades = Array.isArray(p.grades) ? p.grades : [];
     if ('grade' in b) {
@@ -487,13 +489,12 @@ router.delete('/:token/applications/:appId', rosterLimiter, async (req, res) => 
 
 // PATCH /api/edit/:token/applications/:appId/status — 신청자 선정/상태 변경(내부 강사 전용)
 // 온라인·수동 모두 가능. 데이터 삭제가 아니라 status 값만 변경(안전). 이 프로그램 신청자만.
-const APP_STATUSES = ['applied', 'selected', 'waiting', 'cancelled'];
 router.patch('/:token/applications/:appId/status', rosterLimiter, async (req, res) => {
   try {
     const p = await gateRoster(req, res);
     if (!p) return;
     const status = (req.body || {}).status;
-    if (!APP_STATUSES.includes(status)) {
+    if (!isValidAppStatus(status)) {
       return res.status(400).json({ ok: false, error: '유효하지 않은 상태입니다.' });
     }
     // 이 토큰의 프로그램 신청자인지 확인(다른 프로그램 거부)
@@ -508,7 +509,7 @@ router.patch('/:token/applications/:appId/status', rosterLimiter, async (req, re
     }
     const { data, error } = await supabase
       .from('saessak_applications')
-      .update({ status })
+      .update({ status: normalizeAppStatus(status) })
       .eq('id', row.id)
       .eq('program_id', p.id) // 프로그램 재확인(경합 방지)
       .select();

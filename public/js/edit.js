@@ -384,13 +384,16 @@
 
   // 선정(상태) 변경 드롭다운 — 온라인·수동 모두. 데이터 삭제 아님(status만 변경).
   const APP_STATUS_OPTS = [
-    { v: 'applied', t: '신청' },
+    { v: 'received', t: '신청' },
     { v: 'selected', t: '선정' },
-    { v: 'waiting', t: '대기' },
+    { v: 'waitlisted', t: '대기' },
+    { v: 'confirmed', t: '확정' },
+    { v: 'rejected', t: '미선정' },
     { v: 'cancelled', t: '취소' },
   ];
+  const APP_STATUS_LEGACY = { applied: 'received', waiting: 'waitlisted' };
   function selectCell(r) {
-    const cur = r.status || 'applied';
+    const cur = APP_STATUS_LEGACY[r.status] || r.status || 'received';
     const opts = APP_STATUS_OPTS.map(o =>
       `<option value="${o.v}" ${o.v === cur ? 'selected' : ''}>${o.t}</option>`).join('');
     return `<select class="x-status" data-status-id="${esc(r.id)}" style="font-size:12px; padding:2px 4px;">${opts}</select>`;

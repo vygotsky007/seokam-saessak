@@ -9,6 +9,7 @@ const router = express.Router();
 const supabase = require('../utils/supabase');
 const { normalizeMobile } = require('../utils/phone');
 const { buildCreatePayload, buildCreatorUpdatePatch } = require('../utils/program-fields');
+const { isValidAppStatus, normalizeAppStatus, validateStudentName } = require('../utils/app-status');
 
 const MIN_TOKEN_LEN = 16;
 
@@ -173,7 +174,6 @@ function creatorActor(t, token) {
   const label = (t && t.label && String(t.label).trim()) || '';
   return label ? `개설자(${label})` : `개설자(${String(token).slice(0, 8)})`;
 }
-const APP_STATUSES = ['applied', 'selected', 'waiting', 'cancelled'];
 const NOTE_TYPES = ['noshow', 'attitude', 'etc'];
 
 // 이 프로그램의 수동 신청 행만(온라인 보호). 통과 시 행, 실패 시 res 후 null.
@@ -220,8 +220,9 @@ router.post('/:token/programs/:id/applications', limiter, async (req, res) => {
     const g = await gateOwned(req, res); if (!g) return;
     const { p } = g;
     const b = req.body || {};
-    const studentName = b.student_name ? String(b.student_name).trim() : '';
-    if (!studentName) return res.status(400).json({ ok: false, error: '학생 이름을 입력하세요.' });
+    const nameCheck = validateStudentName(b.student_name);
+    if (!nameCheck.ok) return res.status(400).json({ ok: false, error: nameCheck.error });
+    const studentName = nameCheck.name;
     const grade = Number(b.grade);
     if (!Number.isInteger(grade) || grade < 1 || grade > 6) return res.status(400).json({ ok: false, error: '학년은 1~6 사이로 입력하세요.' });
     const classNo = Number(b.class_no);
@@ -244,7 +245,7 @@ router.post('/:token/programs/:id/applications', limiter, async (req, res) => {
     const { data: inserted, error: iErr } = await supabase.from('saessak_applications').insert([{
       program_id: p.id, student_name: studentName, grade, class_no: classNo,
       guardian_name: guardianName, guardian_phone: guardianPhone, student_phone: null, motivation: null,
-      privacy_agreed: true, status: 'applied', source: 'manual', submitted_at: new Date().toISOString(),
+      privacy_agreed: true, status: 'received', source: 'manual', submitted_at: new Date().toISOString(),
       is_multicultural: false, sibling_group_id: null, is_waitlist: isWait,
     }]).select();
     if (iErr) throw iErr;
@@ -300,11 +301,11 @@ router.patch('/:token/programs/:id/applications/:appId/status', limiter, async (
     const g = await gateOwned(req, res); if (!g) return;
     const { p } = g;
     const status = (req.body || {}).status;
-    if (!APP_STATUSES.includes(status)) return res.status(400).json({ ok: false, error: '유효하지 않은 상태입니다.' });
+    if (!isValidAppStatus(status)) return res.status(400).json({ ok: false, error: '유효하지 않은 상태입니다.' });
     const { data: row, error: e0 } = await supabase.from('saessak_applications').select('id, program_id').eq('id', req.params.appId).maybeSingle();
     if (e0) throw e0;
     if (!row || String(row.program_id) !== String(p.id)) return res.status(404).json({ ok: false, error: '신청 건을 찾을 수 없습니다.' });
-    const { data, error } = await supabase.from('saessak_applications').update({ status }).eq('id', row.id).eq('program_id', p.id).select();
+    const { data, error } = await supabase.from('saessak_applications').update({ status: normalizeAppStatus(status) }).eq('id', row.id).eq('program_id', p.id).select();
     if (error) throw error;
     if (!data || !data[0]) return res.status(409).json({ ok: false, error: '상태 변경에 실패했습니다.' });
     res.json({ ok: true, data: pickRosterRow(data[0]) });
