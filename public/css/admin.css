@@ -795,16 +795,26 @@ button.ac-row:hover { border-color: var(--primary); background: var(--primary-so
 /* ===== ⋯ 케밥 메뉴 (행 액션) ===== */
 .kebab { position: relative; display: inline-block; }
 .kebab-btn { font-weight: 700; }
+/* 기본은 반드시 숨김. JS가 .open 을 붙일 때만 보인다(JS 실패해도 열린 채 나타나지 않음). */
 .kebab-menu {
-  position: absolute; right: 0; top: 100%; z-index: 30; margin-top: 4px;
+  display: none;
+  flex-direction: column; gap: 2px;
   background: #fff; border: 1px solid var(--border-strong); border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(15,23,42,.14); padding: 4px; min-width: 128px;
-  display: flex; flex-direction: column; gap: 2px;
+  box-shadow: 0 8px 24px rgba(15,23,42,.16); padding: 4px; min-width: 140px;
+}
+.kebab-menu.open { display: flex; }
+/* 기본 위치: 버튼 기준 우측 정렬, 바로 아래(absolute). */
+.kebab-menu.kebab-anchored {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 60;
+}
+/* 스크롤 컨테이너 잘림 회피: 버튼 좌표로 계산한 fixed 배치(left/top 은 JS 인라인). */
+.kebab-menu.kebab-fixed {
+  position: fixed; z-index: 1000; right: auto; top: auto;
 }
 .kebab-menu button {
   display: block; width: 100%; text-align: left; background: none; border: none;
-  padding: 8px 12px; font-size: 13px; border-radius: 7px; cursor: pointer;
-  font-family: inherit; color: var(--text, #0F172A);
+  padding: 9px 12px; font-size: 13px; border-radius: 7px; cursor: pointer;
+  font-family: inherit; color: var(--text, #0F172A); white-space: nowrap;
 }
 .kebab-menu button:hover { background: var(--bg); }
 .kebab-menu button.danger { color: var(--danger); }

@@ -488,7 +488,7 @@
               <button class="btn small" data-edit="${p.id}">수정</button>
               <div class="kebab">
                 <button type="button" class="btn small kebab-btn" data-kebab title="더보기">⋯</button>
-                <div class="kebab-menu" hidden>
+                <div class="kebab-menu">
                   <button type="button" data-output="${p.id}">📦 산출물</button>
                   <button type="button" data-review="${p.id}">📝 후기</button>
                   <button type="button" class="danger" data-del="${p.id}" data-del-name="${esc(p.title || '')}" data-del-count="${p.applied_count || 0}">삭제</button>
@@ -1363,7 +1363,7 @@
           <button class="btn small" data-note="${a.id}" title="참고기록(노쇼/태도)">📝 기록</button>
           <div class="kebab">
             <button type="button" class="btn small kebab-btn" data-kebab title="더보기">⋯</button>
-            <div class="kebab-menu" hidden>
+            <div class="kebab-menu">
               <button type="button" data-copy="${a.id}">복사</button>
               <button type="button" data-edit-app="${a.id}">수정</button>
               <button type="button" class="danger" data-del-app="${a.id}" data-del-name="${esc(a.student_name || '')}">삭제</button>
@@ -1430,13 +1430,53 @@
     }));
   }
 
-  // ⋯ 케밥 메뉴 열고 닫기(전역 1회 바인딩). 바깥 클릭 시 닫힘.
+  // ⋯ 케밥 메뉴 — 전역 1회 위임 등록. 동시에 하나만 열림, 바깥/Esc 로 닫힘.
+  // 위치: 버튼 좌표 기준 fixed 배치(테이블 스크롤 컨테이너에 잘리지 않음).
+  //       우측 정렬 + 하단 공간 부족하면 위로 펼침 + 높은 z-index.
+  let kebabOpenMenu = null;
+  function kebabCloseAll() {
+    if (!kebabOpenMenu) return;
+    kebabOpenMenu.classList.remove('open', 'kebab-fixed', 'kebab-anchored');
+    kebabOpenMenu.style.left = kebabOpenMenu.style.top = '';
+    kebabOpenMenu = null;
+  }
+  function kebabOpen(btn, menu) {
+    // 먼저 열어야(display:flex) 실제 크기를 잴 수 있다.
+    menu.classList.add('open', 'kebab-fixed');
+    menu.style.left = '-9999px';
+    menu.style.top = '0px';
+    const b = btn.getBoundingClientRect();
+    const m = menu.getBoundingClientRect();
+    const vw = window.innerWidth, vh = window.innerHeight, pad = 8;
+    let left = b.right - m.width;                 // 버튼 우측 정렬
+    left = Math.max(pad, Math.min(left, vw - pad - m.width));
+    let top = b.bottom + 4;                        // 기본: 버튼 아래
+    if (top + m.height > vh - pad) {               // 하단 공간 부족 → 위로 펼침
+      const up = b.top - 4 - m.height;
+      top = up >= pad ? up : Math.max(pad, vh - pad - m.height);
+    }
+    menu.style.left = Math.round(left) + 'px';
+    menu.style.top = Math.round(top) + 'px';
+    kebabOpenMenu = menu;
+  }
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-kebab]');
-    const openMenu = btn ? btn.parentElement.querySelector('.kebab-menu') : null;
-    $$('.kebab-menu').forEach(m => { if (m !== openMenu) m.hidden = true; });
-    if (btn && openMenu) { openMenu.hidden = !openMenu.hidden; e.stopPropagation(); }
+    if (btn) {
+      const menu = btn.parentElement.querySelector('.kebab-menu');
+      const wasOpen = (menu === kebabOpenMenu);
+      kebabCloseAll();
+      if (!wasOpen && menu) kebabOpen(btn, menu);
+      e.stopPropagation();
+      return;
+    }
+    // 메뉴 항목 클릭: 각 항목의 개별 핸들러가 먼저 실행된 뒤 메뉴를 닫는다.
+    if (e.target.closest('.kebab-menu')) { setTimeout(kebabCloseAll, 0); return; }
+    kebabCloseAll(); // 그 외 바깥 클릭
   });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') kebabCloseAll(); });
+  // 스크롤/리사이즈 시 좌표가 어긋나므로 닫는다(캡처로 내부 스크롤도 포함).
+  window.addEventListener('scroll', kebabCloseAll, true);
+  window.addEventListener('resize', kebabCloseAll);
 
   // 이름 입력 확인식 삭제 모달. resolve(true) = 확인, resolve(false) = 취소.
   function confirmDeleteByName({ target, title, message }) {
