@@ -54,6 +54,10 @@
   let currentTab = 'dashboard';
   let currentProgramId = null;
   let currentSort = 'order';
+  // 레이더 탭 상태
+  let radarTimer = null;
+  let radarUrl = null;
+  let radarUrlLoaded = false;
   const ALL_PROGRAMS = '__all__'; // 신청자 탭 "전체 보기" sentinel
 
   // ===== 기록 참고(선정 보조) — 교사 전용·비공개 상태 =====
@@ -267,13 +271,133 @@
     $$('.tab-pane').forEach(p => {
       p.hidden = p.id !== 'pane-' + name;
     });
+    // 레이더 탭을 벗어나면 자동 갱신 타이머 정지 (관리 페이지 부담 방지)
+    if (name !== 'radar' && radarTimer) { clearInterval(radarTimer); radarTimer = null; }
     if (name === 'dashboard') loadDashboard();
     else if (name === 'programs') loadProgramsTab();
     else if (name === 'applicants') loadApplicantsTab();
     else if (name === 'inquiries') loadInquiriesTab();
     else if (name === 'student-board') loadStudentBoardTab();
     else if (name === 'schedule') loadScheduleTab();
+    else if (name === 'radar') loadRadarTab();
     else if (name === 'export') loadExportTab();
+  }
+
+  // ===== 📡 레이더 탭 (새싹 레이더 요약 연동, 읽기 전용) =====
+  function radarRelTime(iso) {
+    if (!iso) return '확인 전';
+    const diff = Date.now() - new Date(iso).getTime();
+    if (isNaN(diff)) return '확인 전';
+    const m = Math.floor(Math.max(0, diff) / 60000);
+    if (m < 1) return '방금 전';
+    if (m < 60) return m + '분 전';
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + '시간 전';
+    return Math.floor(h / 24) + '일 전';
+  }
+  function radarFmt(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const p = new Intl.DateTimeFormat('ko-KR', {
+      timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', weekday: 'short',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(d);
+    const g = t => (p.find(x => x.type === t) || {}).value || '';
+    return g('month') + '/' + g('day') + '(' + g('weekday') + ') ' + g('hour') + ':' + g('minute');
+  }
+  function radarInstLabel(inst, title) {
+    inst = (inst || '').trim();
+    return inst ? '[' + inst + '] ' + (title || '') : (title || '');
+  }
+
+  async function loadRadarTab() {
+    // RADAR_URL 은 1회만 조회 (레이더 열기 링크용)
+    if (!radarUrlLoaded) {
+      radarUrlLoaded = true;
+      try { const j = await api('/radar-url'); radarUrl = j.url || null; } catch { radarUrl = null; }
+    }
+    await refreshRadar();
+    if (radarTimer) clearInterval(radarTimer);
+    radarTimer = setInterval(refreshRadar, 60000); // 60초 자동 갱신
+  }
+
+  async function refreshRadar() {
+    const statusEl = $('#radar-status');
+    const bodyEl = $('#radar-body');
+    const footEl = $('#radar-foot');
+    const openBtn = $('#radar-open');
+    if (openBtn) {
+      if (radarUrl) { openBtn.href = radarUrl; openBtn.hidden = false; }
+      else { openBtn.hidden = true; }
+    }
+
+    let j;
+    try {
+      const res = await fetch(API + '/radar-summary', { headers: { 'Content-Type': 'application/json' } });
+      if (res.status === 401) { location.href = ADMIN_BASE + '/login'; return; }
+      j = await res.json().catch(() => ({ ok: false, reason: 'error' }));
+    } catch { j = { ok: false, reason: 'error' }; }
+
+    // 실패/미설정
+    if (j && j.ok === false) {
+      footEl.hidden = true;
+      if (j.reason === 'unset') {
+        statusEl.innerHTML = '<span class="muted">RADAR_URL 미설정</span>';
+        bodyEl.innerHTML = '<div class="radar-empty">RADAR_URL 환경변수가 설정되지 않았습니다. 서버에 <code>RADAR_URL</code>을 설정하면 새싹 레이더 요약이 표시됩니다.</div>';
+      } else {
+        statusEl.innerHTML = '<span class="radar-dot bad"></span> 레이더 연결 실패';
+        bodyEl.innerHTML = '<div class="radar-empty">레이더에 연결할 수 없습니다.'
+          + (radarUrl ? ' <a href="' + esc(radarUrl) + '" target="_blank" rel="noopener">레이더 열기 ↗</a>' : '')
+          + '</div>';
+      }
+      return;
+    }
+    renderRadar(j || {});
+  }
+
+  function renderRadar(j) {
+    const st = j.status || {};
+    $('#radar-status').innerHTML =
+      '<span class="radar-dot ' + (st.ok ? 'ok' : 'wait') + '"></span> 레이더 '
+      + (st.ok ? '정상' : '대기') + ' · ' + esc(radarRelTime(st.lastCheckedAt)) + ' 확인 · 일치 '
+      + (st.matchedCount || 0) + '건';
+
+    const upcoming = j.upcoming || [];
+    const open = j.open || [];
+
+    const upRows = upcoming.map(u => {
+      const when = radarFmt(u.applyStartAt);
+      const chip = when
+        ? (u.dday <= 0 ? '<span class="rchip now">D-DAY</span>' : '<span class="rchip">D-' + u.dday + '</span>')
+        : '<span class="rbadge unknown">일시 미공지</span>';
+      const meta = [u.chapters != null ? u.chapters + '차시' : '', (u.tags || []).join(' ')].filter(Boolean).join(' · ');
+      return '<a class="rrow" href="' + esc(u.link || '#') + '" target="_blank" rel="noopener">'
+        + '<div class="rrow-when">' + (when ? esc(when) + ' ' : '') + chip + '</div>'
+        + '<div class="rrow-title">' + esc(radarInstLabel(u.institution, u.title)) + '</div>'
+        + (meta ? '<div class="rrow-meta">' + esc(meta) + '</div>' : '')
+        + '</a>';
+    }).join('');
+
+    const openRows = open.map(o => {
+      const rem = o.remaining;
+      const remBadge = rem <= 0
+        ? '<span class="rbadge full">대기만</span>'
+        : '<span class="rbadge remain">잔여 ' + rem + '</span>';
+      const end = radarFmt(o.applyEndAt);
+      const meta = [(o.tags || []).join(' '), end ? '마감 ' + end : ''].filter(Boolean).join(' · ');
+      return '<a class="rrow" href="' + esc(o.link || '#') + '" target="_blank" rel="noopener">'
+        + '<div class="rrow-title">' + esc(radarInstLabel(o.institution, o.title)) + ' ' + remBadge + '</div>'
+        + (meta ? '<div class="rrow-meta">' + esc(meta) + '</div>' : '')
+        + '</a>';
+    }).join('');
+
+    $('#radar-body').innerHTML =
+      '<div class="radar-group"><div class="radar-group-title">🕐 신청 오픈 예정 <span class="muted">' + upcoming.length + '</span></div>'
+      + (upRows || '<div class="radar-empty">예정된 프로그램이 없습니다.</div>') + '</div>'
+      + '<div class="radar-group"><div class="radar-group-title">🔥 지금 신청 가능 <span class="muted">' + open.length + '</span></div>'
+      + (openRows || '<div class="radar-empty">신청 가능한 프로그램이 없습니다.</div>') + '</div>';
+    $('#radar-foot').hidden = false;
   }
 
   // ===== Dashboard =====

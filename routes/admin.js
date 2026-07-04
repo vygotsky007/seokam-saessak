@@ -21,6 +21,34 @@ function normalizeRecruitStatus(v) {
   return RECRUIT_STATUSES.includes(v) ? v : null;
 }
 
+// 새싹 레이더 요약 프록시 (CORS 회피). RADAR_URL/api/summary 를 서버측 fetch로 그대로 반환.
+// 5초 타임아웃, 미설정/실패 시 { ok:false } 계열 반환.
+router.get('/radar-summary', async (req, res) => {
+  const base = (process.env.RADAR_URL || '').trim();
+  if (!base) return res.json({ ok: false, reason: 'unset' });
+  const url = base.replace(/\/+$/, '') + '/api/summary';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const r = await fetch(url, {
+      signal: controller.signal,
+      headers: { Accept: 'application/json' },
+    });
+    if (!r.ok) return res.json({ ok: false, reason: 'error', status: r.status });
+    const data = await r.json();
+    return res.json(data); // 요약 JSON 그대로 반환 (radarUrl 은 아래에서 별도 제공)
+  } catch (e) {
+    return res.json({ ok: false, reason: 'error' });
+  } finally {
+    clearTimeout(timer);
+  }
+});
+
+// 탭에서 "레이더 열기" 링크에 쓸 RADAR_URL 공개용 (비밀 아님)
+router.get('/radar-url', (req, res) => {
+  res.json({ ok: true, url: (process.env.RADAR_URL || '').trim() || null });
+});
+
 router.get('/me', (req, res) => {
   res.json({ ok: true, isAdmin: true, loggedAt: req.session.loggedAt });
 });

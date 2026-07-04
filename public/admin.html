@@ -25,6 +25,7 @@
     <button class="tab" data-tab="inquiries">💬 문의사항 <span class="tab-badge" id="inq-badge" hidden></span></button>
     <button class="tab" data-tab="student-board">🧑‍🎓 학생 기록</button>
     <button class="tab" data-tab="schedule">📅 일정</button>
+    <button class="tab" data-tab="radar">📡 레이더</button>
     <button class="tab" data-tab="export">📥 내보내기</button>
   </div>
 
@@ -296,6 +297,15 @@
     </div>
     <div class="cal-legend" id="cal-legend"></div>
     <div class="cal-filter" id="cal-filter"></div>
+  </section>
+
+  <section class="tab-pane" id="pane-radar" hidden>
+    <div class="radar-bar">
+      <div class="radar-status" id="radar-status"><span class="muted">레이더 불러오는 중…</span></div>
+      <a class="btn small" id="radar-open" href="#" target="_blank" rel="noopener" hidden>레이더 열기 ↗</a>
+    </div>
+    <div id="radar-body"></div>
+    <div class="muted radar-foot" id="radar-foot" hidden>읽기 전용 · 감시·알림·설정은 레이더에서</div>
   </section>
 
   <section class="tab-pane" id="pane-export" hidden>
