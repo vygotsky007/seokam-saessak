@@ -922,6 +922,8 @@
     const dlg = $('#program-dialog');
     const form = $('#program-form');
     form.reset();
+    const errEl = $('#program-form-error');
+    if (errEl) { errEl.hidden = true; errEl.textContent = ''; }
     form.dataset.editId = id || '';
     $('#program-dialog-title').textContent = id ? '프로그램 수정' : '프로그램 추가';
     if (id) {
@@ -1270,9 +1272,18 @@
   }
   $('#type-custom').addEventListener('change', updateTypeCustomVisibility);
 
+  // 프로그램 폼 상단 오류 메시지(저장 실패 원인 표시). 성공/재입력 시 숨김.
+  function showFormError(msg) {
+    const el = $('#program-form-error');
+    if (!el) { if (msg) toast(msg); return; }
+    if (msg) { el.textContent = msg; el.hidden = false; }
+    else { el.hidden = true; el.textContent = ''; }
+  }
+
   $('#program-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
+    showFormError('');
     const tMulti = $('#type-multicultural').checked;
     const tSib   = $('#type-sibling').checked;
     const tCustom = $('#type-custom').checked;
@@ -1336,9 +1347,13 @@
         await api('/programs', { method: 'POST', body: JSON.stringify(payload) });
       }
       $('#program-dialog').classList.remove('open');
+      showFormError('');
       toast('저장됨');
       loadProgramsTab();
-    } catch (err) { toast(err.message); }
+    } catch (err) {
+      // 저장 실패: 폼 상단에 원인 표시(조용히 죽지 않게). 다이얼로그는 열어 둔다.
+      showFormError('저장 실패: ' + (err.message || '알 수 없는 오류'));
+    }
   });
 
   // ===== Applicants Tab =====

@@ -288,6 +288,16 @@ function normalizePhotos(input) {
   return out;
 }
 
+// photos 컬럼 미적용(마이그레이션 누락) 감지: Postgres undefined_column(42703) + photos 언급.
+// 이 경우 사진이 없으면 photos 를 빼고 재시도해 저장은 되게 하고, 사진이 있으면 순화된 안내를 준다.
+const PHOTOS_MIGRATION_MSG = '사진 저장용 DB 업데이트가 아직 적용되지 않았습니다. 관리자에게 photos 컬럼 마이그레이션(2026-07-15_program_photos.sql) 실행을 요청하세요. (사진 없이 저장하거나 마이그레이션 후 다시 시도)';
+function isMissingPhotosColumn(err) {
+  if (!err) return false;
+  const code = err.code || '';
+  const msg = String(err.message || '');
+  return code === '42703' || (/column/i.test(msg) && /photos/i.test(msg));
+}
+
 // 프로그램 사진 1장 업로드 — 클라이언트가 리사이즈(긴 변 1200px)·JPEG 0.85 압축한 dataURL 을 받아
 // program-photos 버킷에 올리고 public URL 을 돌려준다. 폼에서 파일 선택 즉시 호출.
 router.post('/program-photos/upload', async (req, res) => {
@@ -363,10 +373,20 @@ router.post('/programs', async (req, res) => {
       edit_token: genEditToken(),   // 강사용 수정 링크 토큰 자동 발급
       edit_enabled: false,          // 강사 수정 권한 기본 off
     };
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('saessak_programs')
       .insert([payload])
       .select();
+    // photos 컬럼 미적용 대응: 사진이 없으면 photos 를 빼고 재시도(저장은 성공), 있으면 안내.
+    if (error && isMissingPhotosColumn(error)) {
+      if ((payload.photos || []).length === 0) {
+        const { photos, ...rest } = payload;
+        console.warn('[POST admin/programs] photos 컬럼 없음 — photos 제외 후 저장(마이그레이션 필요)');
+        ({ data, error } = await supabase.from('saessak_programs').insert([rest]).select());
+      } else {
+        return res.status(400).json({ ok: false, error: PHOTOS_MIGRATION_MSG, code: 'photos_column_missing' });
+      }
+    }
     if (error) throw error;
     res.json({ ok: true, data: data[0] });
   } catch (err) {
@@ -466,11 +486,22 @@ router.put('/programs/:id', async (req, res) => {
       removedPhotos = oldPhotos.filter(u => !keep.has(u));
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('saessak_programs')
       .update(patch)
       .eq('id', id)
       .select();
+    // photos 컬럼 미적용 대응: 사진이 없으면 photos 를 빼고 재시도(수정은 성공), 있으면 안내.
+    if (error && isMissingPhotosColumn(error)) {
+      if (!('photos' in patch) || (patch.photos || []).length === 0) {
+        const { photos, ...rest } = patch;
+        removedPhotos = [];
+        console.warn('[PUT admin/programs/:id] photos 컬럼 없음 — photos 제외 후 수정(마이그레이션 필요)');
+        ({ data, error } = await supabase.from('saessak_programs').update(rest).eq('id', id).select());
+      } else {
+        return res.status(400).json({ ok: false, error: PHOTOS_MIGRATION_MSG, code: 'photos_column_missing' });
+      }
+    }
     if (error) throw error;
     if (removedPhotos.length) await supabase.deleteProgramPhotos(removedPhotos);
     res.json({ ok: true, data: data[0] });

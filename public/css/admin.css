@@ -916,3 +916,9 @@ button.ac-row:hover { border-color: var(--primary); background: var(--primary-so
 .pu-thumb .pu-move button:disabled { opacity: .3; cursor: default; }
 .pu-thumb .pu-move button:not(:disabled):hover { background: #0f172a; }
 .pu-status { font-size: 12px; }
+
+/* 프로그램 폼 저장 실패 안내(폼 상단) */
+.dialog .form-error {
+  background: #FEF2F2; border: 1px solid #FCA5A5; color: #B91C1C;
+  border-radius: 9px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; line-height: 1.5;
+}

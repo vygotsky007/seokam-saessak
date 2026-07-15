@@ -139,12 +139,31 @@ async function deleteProgramPhotos(urls) {
   }
 }
 
+// 기동 시 스키마 점검: saessak_programs.photos 컬럼 존재 확인. 없으면(마이그레이션 누락) 경고 로그.
+async function checkProgramPhotosColumn() {
+  try {
+    const { error } = await supabase.from('saessak_programs').select('photos').limit(1);
+    if (error && (error.code === '42703' || /photos/i.test(error.message || ''))) {
+      console.warn('⚠️  [schema] saessak_programs.photos 컬럼이 없습니다 — 프로그램 저장 시 사진이 무시됩니다.');
+      console.warn('    → migrations/2026-07-15_program_photos.sql 을 실행하세요.');
+      return false;
+    }
+    if (error) { console.warn('⚠️  [schema] photos 컬럼 점검 실패:', error.message); return null; }
+    console.log('✅ [schema] saessak_programs.photos 컬럼 확인됨');
+    return true;
+  } catch (e) {
+    console.warn('⚠️  [schema] photos 컬럼 점검 중 오류:', e.message);
+    return null;
+  }
+}
+
 supabase.admin = supabaseAdmin;
 supabase.hasServiceKey = HAS_SERVICE_KEY;
 supabase.serviceKeyVar = SERVICE_KEY_VAR;
 supabase.ensureReviewBucket = ensureReviewBucket;
 supabase.ensureCertAssetsBucket = ensureCertAssetsBucket;
 supabase.ensureProgramPhotoBucket = ensureProgramPhotoBucket;
+supabase.checkProgramPhotosColumn = checkProgramPhotosColumn;
 supabase.uploadCertAsset = uploadCertAsset;
 supabase.uploadProgramPhoto = uploadProgramPhoto;
 supabase.deleteProgramPhotos = deleteProgramPhotos;

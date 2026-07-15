@@ -273,4 +273,6 @@ app.listen(PORT, () => {
   db.ensureReviewBucket();
   db.ensureCertAssetsBucket();
   db.ensureProgramPhotoBucket();
+  // 스키마 점검: programs.photos 컬럼(마이그레이션) 적용 여부 확인 후 로그.
+  db.checkProgramPhotosColumn();
 });
