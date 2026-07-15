@@ -302,8 +302,17 @@
         seatsLine = `<span class="seats-waitlist">정원은 찼지만 대기로 신청할 수 있어요 · 현재 대기 <strong>${p.waitlist_count || 0}/${p.waitlist_capacity ?? 10}</strong></span>`;
       }
       const desc = (p.description || '').trim();
-      const descBlock = desc
-        ? `<details class="pc-details"><summary><span class="pc-toggle-text"></span></summary><div class="pc-body">${esc(desc)}</div></details>`
+      // 교구·작품 예시 사진: [0] = 대표(카드 상단), 전체 = 자세히 갤러리.
+      const photos = Array.isArray(p.photos) ? p.photos.filter(u => typeof u === 'string' && u) : [];
+      const repPhoto = photos[0] || '';
+      const galleryHtml = photos.length
+        ? `<div class="pc-gallery" aria-label="교구·작품 예시 사진">
+             ${photos.map((u, i) => `<button type="button" class="pc-gallery-item" data-lb-pid="${esc(p.id)}" data-lb-idx="${i}"><img src="${esc(u)}" alt="${esc(p.title)} 사진 ${i + 1}" loading="lazy"></button>`).join('')}
+           </div>`
+        : '';
+      const detailsInner = `${desc ? `<div class="pc-body">${esc(desc)}</div>` : ''}${galleryHtml}`;
+      const descBlock = (desc || photos.length)
+        ? `<details class="pc-details"><summary><span class="pc-toggle-text"></span></summary>${detailsInner}</details>`
         : '';
       const reviewBtn = `<button type="button" class="pc-review-btn" data-review-view="${p.id}">💬 후기보기</button>`;
 
@@ -333,6 +342,7 @@
           ${isFull ? '<div class="pc-stamp" aria-label="모집마감">마감</div>' : ''}
           ${isClosingSoon ? `<div class="pc-soon">🔥 마감임박 ${p.remaining}자리</div>` : ''}
           <div class="pc-inner">
+            ${repPhoto ? `<div class="pc-photo"><img src="${esc(repPhoto)}" alt="${esc(p.title)} 대표 사진" loading="lazy"></div>` : ''}
             <div class="pc-tags">
               ${statusBadge}
               ${typeBadges(p)}
@@ -355,6 +365,14 @@
       btn.addEventListener('click', () => {
         const p = programs.find(x => String(x.id) === String(btn.dataset.reviewView));
         openReviewsModal(btn.dataset.reviewView, p ? p.title : '');
+      });
+    });
+    // 갤러리 사진 탭 → 크게 보기(라이트박스)
+    detailListEl.querySelectorAll('.pc-gallery-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const p = programs.find(x => String(x.id) === String(btn.dataset.lbPid));
+        const photos = p && Array.isArray(p.photos) ? p.photos.filter(u => typeof u === 'string' && u) : [];
+        if (photos.length) openLightbox(photos, Number(btn.dataset.lbIdx) || 0);
       });
     });
     // 자녀별 담기 토글
@@ -511,6 +529,139 @@
   }
   window.__openAllReviews = openAllReviewsModal;
   window.__closeReviewsModal = () => document.getElementById('reviews-modal').classList.remove('open');
+
+  // ===== 사진 라이트박스 (핀치 줌 / 스와이프 / 바깥 탭 닫기) =====
+  const lb = {
+    mask: null, img: null, stage: null, count: null,
+    photos: [], idx: 0,
+    scale: 1, tx: 0, ty: 0,
+    pointers: new Map(), startDist: 0, startScale: 1, startMid: null,
+    lastTap: 0, swipeStartX: 0, swipeStartY: 0, moved: false,
+  };
+  function lbEls() {
+    if (lb.mask) return lb.mask;
+    lb.mask = document.getElementById('lightbox');
+    lb.img = document.getElementById('lb-img');
+    lb.stage = document.getElementById('lb-stage');
+    lb.count = document.getElementById('lb-count');
+    return lb.mask;
+  }
+  function lbApply() {
+    if (lb.img) lb.img.style.transform = `translate(${lb.tx}px, ${lb.ty}px) scale(${lb.scale})`;
+  }
+  function lbReset() { lb.scale = 1; lb.tx = 0; lb.ty = 0; lbApply(); }
+  function lbShow(i) {
+    lb.idx = (i + lb.photos.length) % lb.photos.length;
+    lb.img.src = lb.photos[lb.idx];
+    lbReset();
+    if (lb.count) lb.count.textContent = lb.photos.length > 1 ? `${lb.idx + 1} / ${lb.photos.length}` : '';
+    const multi = lb.photos.length > 1;
+    document.getElementById('lb-prev').style.display = multi ? '' : 'none';
+    document.getElementById('lb-next').style.display = multi ? '' : 'none';
+  }
+  function openLightbox(photos, index) {
+    if (!lbEls() || !Array.isArray(photos) || !photos.length) return;
+    lb.photos = photos.slice();
+    document.body.classList.add('lb-open');
+    lb.mask.classList.add('open');
+    lb.mask.setAttribute('aria-hidden', 'false');
+    lbShow(index || 0);
+  }
+  function closeLightbox() {
+    if (!lb.mask) return;
+    lb.mask.classList.remove('open');
+    lb.mask.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('lb-open');
+    lb.pointers.clear();
+  }
+  window.__openLightbox = openLightbox;
+
+  (function bindLightbox() {
+    if (!lbEls()) return;
+    document.getElementById('lb-close').addEventListener('click', closeLightbox);
+    document.getElementById('lb-prev').addEventListener('click', (e) => { e.stopPropagation(); lbShow(lb.idx - 1); });
+    document.getElementById('lb-next').addEventListener('click', (e) => { e.stopPropagation(); lbShow(lb.idx + 1); });
+    // 바깥(마스크/스테이지 여백) 탭 시 닫기 — 확대 상태가 아닐 때만.
+    lb.mask.addEventListener('click', (e) => {
+      if (e.target === lb.img) return;
+      if (lb.scale <= 1.02) closeLightbox();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (!lb.mask.classList.contains('open')) return;
+      if (e.key === 'Escape') closeLightbox();
+      else if (e.key === 'ArrowLeft') lbShow(lb.idx - 1);
+      else if (e.key === 'ArrowRight') lbShow(lb.idx + 1);
+    });
+
+    const stage = lb.stage;
+    const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+    const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+
+    stage.addEventListener('pointerdown', (e) => {
+      stage.setPointerCapture(e.pointerId);
+      lb.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      lb.moved = false;
+      if (lb.pointers.size === 2) {
+        const [p1, p2] = [...lb.pointers.values()];
+        lb.startDist = dist(p1, p2);
+        lb.startScale = lb.scale;
+        lb.startMid = mid(p1, p2);
+      } else if (lb.pointers.size === 1) {
+        lb.swipeStartX = e.clientX; lb.swipeStartY = e.clientY;
+      }
+    });
+    stage.addEventListener('pointermove', (e) => {
+      if (!lb.pointers.has(e.pointerId)) return;
+      const prev = lb.pointers.get(e.pointerId);
+      lb.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (lb.pointers.size === 2 && lb.startDist > 0) {
+        const [p1, p2] = [...lb.pointers.values()];
+        const s = Math.min(4, Math.max(1, lb.startScale * (dist(p1, p2) / lb.startDist)));
+        lb.scale = s;
+        lb.moved = true;
+        if (s <= 1.02) { lb.tx = 0; lb.ty = 0; }
+        lbApply();
+      } else if (lb.pointers.size === 1 && lb.scale > 1.02) {
+        // 확대 상태: 이미지 팬(이동)
+        lb.tx += e.clientX - prev.x;
+        lb.ty += e.clientY - prev.y;
+        lb.moved = true;
+        lbApply();
+      } else if (lb.pointers.size === 1) {
+        if (Math.abs(e.clientX - lb.swipeStartX) > 8 || Math.abs(e.clientY - lb.swipeStartY) > 8) lb.moved = true;
+      }
+    });
+    function endPointer(e) {
+      if (!lb.pointers.has(e.pointerId)) return;
+      const wasSingle = lb.pointers.size === 1;
+      lb.pointers.delete(e.pointerId);
+      if (wasSingle && lb.scale <= 1.02) {
+        const dx = e.clientX - lb.swipeStartX;
+        const dy = e.clientY - lb.swipeStartY;
+        if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {
+          lbShow(lb.idx + (dx < 0 ? 1 : -1));   // 좌우 스와이프 = 사진 넘기기
+          return;
+        }
+        if (!lb.moved) {
+          // 탭: 더블탭이면 줌 토글, 단일탭은 무시(바깥 탭은 mask click 이 닫음)
+          const now = e.timeStamp || Date.now();
+          if (now - lb.lastTap < 300) { lb.scale = lb.scale > 1.02 ? 1 : 2.5; if (lb.scale === 1) { lb.tx = 0; lb.ty = 0; } lbApply(); lb.lastTap = 0; }
+          else lb.lastTap = now;
+        }
+      }
+      if (lb.pointers.size < 2) lb.startDist = 0;
+      if (lb.scale <= 1.02) { lb.scale = 1; lb.tx = 0; lb.ty = 0; lbApply(); }
+    }
+    stage.addEventListener('pointerup', endPointer);
+    stage.addEventListener('pointercancel', endPointer);
+    // 데스크톱 더블클릭 줌
+    lb.img.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      lb.scale = lb.scale > 1.02 ? 1 : 2.5;
+      if (lb.scale === 1) { lb.tx = 0; lb.ty = 0; }
+      lbApply();
+    });
+  })();
 
   // === 1단계: 학생 블록 ===
   function addStudent() {

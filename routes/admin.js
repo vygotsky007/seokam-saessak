@@ -270,6 +270,38 @@ function normalizeExtraSessions(input) {
   return out;
 }
 
+// 프로그램 사진 배열 정규화: 우리 program-photos 버킷의 public URL 문자열만, 순서 유지, 최대 5장, 중복 제거.
+// (업로드는 /program-photos/upload 에서 이미 끝났고, 여기선 저장할 URL 목록만 검증한다.)
+function normalizePhotos(input) {
+  if (!Array.isArray(input)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const v of input) {
+    const url = String(v || '').trim();
+    if (!url) continue;
+    if (!supabase.programPhotoPath(url)) continue; // 우리 버킷 URL 이 아니면 버림
+    if (seen.has(url)) continue;
+    seen.add(url);
+    out.push(url);
+    if (out.length >= 5) break;
+  }
+  return out;
+}
+
+// 프로그램 사진 1장 업로드 — 클라이언트가 리사이즈(긴 변 1200px)·JPEG 0.85 압축한 dataURL 을 받아
+// program-photos 버킷에 올리고 public URL 을 돌려준다. 폼에서 파일 선택 즉시 호출.
+router.post('/program-photos/upload', async (req, res) => {
+  try {
+    const dataUrl = (req.body || {}).photo;
+    if (!dataUrl) return res.status(400).json({ ok: false, error: '사진 데이터가 없습니다.' });
+    const url = await supabase.uploadProgramPhoto(dataUrl);
+    res.json({ ok: true, url });
+  } catch (err) {
+    console.error('[POST admin/program-photos/upload]', err.message, '| hasServiceKey=', supabase.hasServiceKey);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 router.post('/programs', async (req, res) => {
   try {
     const {
@@ -282,6 +314,7 @@ router.post('/programs', async (req, res) => {
       type_custom,
       organization,
       extra_sessions,
+      photos,
     } = req.body || {};
 
     if (!title || !String(title).trim()) {
@@ -326,6 +359,7 @@ router.post('/programs', async (req, res) => {
       start_time: normalizeTime(start_time),
       end_time: normalizeTime(end_time),
       extra_sessions: normalizeExtraSessions(extra_sessions),
+      photos: normalizePhotos(photos),
       edit_token: genEditToken(),   // 강사용 수정 링크 토큰 자동 발급
       edit_enabled: false,          // 강사 수정 권한 기본 off
     };
@@ -353,7 +387,8 @@ router.put('/programs/:id', async (req, res) => {
       'is_type_multicultural', 'is_type_sibling',
       'type_custom',
       'edit_enabled',
-      'organization'];
+      'organization',
+      'photos'];
     const patch = {};
     for (const k of allowed) {
       if (k in req.body) patch[k] = req.body[k];
@@ -417,6 +452,19 @@ router.put('/programs/:id', async (req, res) => {
     if ('edit_enabled' in patch) {
       patch.edit_enabled = patch.edit_enabled === true || patch.edit_enabled === 'true';
     }
+    // 사진: 저장 목록 정규화. 수정 전 사진과 비교해 빠진(삭제된) 파일은 Storage 에서 정리.
+    let removedPhotos = [];
+    if ('photos' in patch) {
+      patch.photos = normalizePhotos(patch.photos);
+      const { data: before } = await supabase
+        .from('saessak_programs')
+        .select('photos')
+        .eq('id', id)
+        .single();
+      const oldPhotos = (before && Array.isArray(before.photos)) ? before.photos : [];
+      const keep = new Set(patch.photos);
+      removedPhotos = oldPhotos.filter(u => !keep.has(u));
+    }
 
     const { data, error } = await supabase
       .from('saessak_programs')
@@ -424,6 +472,7 @@ router.put('/programs/:id', async (req, res) => {
       .eq('id', id)
       .select();
     if (error) throw error;
+    if (removedPhotos.length) await supabase.deleteProgramPhotos(removedPhotos);
     res.json({ ok: true, data: data[0] });
   } catch (err) {
     console.error('[PUT admin/programs/:id]', err.message);
@@ -452,12 +501,20 @@ router.patch('/programs/:id/status', async (req, res) => {
 router.delete('/programs/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    // 삭제 전 사진 URL 확보 → 프로그램 삭제 후 Storage 파일도 정리.
+    const { data: before } = await supabase
+      .from('saessak_programs')
+      .select('photos')
+      .eq('id', id)
+      .single();
+    const photos = (before && Array.isArray(before.photos)) ? before.photos : [];
     await supabase.from('saessak_applications').delete().eq('program_id', id);
     const { error } = await supabase
       .from('saessak_programs')
       .delete()
       .eq('id', id);
     if (error) throw error;
+    if (photos.length) await supabase.deleteProgramPhotos(photos);
     res.json({ ok: true });
   } catch (err) {
     console.error('[DELETE admin/programs/:id]', err.message);

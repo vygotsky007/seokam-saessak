@@ -221,6 +221,17 @@
   </div>
 </div>
 
+<!-- 사진 크게 보기 (라이트박스) — 핀치 줌 / 스와이프 / 바깥 탭 닫기 -->
+<div class="lb-mask" id="lightbox" aria-hidden="true">
+  <button type="button" class="lb-close" id="lb-close" aria-label="닫기">×</button>
+  <button type="button" class="lb-nav lb-prev" id="lb-prev" aria-label="이전 사진">‹</button>
+  <button type="button" class="lb-nav lb-next" id="lb-next" aria-label="다음 사진">›</button>
+  <div class="lb-stage" id="lb-stage">
+    <img id="lb-img" alt="사진 크게 보기" draggable="false">
+  </div>
+  <div class="lb-count" id="lb-count"></div>
+</div>
+
 <script src="/js/i18n.js"></script>
 <script src="/js/schedule-format.js"></script>
 <script src="/js/schedule-conflict.js"></script>

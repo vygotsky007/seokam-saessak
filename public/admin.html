@@ -358,6 +358,16 @@
       <div class="form-grid">
         <label>프로그램명*</label><input type="text" name="title" required>
         <label>설명</label><textarea name="description" rows="5" placeholder="공개 안내 영역의 카드 본문에 표시됩니다. 줄바꿈은 그대로 유지됩니다."></textarea>
+        <label>사진 <span class="muted" style="font-weight:400;">(교구·작품 예시)</span></label>
+        <div class="photo-uploader" id="photo-uploader">
+          <div class="pu-drop" id="pu-drop">
+            <input type="file" id="pu-input" accept="image/*" multiple hidden>
+            <button type="button" class="btn small" id="pu-pick">＋ 사진 선택</button>
+            <span class="pu-hint muted">여기로 드래그해도 됩니다 · 최대 5장 · 첫 번째가 대표 사진</span>
+          </div>
+          <div class="pu-grid" id="pu-grid"></div>
+          <div class="pu-status muted" id="pu-status" hidden></div>
+        </div>
         <label>일정</label>
         <div class="schedule-builder">
           <div class="sb-range-row">

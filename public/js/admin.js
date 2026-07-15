@@ -944,6 +944,7 @@
         form.multicultural_min.value = p.multicultural_min ?? '';
         form.recruit_status.value = recruitStatusOf(p);
         loadScheduleBuilderFrom(p);
+        resetProgramPhotos(Array.isArray(p.photos) ? p.photos : []);
       }
     } else {
       $('#type-multicultural').checked = false;
@@ -953,6 +954,7 @@
       form.multicultural_min.value = '';
       form.recruit_status.value = 'hidden'; // 신규는 숨김으로 시작
       loadScheduleBuilderFrom(null);
+      resetProgramPhotos([]);
     }
     updateMulticulturalMinVisibility();
     updateTypeCustomVisibility();
@@ -1101,6 +1103,147 @@
   }
   $('#sb-extra-add').addEventListener('click', () => addExtraRow());
 
+  // ===== 프로그램 사진 업로더 (교구·작품 예시) =====
+  // 상태: programPhotos = 저장할 public URL 배열(순서 = 표시 순서, [0] = 대표 사진). 최대 5장.
+  const PHOTO_MAX = 5;
+  let programPhotos = [];
+  let photoBusy = false;      // 업로드 중(중복 제출 방지)
+  let dragPhotoIdx = null;    // 드래그 중인 썸네일 인덱스
+
+  // 업로드 전 리사이즈: 긴 변 1200px, JPEG 품질 0.85. EXIF 회전은 createImageBitmap(from-image)로 보정.
+  function compressProgramPhoto(file, maxSide = 1200, quality = 0.85) {
+    return new Promise((resolve, reject) => {
+      const draw = (src, w, h) => {
+        const longest = Math.max(w, h);
+        if (longest > maxSide) { const r = maxSide / longest; w = Math.round(w * r); h = Math.round(h * r); }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(src, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      if (window.createImageBitmap) {
+        createImageBitmap(file, { imageOrientation: 'from-image' })
+          .then(bmp => draw(bmp, bmp.width, bmp.height))
+          .catch(() => fallback());
+      } else { fallback(); }
+      function fallback() {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => { try { draw(img, img.naturalWidth || img.width, img.naturalHeight || img.height); } finally { URL.revokeObjectURL(url); } };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('이미지를 읽을 수 없습니다.')); };
+        img.src = url;
+      }
+    });
+  }
+
+  function setPhotoStatus(msg) {
+    const el = $('#pu-status');
+    if (!el) return;
+    if (msg) { el.textContent = msg; el.hidden = false; } else { el.hidden = true; el.textContent = ''; }
+  }
+
+  function renderPhotoGrid() {
+    const grid = $('#pu-grid');
+    if (!grid) return;
+    grid.innerHTML = programPhotos.map((url, i) => `
+      <div class="pu-thumb" draggable="true" data-idx="${i}">
+        ${i === 0 ? '<span class="pu-rep">대표</span>' : ''}
+        <img src="${esc(url)}" alt="사진 ${i + 1}" loading="lazy">
+        <button type="button" class="pu-remove" data-photo-remove="${i}" aria-label="삭제">✕</button>
+        <div class="pu-move">
+          <button type="button" data-photo-left="${i}" ${i === 0 ? 'disabled' : ''} aria-label="앞으로">◀</button>
+          <button type="button" data-photo-right="${i}" ${i === programPhotos.length - 1 ? 'disabled' : ''} aria-label="뒤로">▶</button>
+        </div>
+      </div>`).join('');
+  }
+
+  function movePhoto(from, to) {
+    if (from === to || from < 0 || to < 0 || from >= programPhotos.length || to >= programPhotos.length) return;
+    const [it] = programPhotos.splice(from, 1);
+    programPhotos.splice(to, 0, it);
+    renderPhotoGrid();
+  }
+
+  async function addPhotoFiles(fileList) {
+    const files = Array.from(fileList || []).filter(f => f && f.type && f.type.startsWith('image/'));
+    if (!files.length) return;
+    const room = PHOTO_MAX - programPhotos.length;
+    if (room <= 0) { toast(`사진은 최대 ${PHOTO_MAX}장까지예요.`); return; }
+    const take = files.slice(0, room);
+    if (files.length > room) toast(`최대 ${PHOTO_MAX}장까지만 추가돼요.`);
+    photoBusy = true;
+    let done = 0;
+    for (const f of take) {
+      setPhotoStatus(`⏳ 사진 처리 중… (${++done}/${take.length})`);
+      try {
+        const dataUrl = await compressProgramPhoto(f);
+        const j = await api('/program-photos/upload', { method: 'POST', body: JSON.stringify({ photo: dataUrl }) });
+        if (j && j.url) { programPhotos.push(j.url); renderPhotoGrid(); }
+      } catch (err) { toast('사진 업로드 실패: ' + (err.message || '')); }
+    }
+    setPhotoStatus('');
+    photoBusy = false;
+  }
+
+  function resetProgramPhotos(arr) {
+    programPhotos = Array.isArray(arr) ? arr.filter(u => typeof u === 'string' && u).slice(0, PHOTO_MAX) : [];
+    photoBusy = false;
+    dragPhotoIdx = null;
+    setPhotoStatus('');
+    const input = $('#pu-input');
+    if (input) input.value = '';
+    renderPhotoGrid();
+  }
+
+  // 파일 선택 버튼 / input
+  $('#pu-pick') && $('#pu-pick').addEventListener('click', () => $('#pu-input').click());
+  $('#pu-input') && $('#pu-input').addEventListener('change', (e) => {
+    addPhotoFiles(e.target.files);
+    e.target.value = ''; // 같은 파일 재선택 허용
+  });
+
+  // 썸네일 클릭(삭제 / 순서 이동 버튼) — 위임
+  $('#pu-grid') && $('#pu-grid').addEventListener('click', (e) => {
+    const rm = e.target.closest('[data-photo-remove]');
+    if (rm) { programPhotos.splice(Number(rm.dataset.photoRemove), 1); renderPhotoGrid(); return; }
+    const lf = e.target.closest('[data-photo-left]');
+    if (lf) { const i = Number(lf.dataset.photoLeft); movePhoto(i, i - 1); return; }
+    const rt = e.target.closest('[data-photo-right]');
+    if (rt) { const i = Number(rt.dataset.photoRight); movePhoto(i, i + 1); return; }
+  });
+
+  // 드래그 순서 변경 (데스크톱)
+  $('#pu-grid') && $('#pu-grid').addEventListener('dragstart', (e) => {
+    const t = e.target.closest('.pu-thumb'); if (!t) return;
+    dragPhotoIdx = Number(t.dataset.idx);
+    t.classList.add('dragging');
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+  });
+  $('#pu-grid') && $('#pu-grid').addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const t = e.target.closest('.pu-thumb');
+    $$('#pu-grid .pu-thumb').forEach(el => el.classList.toggle('drop-target', el === t && !el.classList.contains('dragging')));
+  });
+  $('#pu-grid') && $('#pu-grid').addEventListener('drop', (e) => {
+    e.preventDefault();
+    const t = e.target.closest('.pu-thumb');
+    if (t && dragPhotoIdx != null) movePhoto(dragPhotoIdx, Number(t.dataset.idx));
+    dragPhotoIdx = null;
+    $$('#pu-grid .pu-thumb').forEach(el => el.classList.remove('drop-target', 'dragging'));
+  });
+  $('#pu-grid') && $('#pu-grid').addEventListener('dragend', () => {
+    dragPhotoIdx = null;
+    $$('#pu-grid .pu-thumb').forEach(el => el.classList.remove('drop-target', 'dragging'));
+  });
+
+  // 드롭 존(빈 영역)으로 파일 드래그 앤 드롭
+  const puDrop = $('#pu-drop');
+  if (puDrop) {
+    ['dragenter', 'dragover'].forEach(ev => puDrop.addEventListener(ev, (e) => { e.preventDefault(); puDrop.classList.add('dragover'); }));
+    ['dragleave', 'drop'].forEach(ev => puDrop.addEventListener(ev, (e) => { e.preventDefault(); puDrop.classList.remove('dragover'); }));
+    puDrop.addEventListener('drop', (e) => { if (e.dataTransfer && e.dataTransfer.files) addPhotoFiles(e.dataTransfer.files); });
+  }
+
   // 이벤트 바인딩 (DOM 로딩 후 모듈 IIFE 시점에 한 번만)
   document.addEventListener('change', (e) => {
     if (!e.target) return;
@@ -1143,6 +1286,7 @@
       toast('대상 학년을 1개 이상 선택하세요.');
       return;
     }
+    if (photoBusy) { toast('사진 업로드가 끝난 뒤 저장해 주세요.'); return; }
     const sessionDates = readSelectedDates();
     const startTime = $('#sb-start-time').value || null;
     const endTime = $('#sb-end-time').value || null;
@@ -1183,6 +1327,7 @@
       end_time: endTime,
       extra_sessions: extraSessions,
       recruit_status: recruitStatus,
+      photos: programPhotos.slice(),
     };
     try {
       if (form.dataset.editId) {
