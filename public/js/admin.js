@@ -2479,9 +2479,11 @@ th { color:#2E7D32; font-weight:800; background:#F1F8E9; }
   });
 
   // ===== 일정 달력 탭 (보기 전용) =====
-  // 6월 2026 중심. session_dates 가 있는 프로그램만 표시.
-  let scheduleYear = 2026;
-  let scheduleMonth = 5; // 0-indexed → June
+  // 항상 현재(시스템 날짜 기준) 이번 달로 초기화. session_dates 가 있는 프로그램만 표시.
+  // 특정 월 하드코딩 금지 — 매년/매월 자동으로 이번 달이 열려야 한다.
+  const __schedNow = new Date();
+  let scheduleYear = __schedNow.getFullYear();
+  let scheduleMonth = __schedNow.getMonth(); // 0-indexed, 현재 월
   // 달력에서 숨길 프로그램 id 집합(체크 해제된 것). 비어 있으면 전체 표시.
   // 상태 저장 안 함 — 탭 진입/새로고침 시 항상 전체 표시로 초기화.
   let scheduleHiddenIds = new Set();
@@ -2524,6 +2526,10 @@ th { color:#2E7D32; font-weight:800; background:#F1F8E9; }
     try {
       const j = await api('/programs');
       programs = j.data || [];
+      // 탭 진입 시 항상 현재(시스템 날짜 기준) 이번 달로 초기화
+      const now = new Date();
+      scheduleYear = now.getFullYear();
+      scheduleMonth = now.getMonth();
       scheduleHiddenIds = new Set(); // 탭 진입 시 전체 표시 기본
       scheduleInstructor = '';       // 탭 진입 시 강사 필터도 전체로
       renderScheduleCalendar();
